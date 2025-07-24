@@ -58,6 +58,7 @@ import ee.ria.DigiDoc.utils.Constant.Routes.SIGNING_FILE_CHOOSING_SCREEN
 import ee.ria.DigiDoc.utils.Constant.Routes.SIGNING_SCREEN
 import ee.ria.DigiDoc.utils.Constant.Routes.SIGNING_SERVICES_SCREEN
 import ee.ria.DigiDoc.utils.Constant.Routes.VALIDATION_SERVICES_SCREEN
+import ee.ria.DigiDoc.utils.Constant.Routes.WEB_EID_SCREEN
 
 sealed class Route(
     val route: String,
@@ -135,4 +136,6 @@ sealed class Route(
     data object MyEidScreen : Route(MYEID_SCREEN)
 
     data object MyEidPinScreen : Route(MYEID_PIN_SCREEN)
+
+    data object WebEidScreen : Route(WEB_EID_SCREEN)
 }
