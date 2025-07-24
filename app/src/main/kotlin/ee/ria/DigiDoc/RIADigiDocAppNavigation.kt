@@ -75,7 +75,7 @@ import ee.ria.DigiDoc.viewmodel.shared.SharedSettingsViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedSignatureViewModel
 
 @Composable
-fun RIADigiDocAppScreen(externalFileUris: List<Uri>) {
+fun RIADigiDocAppScreen(externalFileUris: List<Uri>, webEidUri: Uri? = null) {
     val navController = rememberNavController()
     val sharedMenuViewModel: SharedMenuViewModel = hiltViewModel()
     val sharedContainerViewModel: SharedContainerViewModel = hiltViewModel()
@@ -383,6 +383,7 @@ fun RIADigiDocAppScreen(externalFileUris: List<Uri>) {
 @Composable
 fun RIADigiDocAppScreenPreview() {
     RIADigiDocTheme {
-        RIADigiDocAppScreen(listOf())
+        RIADigiDocAppScreen(listOf(),
+        webEidUri = null)
     }
 }
