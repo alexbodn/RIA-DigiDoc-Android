@@ -381,6 +381,7 @@ fun RIADigiDocAppScreen(externalFileUris: List<Uri>, webEidUri: Uri? = null) {
             WebEidFragment(
                 modifier = Modifier.safeDrawingPadding(),
                 navController = navController,
+                webEidUri = webEidUri,
             )
         }
     }
