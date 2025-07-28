@@ -21,7 +21,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import ee.ria.DigiDoc.fragment.screen.WebEidScreen
 import ee.ria.DigiDoc.ui.theme.RIADigiDocTheme
+import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.Companion.debugLog
 import ee.ria.DigiDoc.viewmodel.WebEidViewModel
+import ee.ria.DigiDoc.viewmodel.shared.SharedContainerViewModel
+import ee.ria.DigiDoc.viewmodel.shared.SharedMenuViewModel
+import ee.ria.DigiDoc.viewmodel.shared.SharedSettingsViewModel
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -30,10 +34,18 @@ fun WebEidFragment(
     navController: NavHostController,
     webEidUri: Uri?,
     viewModel: WebEidViewModel = hiltViewModel(),
+    sharedSettingsViewModel: SharedSettingsViewModel = hiltViewModel(),
+    sharedContainerViewModel: SharedContainerViewModel = hiltViewModel(),
+    sharedMenuViewModel: SharedMenuViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(webEidUri) {
-        println("DEBUG: WebEidFragment got URI = $webEidUri")
-        webEidUri?.let { viewModel.handleAuth(it) }
+        webEidUri?.let {
+            when (it.host) {
+                "auth" -> viewModel.handleAuth(it)
+                "sign" -> viewModel.handleSign(it)
+                else -> debugLog("WebEidFragment", "Unknown Web eID URI host: ${it.host}")
+            }
+        }
     }
 
     Surface(
@@ -49,6 +61,9 @@ fun WebEidFragment(
             modifier = modifier,
             navController = navController,
             viewModel = viewModel,
+            sharedSettingsViewModel = sharedSettingsViewModel,
+            sharedContainerViewModel = sharedContainerViewModel,
+            sharedMenuViewModel = sharedMenuViewModel,
         )
     }
 }
@@ -60,7 +75,7 @@ fun WebEidFragmentPreview() {
     RIADigiDocTheme {
         WebEidFragment(
             navController = rememberNavController(),
-            webEidUri = null
+            webEidUri = null,
         )
     }
 }
