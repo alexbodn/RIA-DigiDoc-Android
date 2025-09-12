@@ -102,8 +102,8 @@ class NFCViewModel
         val userData: LiveData<IdCardData?> = _userData
         private val _dialogError = MutableLiveData(0)
         val dialogError: LiveData<Int> = _dialogError
-        private val _webEidAuthResult = MutableLiveData<Pair<ByteArray, ByteArray>?>()
-        val webEidAuthResult: LiveData<Pair<ByteArray, ByteArray>?> = _webEidAuthResult
+        private val _webEidAuthResult = MutableLiveData<Triple<ByteArray, ByteArray, ByteArray>?>()
+        val webEidAuthResult: LiveData<Triple<ByteArray, ByteArray, ByteArray>?> = _webEidAuthResult
 
         private val dialogMessages: ImmutableMap<SessionStatusResponseProcessStatus, Int> =
             ImmutableMap
@@ -625,7 +625,7 @@ class NFCViewModel
                             val card = TokenWithPace.create(nfcReader)
                             card.tunnel(canNumber)
 
-                            val (authCert, signatureArray) =
+                            val (authCert, signingCert, signatureArray) =
                                 idCardService.authenticate(
                                     token = card,
                                     pin1 = pin1Code,
@@ -641,11 +641,9 @@ class NFCViewModel
 
                             CoroutineScope(Main).launch {
                                 _shouldResetPIN.postValue(true)
-                                _webEidAuthResult.postValue(Pair(authCert, signatureArray))
+                                _webEidAuthResult.postValue(Triple(authCert, signingCert, signatureArray))
                             }
                         } catch (ex: SmartCardReaderException) {
-                            _decryptStatus.postValue(false)
-
                             if (ex.message?.contains("TagLostException") == true) {
                                 _errorState.postValue(Triple(R.string.signature_update_nfc_tag_lost, null, null))
                             } else if (ex.message?.contains("PIN1 verification failed") == true &&
@@ -695,7 +693,6 @@ class NFCViewModel
 
                             errorLog(logTag, "Exception: " + ex.message, ex)
                         } catch (ex: Exception) {
-                            _decryptStatus.postValue(false)
                             _shouldResetPIN.postValue(true)
 
                             val message = ex.message ?: ""

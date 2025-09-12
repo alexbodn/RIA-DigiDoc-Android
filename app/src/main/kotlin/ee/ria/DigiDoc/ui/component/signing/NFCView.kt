@@ -232,7 +232,7 @@ fun NFCView(
             CodeType.PIN1
         }
 
-    val webEidAuth = webEidViewModel?.authPayload?.collectAsState()?.value
+    val webEidAuth = webEidViewModel?.authRequest?.collectAsState()?.value
     val originString = webEidAuth?.origin ?: ""
     val challengeString = webEidAuth?.challenge ?: ""
 
@@ -326,8 +326,8 @@ fun NFCView(
 
     LaunchedEffect(nfcViewModel.webEidAuthResult) {
         nfcViewModel.webEidAuthResult.asFlow().collect { result ->
-            result?.let { (authCert, signature) ->
-                webEidViewModel?.handleWebEidAuthResult(authCert, signature, activity)
+            result?.let { (authCert, signingCert, signature) ->
+                webEidViewModel?.handleWebEidAuthResult(authCert, signingCert, signature)
                 nfcViewModel.resetWebEidAuthResult()
                 onSuccess()
             }

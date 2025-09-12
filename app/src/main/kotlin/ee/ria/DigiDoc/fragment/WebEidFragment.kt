@@ -2,8 +2,11 @@
 
 package ee.ria.DigiDoc.fragment
 
+import android.app.Activity
+import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -21,7 +24,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import ee.ria.DigiDoc.fragment.screen.WebEidScreen
 import ee.ria.DigiDoc.ui.theme.RIADigiDocTheme
-import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.Companion.debugLog
 import ee.ria.DigiDoc.viewmodel.WebEidViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedContainerViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedMenuViewModel
@@ -38,12 +40,27 @@ fun WebEidFragment(
     sharedContainerViewModel: SharedContainerViewModel = hiltViewModel(),
     sharedMenuViewModel: SharedMenuViewModel = hiltViewModel(),
 ) {
+    val activity = LocalActivity.current as Activity
+
+    LaunchedEffect(viewModel) {
+        viewModel.relyingPartyResponseEvents.collect { responseUri ->
+            val browserIntent =
+                Intent(Intent.ACTION_VIEW, responseUri).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                }
+            activity.startActivity(browserIntent)
+            activity.finishAndRemoveTask()
+        }
+    }
+
     LaunchedEffect(webEidUri) {
         webEidUri?.let {
             when (it.host) {
                 "auth" -> viewModel.handleAuth(it)
                 "sign" -> viewModel.handleSign(it)
-                else -> debugLog("WebEidFragment", "Unknown Web eID URI host: ${it.host}")
+                else -> {
+                    viewModel.handleUnknown(it)
+                }
             }
         }
     }

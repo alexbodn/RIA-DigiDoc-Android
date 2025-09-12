@@ -63,5 +63,5 @@ interface IdCardService {
         pin1: ByteArray,
         origin: String,
         challenge: String,
-    ): Pair<ByteArray, ByteArray>
+    ): Triple<ByteArray, ByteArray, ByteArray>
 }
