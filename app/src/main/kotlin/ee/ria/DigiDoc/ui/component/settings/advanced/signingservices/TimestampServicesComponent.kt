@@ -98,7 +98,7 @@ fun TimestampServicesComponent(
     val getTsaSetting = sharedSettingsViewModel.dataStore::getTsaSetting
     val setSettingsTsaUrl = sharedSettingsViewModel.dataStore::setSettingsTSAUrl
     val setTsaSetting = sharedSettingsViewModel.dataStore::setTsaSetting
-    val defaultTsaServiceUrl = configuration?.tsaUrl ?: getSettingsTsaUrl()
+    val defaultTsaServiceUrl = getSettingsTsaUrl().ifEmpty { configuration?.tsaUrl } ?: ""
     val settingsTsaServiceChoice = remember { mutableStateOf(getTsaSetting().name) }
     var settingsTsaServiceUrl by rememberSaveable(stateSaver = textFieldValueSaver) {
         mutableStateOf(
