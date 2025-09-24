@@ -13,6 +13,7 @@ import ee.ria.DigiDoc.libdigidoclib.SignedContainer
 import ee.ria.DigiDoc.libdigidoclib.domain.model.ContainerWrapper
 import ee.ria.DigiDoc.libdigidoclib.domain.model.MobileIdServiceResponse
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.network.mid.dto.MobileCertificateResultType
 import ee.ria.DigiDoc.network.mid.dto.request.MobileCreateSignatureRequest
 import ee.ria.DigiDoc.network.mid.dto.request.PostMobileCreateSignatureCertificateRequest
@@ -94,9 +95,10 @@ class MobileSignServiceImplTest {
         fun setupOnce() {
             runBlocking {
                 try {
+                    val context = InstrumentationRegistry.getInstrumentation().targetContext
                     val configurationRepository = mock(ConfigurationRepository::class.java)
-                    Initialization(configurationRepository)
-                        .init(InstrumentationRegistry.getInstrumentation().targetContext)
+                    LibdigidocLibraryLoader().init(context)
+                    Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }
             }

@@ -28,6 +28,7 @@ import ee.ria.DigiDoc.libdigidoclib.SignedContainer
 import ee.ria.DigiDoc.libdigidoclib.domain.model.DataFileInterface
 import ee.ria.DigiDoc.libdigidoclib.exceptions.ContainerDataFilesEmptyException
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.network.mid.dto.response.MobileCreateSignatureProcessStatus
 import ee.ria.DigiDoc.network.sid.dto.response.SessionStatusResponseProcessStatus
 import kotlinx.coroutines.flow.take
@@ -89,6 +90,7 @@ class SharedContainerViewModelTest {
                             ConfigurationSignatureVerifierImpl(),
                         )
                     configurationRepository = ConfigurationRepositoryImpl(context, configurationLoader)
+                    LibdigidocLibraryLoader().init(context)
                     Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }

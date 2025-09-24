@@ -7,6 +7,7 @@ import android.content.res.Resources
 import androidx.test.platform.app.InstrumentationRegistry
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.libdigidoclib.utils.FileUtils.getSchemaDir
 import ee.ria.DigiDoc.libdigidoclib.utils.FileUtils.getSchemaPath
 import ee.ria.DigiDoc.libdigidoclib.utils.FileUtils.initSchema
@@ -41,9 +42,10 @@ class FileUtilsTest {
         fun setupOnce() {
             runBlocking {
                 try {
+                    val context = InstrumentationRegistry.getInstrumentation().targetContext
                     val configurationRepository = mock(ConfigurationRepository::class.java)
-                    Initialization(configurationRepository)
-                        .init(InstrumentationRegistry.getInstrumentation().targetContext)
+                    LibdigidocLibraryLoader().init(context)
+                    Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }
             }

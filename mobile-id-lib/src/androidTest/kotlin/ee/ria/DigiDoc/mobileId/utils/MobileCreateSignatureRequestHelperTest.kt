@@ -12,6 +12,7 @@ import ee.ria.DigiDoc.common.testfiles.asset.AssetFile
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
 import ee.ria.DigiDoc.libdigidoclib.SignedContainer.Companion.openOrCreate
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.utilsLib.locale.LocaleUtil.getLocale
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -27,9 +28,10 @@ class MobileCreateSignatureRequestHelperTest {
         fun setupOnce() {
             runBlocking {
                 try {
+                    val context = InstrumentationRegistry.getInstrumentation().targetContext
                     val configurationRepository = Mockito.mock(ConfigurationRepository::class.java)
-                    Initialization(configurationRepository)
-                        .init(InstrumentationRegistry.getInstrumentation().targetContext)
+                    LibdigidocLibraryLoader().init(context)
+                    Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }
             }

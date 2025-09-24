@@ -10,6 +10,7 @@ import ee.ria.DigiDoc.common.testfiles.asset.AssetFile.Companion.getResourceFile
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
 import ee.ria.DigiDoc.libdigidoclib.SignedContainer.Companion.openOrCreate
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -24,9 +25,10 @@ class SmartCreateSignatureRequestHelperTest {
         fun setupOnce() {
             runBlocking {
                 try {
+                    val context = InstrumentationRegistry.getInstrumentation().targetContext
                     val configurationRepository = mock(ConfigurationRepository::class.java)
-                    Initialization(configurationRepository)
-                        .init(InstrumentationRegistry.getInstrumentation().targetContext)
+                    LibdigidocLibraryLoader().init(context)
+                    Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }
             }

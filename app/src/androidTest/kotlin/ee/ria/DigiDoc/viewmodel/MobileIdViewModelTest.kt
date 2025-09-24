@@ -28,6 +28,7 @@ import ee.ria.DigiDoc.domain.repository.fileopening.FileOpeningRepository
 import ee.ria.DigiDoc.libdigidoclib.SignedContainer
 import ee.ria.DigiDoc.libdigidoclib.domain.model.MobileIdServiceResponse
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.mobileId.MobileSignService
 import ee.ria.DigiDoc.network.mid.dto.MobileCertificateResultType
 import ee.ria.DigiDoc.network.mid.dto.response.MobileCreateSignatureProcessStatus
@@ -146,6 +147,7 @@ class MobileIdViewModelTest {
                             ConfigurationSignatureVerifierImpl(),
                         )
                     configurationRepository = ConfigurationRepositoryImpl(context, configurationLoader)
+                    LibdigidocLibraryLoader().init(context)
                     Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }

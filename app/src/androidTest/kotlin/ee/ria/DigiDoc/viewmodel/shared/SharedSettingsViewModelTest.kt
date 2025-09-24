@@ -22,6 +22,7 @@ import ee.ria.DigiDoc.configuration.repository.ConfigurationRepositoryImpl
 import ee.ria.DigiDoc.configuration.service.CentralConfigurationServiceImpl
 import ee.ria.DigiDoc.domain.preferences.DataStore
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.manager.ActivityManager
 import ee.ria.DigiDoc.network.proxy.ManualProxy
 import ee.ria.DigiDoc.network.proxy.ProxySetting
@@ -83,6 +84,7 @@ class SharedSettingsViewModelTest {
                             ConfigurationSignatureVerifierImpl(),
                         )
                     configurationRepository = ConfigurationRepositoryImpl(context, configurationLoader)
+                    LibdigidocLibraryLoader().init(context)
                     Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }
@@ -103,6 +105,7 @@ class SharedSettingsViewModelTest {
         MockitoAnnotations.openMocks(this)
         context = InstrumentationRegistry.getInstrumentation().targetContext
         dataStore = DataStore(context)
+        LibdigidocLibraryLoader().init(context)
         initialization = Initialization(configurationRepository)
         viewModel =
             SharedSettingsViewModel(

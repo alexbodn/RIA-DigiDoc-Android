@@ -1,19 +1,23 @@
 @file:Suppress("PackageName")
 
-package ee.ria.DigiDoc
+package ee.ria.DigiDoc.init
 
 import android.content.Context
 import android.widget.Toast
+import ee.ria.DigiDoc.R
 import ee.ria.DigiDoc.configuration.loader.ConfigurationLoader
 import ee.ria.DigiDoc.configuration.utils.TSLUtil
 import ee.ria.DigiDoc.cryptolib.init.CryptoInitialization
 import ee.ria.DigiDoc.domain.preferences.DataStore
 import ee.ria.DigiDoc.libdigidoclib.exceptions.AlreadyInitializedException
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
-import ee.ria.DigiDoc.utils.snackbar.SnackBarManager.showMessage
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
+import ee.ria.DigiDoc.utils.snackbar.SnackBarManager
+import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil
 import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.Companion.errorLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.InterruptedIOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import javax.inject.Inject
@@ -27,6 +31,7 @@ class LibrarySetup
         private val cryptoInitialization: CryptoInitialization,
         private val configurationLoader: ConfigurationLoader,
         private val dataStore: DataStore,
+        private val libdigidocLibraryLoader: LibdigidocLibraryLoader,
     ) {
         private val logTag = "LibrarySetup"
 
@@ -34,6 +39,8 @@ class LibrarySetup
             context: Context,
             isLoggingEnabled: Boolean,
         ) {
+            libdigidocLibraryLoader.init(context)
+
             cryptoInitialization.init(isLoggingEnabled)
             try {
                 TSLUtil.setupTSLFiles(context)
@@ -43,10 +50,20 @@ class LibrarySetup
                     dataStore.getManualProxySettings(),
                 )
             } catch (ex: Exception) {
-                if (ex !is UnknownHostException && ex !is SocketTimeoutException) {
-                    errorLog(logTag, "Unable to initialize configuration: ", ex)
+                if (ex !is UnknownHostException &&
+                    ex !is SocketTimeoutException &&
+                    ex !is InterruptedIOException
+                    ) {
+                    errorLog(
+                        logTag,
+                        "Unable to initialize configuration: ",
+                        ex
+                    )
                     withContext(Dispatchers.Main) {
-                        showMessage(context, R.string.configuration_initialization_failed)
+                        SnackBarManager.showMessage(
+                            context,
+                            R.string.configuration_initialization_failed
+                        )
                     }
                 }
             }

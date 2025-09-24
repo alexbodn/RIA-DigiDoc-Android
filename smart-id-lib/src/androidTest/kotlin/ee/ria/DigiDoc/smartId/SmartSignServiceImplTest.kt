@@ -12,6 +12,7 @@ import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
 import ee.ria.DigiDoc.libdigidoclib.SignedContainer
 import ee.ria.DigiDoc.libdigidoclib.domain.model.ContainerWrapper
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.network.mid.dto.response.MobileCreateSignatureSessionStatusResponse
 import ee.ria.DigiDoc.network.proxy.ManualProxy
 import ee.ria.DigiDoc.network.proxy.ProxySetting
@@ -130,9 +131,10 @@ class SmartSignServiceImplTest {
         fun setupOnce() {
             runBlocking {
                 try {
+                    val context = InstrumentationRegistry.getInstrumentation().targetContext
                     val configurationRepository = mock(ConfigurationRepository::class.java)
-                    Initialization(configurationRepository)
-                        .init(InstrumentationRegistry.getInstrumentation().targetContext)
+                    LibdigidocLibraryLoader().init(context)
+                    Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }
             }

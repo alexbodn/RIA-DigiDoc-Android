@@ -28,6 +28,7 @@ import ee.ria.DigiDoc.domain.repository.siva.SivaRepository
 import ee.ria.DigiDoc.libdigidoclib.SignedContainer
 import ee.ria.DigiDoc.libdigidoclib.domain.model.SignatureInterface
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.utilsLib.mimetype.MimeTypeCache
 import ee.ria.DigiDoc.utilsLib.mimetype.MimeTypeResolver
 import ee.ria.DigiDoc.utilsLib.mimetype.MimeTypeResolverImpl
@@ -102,6 +103,7 @@ class SigningViewModelTest {
                             ConfigurationSignatureVerifierImpl(),
                         )
                     configurationRepository = ConfigurationRepositoryImpl(context, configurationLoader)
+                    LibdigidocLibraryLoader().init(context)
                     Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }

@@ -7,10 +7,10 @@ import android.content.SharedPreferences
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener
 import android.content.res.Resources.NotFoundException
 import android.system.ErrnoException
-import android.system.Os
 import android.text.TextUtils
 import android.widget.Toast
 import androidx.preference.PreferenceManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import ee.ria.DigiDoc.common.Constant.DIR_SIVA_CERT
 import ee.ria.DigiDoc.common.Constant.DIR_TSA_CERT
 import ee.ria.DigiDoc.common.preferences.EncryptedPreferences
@@ -42,8 +42,8 @@ import ee.ria.libdigidocpp.digidoc
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.util.Base64
@@ -80,48 +80,27 @@ class Initialization
                 setLibdigidocppLogLevel(isLoggingEnabled)
                 throw AlreadyInitializedException("Libdigidocpp is already initialized")
             }
-            coroutineScope {
-                launch(IO) {
-                    initHomeDir(context)
-                    initNativeLibs()
-                    try {
-                        initSchema(context)
-                    } catch (ioe: IOException) {
-                        errorLog(libdigidocInitLogTag, "Init schema failed: ${ioe.message}")
-                        throw ioe
-                    } catch (nfe: NotFoundException) {
-                        errorLog(libdigidocInitLogTag, "Init schema failed: ${nfe.message}")
-                        throw nfe
-                    } catch (erre: ErrnoException) {
-                        errorLog(libdigidocInitLogTag, "Init schema failed: ${erre.message}")
-                        throw erre
-                    }
 
-                    initLibDigiDocpp(
-                        context,
-                        getSchemaPath(context),
-                        isLoggingEnabled,
-                    )
+            withContext(IO) {
+                try {
+                    initSchema(context)
+                } catch (ioe: IOException) {
+                    errorLog(libdigidocInitLogTag, "Init schema failed: ${ioe.message}")
+                    throw ioe
+                } catch (nfe: NotFoundException) {
+                    errorLog(libdigidocInitLogTag, "Init schema failed: ${nfe.message}")
+                    throw nfe
+                } catch (erre: ErrnoException) {
+                    errorLog(libdigidocInitLogTag, "Init schema failed: ${erre.message}")
+                    throw erre
                 }
-            }
-        }
 
-        @Throws(ErrnoException::class)
-        private fun initHomeDir(context: Context) {
-            val path: String = getSchemaPath(context)
-            try {
-                Os.setenv("HOME", path, true)
-            } catch (erre: ErrnoException) {
-                errorLog(
-                    libdigidocInitLogTag,
-                    "Setting HOME environment variable failed: ${erre.message}",
+                initLibDigiDocpp(
+                    context,
+                    getSchemaPath(context),
+                    isLoggingEnabled,
                 )
-                throw erre
             }
-        }
-
-        private fun initNativeLibs() {
-            System.loadLibrary("digidoc_java")
         }
 
         private fun initLibDigiDocpp(
