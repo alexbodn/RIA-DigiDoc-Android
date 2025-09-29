@@ -14,6 +14,7 @@ import ee.ria.DigiDoc.domain.model.settings.TSASetting
 import ee.ria.DigiDoc.domain.model.settings.UUIDSetting
 import ee.ria.DigiDoc.domain.model.theme.ThemeSetting
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.network.proxy.ProxySetting
 import ee.ria.DigiDoc.network.siva.SivaSetting
 import ee.ria.DigiDoc.utils.Constant.Defaults.DEFAULT_UUID_VALUE
@@ -41,9 +42,10 @@ class DataStoreTest {
         fun setupOnce() {
             runBlocking {
                 try {
+                    val context = InstrumentationRegistry.getInstrumentation().targetContext
                     val configurationRepository = Mockito.mock(ConfigurationRepository::class.java)
-                    Initialization(configurationRepository)
-                        .init(InstrumentationRegistry.getInstrumentation().targetContext)
+                    LibdigidocLibraryLoader().init(context)
+                    Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }
             }

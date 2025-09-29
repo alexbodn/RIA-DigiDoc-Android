@@ -19,6 +19,7 @@ import ee.ria.DigiDoc.common.model.AppState
 import ee.ria.DigiDoc.domain.model.theme.ThemeSetting
 import ee.ria.DigiDoc.domain.preferences.DataStore
 import ee.ria.DigiDoc.fragment.RootFragment
+import ee.ria.DigiDoc.init.LibrarySetup
 import ee.ria.DigiDoc.manager.ActivityManager
 import ee.ria.DigiDoc.root.RootChecker
 import ee.ria.DigiDoc.ui.theme.RIADigiDocTheme
@@ -63,6 +64,8 @@ class MainActivity :
     @Inject
     lateinit var secureUtil: SecureUtil
 
+    private var isAppReady = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super<ComponentActivity>.onCreate(savedInstanceState)
 
@@ -72,7 +75,9 @@ class MainActivity :
             secureUtil.markAsSecure(this)
         }
 
-        installSplashScreen()
+        installSplashScreen().setKeepOnScreenCondition {
+            !isAppReady
+        }
 
         enableEdgeToEdge()
 
@@ -134,10 +139,13 @@ class MainActivity :
             )
             fileTypeSetup.initializeApplicationFileTypesAssociation(componentClassName)
             librarySetup.setupLibraries(applicationContext, isLoggingEnabled)
-        }
-        setContent {
-            RIADigiDocTheme(darkTheme = useDarkMode) {
-                RIADigiDocAppScreen(externalFileUris)
+
+            isAppReady = true
+
+            setContent {
+                RIADigiDocTheme(darkTheme = useDarkMode) {
+                    RIADigiDocAppScreen(externalFileUris)
+                }
             }
         }
     }

@@ -99,7 +99,8 @@ class AppModules {
 
     @Provides
     @Singleton
-    fun provideInitialization(configurationRepository: ConfigurationRepository): Initialization =
+    fun provideInitialization(
+        configurationRepository: ConfigurationRepository): Initialization =
         Initialization(configurationRepository)
 
     @Provides

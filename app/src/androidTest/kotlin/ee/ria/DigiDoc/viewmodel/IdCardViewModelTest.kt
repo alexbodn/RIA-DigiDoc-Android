@@ -25,6 +25,7 @@ import ee.ria.DigiDoc.idcard.PersonalData
 import ee.ria.DigiDoc.idcard.Token
 import ee.ria.DigiDoc.libdigidoclib.SignedContainer
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.smartcardreader.SmartCardReader
 import ee.ria.DigiDoc.smartcardreader.SmartCardReaderManager
 import ee.ria.DigiDoc.smartcardreader.SmartCardReaderStatus
@@ -111,9 +112,10 @@ class IdCardViewModelTest {
         fun setupOnce() {
             runBlocking {
                 try {
+                    val context = InstrumentationRegistry.getInstrumentation().targetContext
                     val configurationRepository = mock(ConfigurationRepository::class.java)
-                    Initialization(configurationRepository)
-                        .init(InstrumentationRegistry.getInstrumentation().targetContext)
+                    LibdigidocLibraryLoader().init(context)
+                    Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }
             }

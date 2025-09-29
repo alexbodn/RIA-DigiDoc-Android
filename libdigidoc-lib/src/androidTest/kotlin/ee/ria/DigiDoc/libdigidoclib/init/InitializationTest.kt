@@ -88,6 +88,7 @@ class InitializationTest {
     fun setup() {
         MockitoAnnotations.openMocks(this)
         configurationRepository = mock(ConfigurationRepository::class.java)
+        LibdigidocLibraryLoader().init(context)
         initialization = Initialization(configurationRepository)
         resetInitialization()
     }

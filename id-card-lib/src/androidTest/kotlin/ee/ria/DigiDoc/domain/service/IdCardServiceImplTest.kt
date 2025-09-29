@@ -27,6 +27,7 @@ import ee.ria.DigiDoc.libdigidoclib.SignedContainer
 import ee.ria.DigiDoc.libdigidoclib.domain.model.ContainerWrapper
 import ee.ria.DigiDoc.libdigidoclib.domain.model.RoleData
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
+import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.smartcardreader.SmartCardReaderException
 import ee.ria.DigiDoc.utilsLib.signing.CertificateUtil
 import ee.ria.libdigidocpp.ExternalSigner
@@ -112,8 +113,8 @@ class IdCardServiceImplTest {
                             ConfigurationPropertiesImpl(),
                             ConfigurationSignatureVerifierImpl(),
                         )
-                    val configurationRepository =
-                        ConfigurationRepositoryImpl(context, configurationLoader)
+                    val configurationRepository = ConfigurationRepositoryImpl(context, configurationLoader)
+                    LibdigidocLibraryLoader().init(context)
                     Initialization(configurationRepository).init(context)
                 } catch (_: Exception) {
                 }
