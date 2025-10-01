@@ -176,7 +176,7 @@ class SmartIdViewModelTest {
                 dataStore,
                 smartSignService,
                 configurationRepository,
-                notificationUtil
+                notificationUtil,
             )
         viewModel.errorState.observeForever(errorStateObserver)
         viewModel.dialogError.observeForever(dialogErrorObserver)
