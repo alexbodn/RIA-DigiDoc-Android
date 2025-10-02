@@ -176,8 +176,8 @@ class SharedSettingsViewModel
         private fun resetSigningSettings() {
             dataStore.setUuidSetting(UUIDSetting.DEFAULT)
             dataStore.setTsaSetting(TSASetting.DEFAULT)
-            dataStore.setSettingsUUID("")
-            dataStore.setSettingsTSAUrl("")
+            dataStore.setSettingsUUID(Constant.Defaults.DEFAULT_UUID_VALUE)
+            dataStore.setSettingsTSAUrl(updatedConfiguration.value?.tsaUrl ?: "")
             dataStore.setSettingsAskRoleAndAddress(false)
             dataStore.setIsTsaCertificateViewVisible(false)
             val certFile =

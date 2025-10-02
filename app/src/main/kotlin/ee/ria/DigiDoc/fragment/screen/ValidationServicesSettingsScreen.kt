@@ -118,7 +118,7 @@ fun ValidationServicesSettingsScreen(
     val getSivaSetting = sharedSettingsViewModel.dataStore::getSivaSetting
     val setSettingsSivaUrl = sharedSettingsViewModel.dataStore::setSettingsSivaUrl
     val setSivaSetting = sharedSettingsViewModel.dataStore::setSivaSetting
-    val defaultSivaServiceUrl = configuration?.sivaUrl ?: getSettingsSivaUrl()
+    val defaultSivaServiceUrl = getSettingsSivaUrl().ifEmpty { configuration?.sivaUrl } ?: ""
     val settingsSivaServiceChoice = remember { mutableStateOf(getSivaSetting().name) }
     var settingsSivaServiceUrl by rememberSaveable(stateSaver = textFieldValueSaver) {
         mutableStateOf(
