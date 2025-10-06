@@ -166,6 +166,7 @@ fun RoleDataView(
                     if (!isTalkBackEnabled(context) && rolesAndResolutions.text.isNotEmpty()) {
                         IconButton(onClick = {
                             rolesAndResolutions = TextFieldValue("")
+                            sharedSettingsViewModel.dataStore.setRoles("")
                         }) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(R.drawable.ic_icon_remove),
@@ -245,6 +246,7 @@ fun RoleDataView(
                     if (!isTalkBackEnabled(context) && city.text.isNotEmpty()) {
                         IconButton(onClick = {
                             city = TextFieldValue("")
+                            sharedSettingsViewModel.dataStore.setRoleCity("")
                         }) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(R.drawable.ic_icon_remove),
@@ -324,6 +326,7 @@ fun RoleDataView(
                     if (!isTalkBackEnabled(context) && state.text.isNotEmpty()) {
                         IconButton(onClick = {
                             state = TextFieldValue("")
+                            sharedSettingsViewModel.dataStore.setRoleState("")
                         }) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(R.drawable.ic_icon_remove),
@@ -403,6 +406,7 @@ fun RoleDataView(
                     if (!isTalkBackEnabled(context) && country.text.isNotEmpty()) {
                         IconButton(onClick = {
                             country = TextFieldValue("")
+                            sharedSettingsViewModel.dataStore.setRoleCountry("")
                         }) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(R.drawable.ic_icon_remove),
@@ -481,6 +485,7 @@ fun RoleDataView(
                     if (!isTalkBackEnabled(context) && zip.text.isNotEmpty()) {
                         IconButton(onClick = {
                             zip = TextFieldValue("")
+                            sharedSettingsViewModel.dataStore.setRoleZip("")
                         }) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(R.drawable.ic_icon_remove),
