@@ -350,6 +350,9 @@ fun NFCView(
         } else if (dialogError == R.string.invalid_time_slot_message) {
             linkText = R.string.additional_information
             linkUrl = R.string.invalid_time_slot_url
+        } else if (dialogError == R.string.sign_blocked_pin2_unchanged_message) {
+            linkText = R.string.additional_information
+            linkUrl = R.string.sign_blocked_pin2_unchanged_url
         }
         Box(modifier = modifier.fillMaxSize()) {
             onError()

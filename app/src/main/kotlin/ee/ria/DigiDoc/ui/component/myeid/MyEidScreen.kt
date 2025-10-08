@@ -46,6 +46,7 @@ import androidx.lifecycle.asFlow
 import androidx.navigation.NavHostController
 import ee.ria.DigiDoc.R
 import ee.ria.DigiDoc.domain.model.pin.PinChangeVariant
+import ee.ria.DigiDoc.idcard.CardType
 import ee.ria.DigiDoc.idcard.CodeType
 import ee.ria.DigiDoc.idcard.DateOfBirthUtil
 import ee.ria.DigiDoc.smartcardreader.SmartCardReaderStatus
@@ -90,6 +91,7 @@ fun MyEidScreen(
     val isPin1Blocked = idCardData?.pin1RetryCount == 0
     val isPin2Blocked = idCardData?.pin2RetryCount == 0
     val isPukBlocked = idCardData?.pukRetryCount == 0
+    val isPin2Activated = idCardData?.pin2CodeChanged == true
 
     val alphaForBlockedState = if (!isPukBlocked) 1f else 0.7f
 
@@ -101,15 +103,42 @@ fun MyEidScreen(
     val showForgotPin1Dialog = rememberSaveable { mutableStateOf(false) }
     val showForgotPin2Dialog = rememberSaveable { mutableStateOf(false) }
 
-    val changePukText =
+    val buttonName = stringResource(id = R.string.button_name)
+    val additionalInfo = stringResource(id = R.string.additional_information)
+    var changePukText =
         stringResource(
             R.string.myeid_change_pin,
             CodeType.PUK,
         )
+    var pukChangeEnabled = true
+    var changePukSubtitleText = stringResource(R.string.myeid_puk_info)
+    var changePukLinkText = ""
+    var changePukLinkUrl = ""
+    var changePukContentDescription =
+        "$changePukText. $changePukSubtitleText. $buttonName"
+            .lowercase()
+    if (idCardData?.personalData?.cardType() == CardType.THALES) {
+        pukChangeEnabled = false
+        changePukText =
+            stringResource(
+                R.string.myeid_pin,
+                CodeType.PUK,
+            )
+        changePukSubtitleText =
+            """
+            ${stringResource(R.string.myeid_puk_info)}
+            ${stringResource(R.string.myeid_puk_info_2)}
+            
+            """.trimIndent()
+        changePukLinkText = additionalInfo
+        changePukLinkUrl = stringResource(R.string.myeid_puk_info_3)
 
-    val changePukSubtitleText = stringResource(R.string.myeid_puk_info)
-
-    val buttonName = stringResource(id = R.string.button_name)
+        changePukContentDescription =
+            (
+                "$changePukText. $changePukSubtitleText" +
+                    ". $additionalInfo. $changePukLinkUrl. $buttonName"
+            ).lowercase()
+    }
 
     val pin1Guidelines =
         """
@@ -409,6 +438,23 @@ fun MyEidScreen(
                                             },
                                         )
 
+                                        if (!isPin2Activated) {
+                                            Text(
+                                                modifier =
+                                                    modifier
+                                                        .fillMaxWidth()
+                                                        .focusable(true)
+                                                        .testTag("myEidNotActivatedPin2DescriptionText"),
+                                                text =
+                                                    stringResource(
+                                                        R.string.myeid_pin_not_activated,
+                                                        CodeType.PIN2,
+                                                    ),
+                                                color = MaterialTheme.colorScheme.error,
+                                                style = MaterialTheme.typography.bodySmall,
+                                            )
+                                        }
+
                                         if (isPin2Blocked) {
                                             Text(
                                                 modifier =
@@ -440,13 +486,16 @@ fun MyEidScreen(
                                             modifier =
                                                 modifier
                                                     .fillMaxWidth()
-                                                    .clickable(enabled = !isPukBlocked) {
+                                                    .clickable(
+                                                        enabled =
+                                                            !isPukBlocked &&
+                                                                pukChangeEnabled,
+                                                    ) {
                                                         showPukDialog.value = true
                                                     }.semantics {
                                                         this.role = Role.Button
                                                         this.contentDescription =
-                                                            "$changePukText. $changePukSubtitleText. $buttonName"
-                                                                .lowercase()
+                                                            changePukContentDescription
                                                         testTagsAsResourceId = true
                                                     }.testTag("myEidPukChangeButton"),
                                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -460,6 +509,8 @@ fun MyEidScreen(
                                                 isPinBlocked = isPukBlocked,
                                                 isPukBlocked = isPukBlocked,
                                                 subtitle = changePukSubtitleText,
+                                                linkText = changePukLinkText,
+                                                linkUrl = changePukLinkUrl,
                                                 showForgotPin = false,
                                             )
                                         }

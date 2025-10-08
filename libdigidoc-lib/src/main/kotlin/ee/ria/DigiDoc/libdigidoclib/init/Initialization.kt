@@ -10,7 +10,6 @@ import android.system.ErrnoException
 import android.text.TextUtils
 import android.widget.Toast
 import androidx.preference.PreferenceManager
-import dagger.hilt.android.qualifiers.ApplicationContext
 import ee.ria.DigiDoc.common.Constant.DIR_SIVA_CERT
 import ee.ria.DigiDoc.common.Constant.DIR_TSA_CERT
 import ee.ria.DigiDoc.common.preferences.EncryptedPreferences

@@ -36,9 +36,14 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import ee.ria.DigiDoc.R
+import ee.ria.DigiDoc.ui.component.shared.HrefDynamicText
+import ee.ria.DigiDoc.ui.theme.Dimensions.LINE_HEIGHT
 import ee.ria.DigiDoc.ui.theme.Dimensions.SPadding
 import ee.ria.DigiDoc.ui.theme.Dimensions.XSPadding
 import ee.ria.DigiDoc.ui.theme.Dimensions.buttonShadowElevation
@@ -53,6 +58,8 @@ fun MyEidPinAndCertificateView(
     modifier: Modifier = Modifier,
     title: String,
     subtitle: String,
+    linkText: String = "",
+    linkUrl: String = "",
     isPinBlocked: Boolean = false,
     isPukBlocked: Boolean = false,
     showForgotPin: Boolean = true,
@@ -119,12 +126,30 @@ fun MyEidPinAndCertificateView(
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
-                    Text(
-                        modifier = modifier.notAccessible(),
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    if (linkUrl.isNotBlank()) {
+                        HrefDynamicText(
+                            modifier = modifier.notAccessible(),
+                            text1 = subtitle,
+                            text2 = "",
+                            linkText = linkText,
+                            linkUrl = linkUrl,
+                            showLinkOnOneLine = true,
+                            textStyle =
+                                TextStyle(
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                                    textAlign = TextAlign.Start,
+                                    lineHeight = TextUnit(LINE_HEIGHT, TextUnitType.Sp),
+                                ),
+                        )
+                    } else {
+                        Text(
+                            modifier = modifier.notAccessible(),
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
             }
 
@@ -203,12 +228,21 @@ fun MyEidPinAndCertificateView(
 @Composable
 fun MyEidPinAndCertificateViewPreview() {
     RIADigiDocTheme {
-        MyEidPinAndCertificateView(
-            title = "Identity certificate",
-            subtitle = "Certificate is valid until ${LocalDate.now()}",
-            forgotPinText = "Forgot PIN?",
-            onForgotPinClick = {},
-            changePinText = "Change PIN",
-        )
+        Column {
+            MyEidPinAndCertificateView(
+                title = "Identity certificate",
+                subtitle = "Certificate is valid until ${LocalDate.now()}",
+                forgotPinText = "Forgot PIN?",
+                onForgotPinClick = {},
+                changePinText = "Change PIN",
+            )
+            MyEidPinAndCertificateView(
+                title = "Identity certificate",
+                subtitle = "Certificate is valid until ${LocalDate.now()}",
+                forgotPinText = "Forgot PIN?",
+                onForgotPinClick = {},
+                changePinText = "Change PIN",
+            )
+        }
     }
 }

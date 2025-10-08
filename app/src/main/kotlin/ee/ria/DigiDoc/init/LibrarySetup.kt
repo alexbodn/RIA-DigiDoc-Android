@@ -13,7 +13,6 @@ import ee.ria.DigiDoc.libdigidoclib.exceptions.AlreadyInitializedException
 import ee.ria.DigiDoc.libdigidoclib.init.Initialization
 import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.utils.snackbar.SnackBarManager
-import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil
 import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.Companion.errorLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -53,16 +52,16 @@ class LibrarySetup
                 if (ex !is UnknownHostException &&
                     ex !is SocketTimeoutException &&
                     ex !is InterruptedIOException
-                    ) {
+                ) {
                     errorLog(
                         logTag,
                         "Unable to initialize configuration: ",
-                        ex
+                        ex,
                     )
                     withContext(Dispatchers.Main) {
                         SnackBarManager.showMessage(
                             context,
-                            R.string.configuration_initialization_failed
+                            R.string.configuration_initialization_failed,
                         )
                     }
                 }
