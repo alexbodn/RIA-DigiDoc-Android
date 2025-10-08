@@ -85,14 +85,12 @@ fun File.mimeType(context: Context): String {
         if (extension == DDOC_EXTENSION && parseXMLFile(this)?.let { isDdoc(it) } == true) {
             return DDOC_MIMETYPE
         }
-
-        return MimeTypeMap
-            .getSingleton()
-            .getMimeTypeFromExtension(extension)
-            ?.takeIf { it.isNotEmpty() } ?: DEFAULT_MIME_TYPE
     }
 
-    return DEFAULT_MIME_TYPE
+    return MimeTypeMap
+        .getSingleton()
+        .getMimeTypeFromExtension(extension)
+        ?.takeIf { it.isNotEmpty() } ?: DEFAULT_MIME_TYPE
 }
 
 fun File.isCryptoContainer(): Boolean {
