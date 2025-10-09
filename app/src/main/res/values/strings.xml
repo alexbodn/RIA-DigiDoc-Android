@@ -284,6 +284,8 @@
     <string name="signature_update_signature_error_message_exceeded_unsuccessful_requests">Failed to send request. The number of unsuccessful request from this IP address has been exceeded. Please try again later.</string>
     <string name="invalid_time_slot_message">Please check your smart device time.</string>
     <string name="invalid_time_slot_url">https://www.id.ee/en/article/ria-digidoc-error-please-check-your-smart-device-time/</string>
+    <string name="sign_blocked_pin2_unchanged_message">Signing with an ID-card isn\'t possible yet. PIN2 code must be changed in order to sign. </string>
+    <string name="sign_blocked_pin2_unchanged_url">https://www.id.ee/en/article/changing-id-card-pin-codes-and-puk-code/</string>
     <string name="signature_update_signature_error_message_certificate_revoked">Certificate status revoked</string>
     <string name="signature_update_signature_error_message_certificate_unknown">Certificate status unknown</string>
     <string name="id_card_conditional_speech">ID-card\'s</string>
@@ -611,7 +613,8 @@
     <string name="myeid_certificate_valid_to">Certificate is valid until %1$s</string>
     <string name="myeid_forgot_pin">Forgot %1$s?</string>
     <string name="myeid_change_pin">Change %1$s</string>
-    <string name="myeid_puk_info">PUK code is in your code envelope</string>
+    <string name="myeid_pin">%1$s code</string>
+    <string name="myeid_puk_info">The PUK code is located in your envelope.</string>
     <string name="myeid_change_pin_info_title">%1$s change guidelines</string>
     <string name="myeid_pin1_guideline_1">New PIN1 must be different from current PIN1.</string>
     <string name="myeid_pin1_guideline_2">PIN1 code is used for authentication.</string>
@@ -621,6 +624,8 @@
     <string name="myeid_pin2_guideline_3">If PIN2 is inserted incorrectly 3 times, the signing certificate will be blocked and it will be impossible to use ID-card for digital signatures, until it is unblocked via the PUK code.</string>
     <string name="myeid_puk_guideline_1">PUK code is used for unblocking the certificates when PIN1 or PIN2 has been entered 3 times incorrectly.</string>
     <string name="myeid_puk_guideline_2">If you forget the PUK code or the certificates remain blocked, you have to visit the service center to obtain new codes.</string>
+    <string name="myeid_puk_info_2">The PUK code cannot be changed on the detected ID-card. If you have forgotten the PUK code of your ID-card then you can view it from the Police and Border Guard Board portal.</string>
+    <string name="myeid_puk_info_3">https://www.id.ee/en/article/pin-and-puk-codes-security-recommendations/</string>
     <string name="myeid_pin_change_title">Change %1$s</string>
     <string name="myeid_pin_unblock_title">Unblock %1$s</string>
     <string name="myeid_current_pin_code_title">Enter current %1$s code</string>
@@ -634,10 +639,9 @@
     <plurals name="myeid_pin_error_code_verification">
         <item quantity="one">Wrong %1$s code. You can try 1 more time.</item>
         <item quantity="other">Wrong %1$s code. You can try %2$s more times.</item>
-        <!-- placeholder to keep line numbers same in different locales -->
-        <!-- placeholder to keep line numbers same in different locales -->
     </plurals>
     <string name="myeid_pin_blocked">%1$s is blocked, because %1$s has been inserted 3 times incorrectly.</string>
+    <string name="myeid_pin_not_activated">%1$s code must be changed in order to sign.</string>
     <string name="myeid_pin_blocked_with_unblock_message">%1$s has been blocked because %1$s code has been entered incorrectly 3 times. Unblock to reuse PIN1.</string>
     <string name="myeid_puk_blocked">PUK has been blocked because PUK code has been entered incorrectly 3 times. You can not unblock the PUK code yourself.</string>
     <string name="myeid_cert_expired">Certificate has &lt;c>expired&lt;/c>! %1$s cannot be used because the certificate has expired.</string>

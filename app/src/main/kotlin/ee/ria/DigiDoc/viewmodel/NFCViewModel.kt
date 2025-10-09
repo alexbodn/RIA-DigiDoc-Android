@@ -250,7 +250,15 @@ class NFCViewModel
                                 _signStatus.postValue(false)
 
                                 if (ex.message?.contains("TagLostException") == true) {
-                                    _errorState.postValue(Triple(R.string.signature_update_nfc_tag_lost, null, null))
+                                    _errorState.postValue(
+                                        Triple(
+                                            R.string.signature_update_nfc_tag_lost,
+                                            null,
+                                            null,
+                                        ),
+                                    )
+                                } else if (ex.message?.contains("PIN2 has not been changed") == true) {
+                                    _dialogError.postValue(R.string.sign_blocked_pin2_unchanged_message)
                                 } else if (ex.message?.contains("PIN2 verification failed") == true &&
                                     ex.message?.contains("Retries left: 2") == true
                                 ) {

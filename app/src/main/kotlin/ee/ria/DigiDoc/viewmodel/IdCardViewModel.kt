@@ -210,6 +210,11 @@ class IdCardViewModel
 
             when {
                 e is CodeVerificationException -> handlePinError(e)
+                message.contains("PIN2 has not been changed") ->
+                    showErrorDialog(
+                        e,
+                        "Unable to sign with ID-card - PIN2 has not been changed",
+                    )
                 message.contains("Too Many Requests") ->
                     showErrorDialog(
                         e,
