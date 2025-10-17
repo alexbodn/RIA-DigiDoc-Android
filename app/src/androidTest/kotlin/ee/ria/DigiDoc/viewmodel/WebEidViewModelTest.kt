@@ -6,7 +6,9 @@ import android.net.Uri
 import android.util.Base64.URL_SAFE
 import android.util.Base64.decode
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import ee.ria.DigiDoc.R
 import ee.ria.DigiDoc.webEid.WebEidAuthService
+import ee.ria.DigiDoc.webEid.WebEidSignService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
@@ -32,12 +34,15 @@ class WebEidViewModelTest {
     @Mock
     private lateinit var authService: WebEidAuthService
 
+    @Mock
+    private lateinit var signService: WebEidSignService
+
     private lateinit var viewModel: WebEidViewModel
 
     @Before
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        viewModel = WebEidViewModel(authService)
+        viewModel = WebEidViewModel(authService, signService)
     }
 
     @Test
@@ -127,20 +132,13 @@ class WebEidViewModelTest {
     }
 
     @Test
-    fun webEidViewModel_handleSign_parsesSignUriAndSetsStateFlow() {
-        val uri =
-            Uri.parse(
-                "web-eid-mobile://sign#eyJyZXNwb25zZV91cmkiOiJodHRwczovL2V4YW1wbGUuY29tL3Jlc3BvbnNlIiwic2lnbl9jZXJ0aWZpY2F0ZSI6InNpZ25pbmdfY2VydGlmaWNhdGUiLCJoYXNoIjoiaGFzaCIsImhhc2hfZnVuY3Rpb24iOiJoYXNoX2Z1bmN0aW9uIn0",
-            )
-        viewModel.handleSign(uri)
-        val authRequest = viewModel.authRequest.value
-        val signRequest = viewModel.signRequest.value
-        assert(authRequest == null)
-        assert(signRequest != null)
-        assertEquals("https://example.com/response", signRequest?.responseUri)
-        assertEquals("signing_certificate", signRequest?.signCertificate)
-        assertEquals("hash", signRequest?.hash)
-        assertEquals("hash_function", signRequest?.hashFunction)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun webEidViewModel_handleAuth_emitDialogErrorWhenGenericException() {
+        runTest(UnconfinedTestDispatcher()) {
+            val uri = Uri.parse("web-eid-mobile://auth#{}")
+            viewModel.handleAuth(uri)
+            assertEquals(R.string.web_eid_invalid_auth_request_error, viewModel.dialogError.value)
+        }
     }
 
     @Test
@@ -169,7 +167,38 @@ class WebEidViewModelTest {
             assert(emittedUri.fragment != null)
             val decodedPayload = String(decode(emittedUri.fragment, URL_SAFE))
             val jsonPayload = JSONObject(decodedPayload)
-            val authToken = jsonPayload.getJSONObject("auth-token")
+            val authToken = jsonPayload.getJSONObject("auth_token")
+            assertEquals("web-eid:1.0", authToken.getString("format"))
+        }
+    }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun webEidViewModel_handleWebEidAuthResult_buildsAuthTokenWithoutSigningCert() {
+        runTest(UnconfinedTestDispatcher()) {
+            val cert = byteArrayOf(1, 2, 3)
+            val signingCert = byteArrayOf(9, 9, 9)
+            val signature = byteArrayOf(4, 5, 6)
+            val uri =
+                Uri.parse(
+                    "web-eid-mobile://auth#eyJjaGFsbGVuZ2UiOiJ0ZXN0LWNoYWxsZW5nZS0wMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsImxvZ2luX3VyaSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vcmVzcG9uc2UiLCJnZXRfc2lnbmluZ19jZXJ0aWZpY2F0ZSI6ZmFsc2V9",
+                )
+            whenever(authService.buildAuthToken(cert, null, signature))
+                .thenReturn(JSONObject().put("format", "web-eid:1.0"))
+            val deferred =
+                async {
+                    viewModel.relyingPartyResponseEvents.first()
+                }
+            viewModel.handleAuth(uri)
+            viewModel.handleWebEidAuthResult(cert, signingCert, signature)
+
+            verify(authService).buildAuthToken(cert, null, signature)
+            val emittedUri = deferred.await()
+            assert(emittedUri.toString().startsWith("https://example.com/response#"))
+            assert(emittedUri.fragment != null)
+            val decodedPayload = String(decode(emittedUri.fragment, URL_SAFE))
+            val jsonPayload = JSONObject(decodedPayload)
+            val authToken = jsonPayload.getJSONObject("auth_token")
             assertEquals("web-eid:1.0", authToken.getString("format"))
         }
     }
@@ -196,6 +225,230 @@ class WebEidViewModelTest {
             viewModel.handleWebEidAuthResult(cert, signingCert, signature)
 
             verify(authService).buildAuthToken(cert, signingCert, signature)
+            val emittedUri = deferred.await()
+            assert(emittedUri.toString().startsWith("https://example.com/response#"))
+            assert(emittedUri.fragment != null)
+            val decodedPayload = String(decode(emittedUri.fragment, URL_SAFE))
+            val jsonPayload = JSONObject(decodedPayload)
+            assertEquals("ERR_WEBEID_MOBILE_UNKNOWN_ERROR", jsonPayload.getString("code"))
+            assertEquals("Unexpected error", jsonPayload.getString("message"))
+        }
+    }
+
+    @Test
+    fun webEidViewModel_handleCertificate_parsesCertificateUriAndSetsStateFlow() {
+        runTest {
+            val uri =
+                Uri.parse(
+                    "web-eid-mobile://cert#eyJyZXNwb25zZV91cmkiOiJodHRwczovL2V4YW1wbGUuY29tL3Jlc3BvbnNlIn0",
+                )
+            viewModel.handleCertificate(uri)
+            val authRequest = viewModel.authRequest.value
+            val signRequest = viewModel.signRequest.value
+            assert(authRequest == null)
+            assert(signRequest != null)
+            assertEquals("https://example.com/response", signRequest?.responseUri)
+            assertEquals(null, signRequest?.hash)
+            assertEquals(null, signRequest?.hashFunction)
+        }
+    }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun webEidViewModel_handleCertificate_emitDialogErrorWhenGenericException() {
+        runTest(UnconfinedTestDispatcher()) {
+            val uri = Uri.parse("web-eid-mobile://cert#{}")
+            viewModel.handleCertificate(uri)
+            assertEquals(
+                R.string.web_eid_invalid_sign_request_error,
+                viewModel.dialogError.value,
+            )
+        }
+    }
+
+    @Test
+    fun webEidViewModel_handleSign_parsesSignUriAndSetsStateFlow() {
+        runTest {
+            val uri =
+                Uri.parse(
+                    "web-eid-mobile://sign#eyJyZXNwb25zZV91cmkiOiJodHRwczovL2V4YW1wbGUuY29tL3Jlc3BvbnNlIiwic2lnbl9jZXJ0aWZpY2F0ZSI6InNpZ25pbmdfY2VydGlmaWNhdGUiLCJoYXNoIjoiaGFzaCIsImhhc2hfZnVuY3Rpb24iOiJoYXNoX2Z1bmN0aW9uIn0",
+                )
+            viewModel.handleSign(uri)
+            val authRequest = viewModel.authRequest.value
+            val signRequest = viewModel.signRequest.value
+            assert(authRequest == null)
+            assert(signRequest != null)
+            assertEquals("https://example.com/response", signRequest?.responseUri)
+            assertEquals("hash", signRequest?.hash)
+            assertEquals("hash_function", signRequest?.hashFunction)
+        }
+    }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun webEidViewModel_handleSign_emitErrorResponseEventWhenWebEidException() {
+        runTest(UnconfinedTestDispatcher()) {
+            val uri =
+                Uri.parse(
+                    "web-eid-mobile://sign#" +
+                        "eyJyZXNwb25zZV91cmkiOiJodHRwczovL2V4YW1wbGUuY29tL3Jlc3BvbnNlIiwic2lnbl9jZXJ0aWZpY2F0ZSI6InNpZ25lcnNlcnQiLCJoYXNoIjoiIn0",
+                )
+
+            val deferred =
+                async {
+                    viewModel.relyingPartyResponseEvents.first()
+                }
+
+            viewModel.handleSign(uri)
+
+            val emittedUri = deferred.await()
+            assert(emittedUri.toString().startsWith("https://example.com/response#"))
+            assert(emittedUri.fragment != null)
+            val decodedPayload = String(decode(emittedUri.fragment, URL_SAFE))
+            val jsonPayload = JSONObject(decodedPayload)
+            assertEquals("ERR_WEBEID_MOBILE_INVALID_REQUEST", jsonPayload.getString("code"))
+            assertEquals(
+                "Invalid signing request: missing hash or hash_function",
+                jsonPayload.getString("message"),
+            )
+        }
+    }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun webEidViewModel_handleSign_emitDialogErrorWhenGenericException() {
+        runTest(UnconfinedTestDispatcher()) {
+            val uri = Uri.parse("web-eid-mobile://sign#{}")
+            viewModel.handleSign(uri)
+            assertEquals(R.string.web_eid_invalid_sign_request_error, viewModel.dialogError.value)
+        }
+    }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun webEidViewModel_handleUnknown_emitDialogError() {
+        runTest(UnconfinedTestDispatcher()) {
+            val uri = Uri.parse("web-eid-mobile://unknown#{}")
+            viewModel.handleUnknown(uri)
+            assertEquals(
+                R.string.web_eid_invalid_sign_request_error,
+                viewModel.dialogError.value,
+            )
+        }
+    }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun webEidViewModel_handleWebEidCertificateResult_buildsCertificatePayloadAndEmitsResponseEvent() {
+        runTest(UnconfinedTestDispatcher()) {
+            val signingCert = byteArrayOf(1, 2, 3)
+            val uri =
+                Uri.parse(
+                    "web-eid-mobile://sign#eyJyZXNwb25zZV91cmkiOiJodHRwczovL2V4YW1wbGUuY29tL3Jlc3BvbnNlIiwic2lnbl9jZXJ0aWZpY2F0ZSI6InNpZ25pbmdfY2VydGlmaWNhdGUiLCJoYXNoIjoiaGFzaCIsImhhc2hfZnVuY3Rpb24iOiJoYXNoX2Z1bmN0aW9uIn0",
+                )
+            viewModel.handleSign(uri)
+
+            whenever(signService.buildCertificatePayload(signingCert))
+                .thenReturn(JSONObject().put("certificate", "mock-cert"))
+
+            val deferred =
+                async {
+                    viewModel.relyingPartyResponseEvents.first()
+                }
+
+            viewModel.handleWebEidCertificateResult(signingCert)
+
+            verify(signService).buildCertificatePayload(signingCert)
+            val emittedUri = deferred.await()
+            assert(emittedUri.toString().startsWith("https://example.com/response#"))
+            assert(emittedUri.fragment != null)
+            val decodedPayload = String(decode(emittedUri.fragment, URL_SAFE))
+            val jsonPayload = JSONObject(decodedPayload)
+            val certificateValue = jsonPayload.getString("certificate")
+            assertEquals("mock-cert", certificateValue)
+        }
+    }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun webEidViewModel_handleWebEidCertificateResult_emitErrorResponseEventWhenException() {
+        runTest(UnconfinedTestDispatcher()) {
+            val signingCert = byteArrayOf(1, 2, 3)
+            val uri =
+                Uri.parse(
+                    "web-eid-mobile://sign#eyJyZXNwb25zZV91cmkiOiJodHRwczovL2V4YW1wbGUuY29tL3Jlc3BvbnNlIiwic2lnbl9jZXJ0aWZpY2F0ZSI6InNpZ25pbmdfY2VydGlmaWNhdGUiLCJoYXNoIjoiaGFzaCIsImhhc2hfZnVuY3Rpb24iOiJoYXNoX2Z1bmN0aW9uIn0",
+                )
+            viewModel.handleSign(uri)
+
+            whenever(signService.buildCertificatePayload(signingCert))
+                .thenThrow(RuntimeException("Test exception"))
+
+            val deferred =
+                async {
+                    viewModel.relyingPartyResponseEvents.first()
+                }
+
+            viewModel.handleWebEidCertificateResult(signingCert)
+
+            verify(signService).buildCertificatePayload(signingCert)
+            val emittedUri = deferred.await()
+            assert(emittedUri.toString().startsWith("https://example.com/response#"))
+            assert(emittedUri.fragment != null)
+            val decodedPayload = String(decode(emittedUri.fragment, URL_SAFE))
+            val jsonPayload = JSONObject(decodedPayload)
+            assertEquals("ERR_WEBEID_MOBILE_UNKNOWN_ERROR", jsonPayload.getString("code"))
+            assertEquals("Unexpected error", jsonPayload.getString("message"))
+        }
+    }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun webEidViewModel_handleWebEidSignResult_buildsSignPayloadAndEmitsResponseEvent() {
+        runTest(UnconfinedTestDispatcher()) {
+            val signingCert = "mock-sign-cert"
+            val signature = byteArrayOf(1, 2, 3)
+            val responseUri = "https://example.com/response"
+
+            whenever(signService.buildSignPayload(signingCert, signature))
+                .thenReturn(JSONObject().put("signature", "mock-signature"))
+
+            val deferred =
+                async {
+                    viewModel.relyingPartyResponseEvents.first()
+                }
+
+            viewModel.handleWebEidSignResult(signingCert, signature, responseUri)
+
+            verify(signService).buildSignPayload(signingCert, signature)
+            val emittedUri = deferred.await()
+            assert(emittedUri.toString().startsWith("https://example.com/response#"))
+            assert(emittedUri.fragment != null)
+            val decodedPayload = String(decode(emittedUri.fragment, URL_SAFE))
+            val jsonPayload = JSONObject(decodedPayload)
+            val signValue = jsonPayload.getString("signature")
+            assertEquals("mock-signature", signValue)
+        }
+    }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun webEidViewModel_handleWebEidSignResult_emitErrorResponseEventWhenException() {
+        runTest(UnconfinedTestDispatcher()) {
+            val signingCert = "mock-sign-cert"
+            val signature = byteArrayOf(1, 2, 3)
+            val responseUri = "https://example.com/response"
+
+            whenever(signService.buildSignPayload(signingCert, signature))
+                .thenThrow(RuntimeException("Test exception"))
+
+            val deferred =
+                async {
+                    viewModel.relyingPartyResponseEvents.first()
+                }
+
+            viewModel.handleWebEidSignResult(signingCert, signature, responseUri)
+
+            verify(signService).buildSignPayload(signingCert, signature)
             val emittedUri = deferred.await()
             assert(emittedUri.toString().startsWith("https://example.com/response#"))
             assert(emittedUri.fragment != null)

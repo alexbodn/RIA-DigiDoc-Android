@@ -2,12 +2,11 @@
 
 package ee.ria.DigiDoc.webEid
 
-import org.json.JSONArray
+import ee.ria.DigiDoc.webEid.utils.WebEidAlgorithmUtil.buildSupportedSignatureAlgorithms
+import ee.ria.DigiDoc.webEid.utils.WebEidAlgorithmUtil.getAlgorithm
 import org.json.JSONObject
-import java.security.PublicKey
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
-import java.security.interfaces.ECPublicKey
 import java.util.Base64
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -16,14 +15,6 @@ import javax.inject.Singleton
 class WebEidAuthServiceImpl
     @Inject
     constructor() : WebEidAuthService {
-
-        companion object {
-            val SUPPORTED_HASH_FUNCTIONS = listOf(
-                "SHA-224", "SHA-256", "SHA-384", "SHA-512",
-                "SHA3-224", "SHA3-256", "SHA3-384", "SHA3-512"
-            )
-        }
-
         override fun buildAuthToken(
             authCert: ByteArray,
             signingCert: ByteArray?,
@@ -51,39 +42,6 @@ class WebEidAuthServiceImpl
                 } else {
                     put("format", "web-eid:1.0")
                 }
-            }
-        }
-
-        private fun getAlgorithm(publicKey: PublicKey): String =
-            when (publicKey) {
-                is ECPublicKey -> {
-                    when (publicKey.params.curve.field.fieldSize) {
-                        256 -> "ES256"
-                        384 -> "ES384"
-                        521 -> "ES512"
-                        else -> throw IllegalArgumentException("Unsupported EC key length")
-                    }
-                }
-
-                else -> throw IllegalArgumentException("Unsupported key type")
-            }
-
-    private fun buildSupportedSignatureAlgorithms(publicKey: PublicKey): JSONArray =
-        JSONArray().apply {
-            when (publicKey) {
-                is ECPublicKey -> {
-                    SUPPORTED_HASH_FUNCTIONS.forEach { hashFunction ->
-                        put(
-                            JSONObject().apply {
-                                put("cryptoAlgorithm", "ECC")
-                                put("hashFunction", hashFunction)
-                                put("paddingScheme", "NONE")
-                            },
-                        )
-                    }
-                }
-
-                else -> throw IllegalArgumentException("Unsupported key type")
             }
         }
     }

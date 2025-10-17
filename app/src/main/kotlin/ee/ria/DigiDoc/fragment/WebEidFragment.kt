@@ -57,6 +57,7 @@ fun WebEidFragment(
         webEidUri?.let {
             when (it.host) {
                 "auth" -> viewModel.handleAuth(it)
+                "cert" -> viewModel.handleCertificate(it)
                 "sign" -> viewModel.handleSign(it)
                 else -> {
                     viewModel.handleUnknown(it)

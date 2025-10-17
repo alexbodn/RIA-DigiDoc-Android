@@ -47,6 +47,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.asFlow
@@ -92,6 +93,10 @@ fun WebEidScreen(
     var webEidAuthenticateAction by remember { mutableStateOf<() -> Unit>({}) }
     var cancelWebEidAuthenticateAction by remember { mutableStateOf<() -> Unit>({}) }
     var isValidToWebEidAuthenticate by remember { mutableStateOf(false) }
+
+    val signRequest = viewModel.signRequest.collectAsState().value
+    var webEidSignAction by remember { mutableStateOf<() -> Unit>({}) }
+    var cancelWebEidSignAction by remember { mutableStateOf<() -> Unit>({}) }
     var nfcSupported by remember { mutableStateOf(false) }
 
     val isSettingsMenuBottomSheetVisible = rememberSaveable { mutableStateOf(false) }
@@ -224,8 +229,19 @@ fun WebEidScreen(
                     .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MSPadding),
         ) {
+            val responseUri = signRequest?.responseUri?.lowercase() ?: ""
+            val isCertificateFlow = responseUri.contains("/certificate") && !responseUri.contains("/signature")
+
+            val title =
+                when {
+                    authRequest != null -> stringResource(R.string.web_eid_auth_title)
+                    signRequest != null && isCertificateFlow -> stringResource(R.string.web_eid_certificate_title)
+                    signRequest != null -> stringResource(R.string.web_eid_sign_title)
+                    else -> stringResource(R.string.web_eid_auth_title)
+                }
+
             Text(
-                text = stringResource(R.string.web_eid_auth_title),
+                text = title,
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.semantics { heading() },
@@ -236,10 +252,18 @@ fun WebEidScreen(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
-                        text = authRequest.origin,
+                        text = stringResource(R.string.web_eid_auth_consent_text),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        text = authRequest.origin.take(80),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onBackground,
                         textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = stringResource(R.string.web_eid_requests_authentication),
@@ -282,26 +306,144 @@ fun WebEidScreen(
                     isAuthenticated = { _, _ -> },
                     webEidViewModel = viewModel,
                 )
+            } else if (signRequest != null) {
+                val responseUri = signRequest.responseUri.lowercase()
+                val isCertificateFlow = responseUri.contains("/certificate") && !responseUri.contains("/signature")
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = stringResource(R.string.web_eid_certificate_consent_text),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = XSPadding),
+                    )
+                    Text(
+                        text = signRequest.origin.take(80),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text =
+                            if (isCertificateFlow) {
+                                stringResource(R.string.web_eid_requests_certificate)
+                            } else {
+                                stringResource(R.string.web_eid_requests_signing)
+                            },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
+                if (isCertificateFlow) {
+                    NFCView(
+                        activity = activity,
+                        identityAction = IdentityAction.CERTIFICATE,
+                        isCertificate = true,
+                        showPinField = false,
+                        isSigning = false,
+                        isDecrypting = false,
+                        isWebEidAuthenticating = isWebEidAuthenticating,
+                        onError = {
+                            isWebEidAuthenticating = false
+                            cancelWebEidSignAction()
+                        },
+                        onSuccess = {
+                            isWebEidAuthenticating = false
+                            navController.navigateUp()
+                        },
+                        sharedSettingsViewModel = sharedSettingsViewModel,
+                        sharedContainerViewModel = sharedContainerViewModel,
+                        isSupported = { supported -> nfcSupported = supported },
+                        isValidToWebEidAuthenticate = { isValid -> isValidToWebEidAuthenticate = isValid },
+                        signWebEidAction = { action -> webEidSignAction = action },
+                        cancelWebEidSignAction = { action -> cancelWebEidSignAction = action },
+                        isValidToSign = {},
+                        isValidToDecrypt = {},
+                        isAuthenticated = { _, _ -> },
+                        webEidViewModel = viewModel,
+                    )
+                } else {
+                    NFCView(
+                        activity = activity,
+                        identityAction = IdentityAction.SIGN,
+                        isCertificate = false,
+                        isSigning = false,
+                        isDecrypting = false,
+                        isWebEidAuthenticating = isWebEidAuthenticating,
+                        onError = {
+                            isWebEidAuthenticating = false
+                            cancelWebEidSignAction()
+                        },
+                        onSuccess = {
+                            isWebEidAuthenticating = false
+                            navController.navigateUp()
+                        },
+                        sharedSettingsViewModel = sharedSettingsViewModel,
+                        sharedContainerViewModel = sharedContainerViewModel,
+                        isSupported = { supported -> nfcSupported = supported },
+                        isValidToWebEidAuthenticate = { isValid ->
+                            isValidToWebEidAuthenticate = isValid
+                        },
+                        signWebEidAction = { action -> webEidSignAction = action },
+                        cancelWebEidSignAction = { action -> cancelWebEidSignAction = action },
+                        isValidToSign = {},
+                        isValidToDecrypt = {},
+                        isAuthenticated = { _, _ -> },
+                        webEidViewModel = viewModel,
+                    )
+                }
             } else {
                 Text(noAuthLabel)
             }
 
             if (!isWebEidAuthenticating && nfcSupported) {
-                Button(
-                    onClick = {
-                        isWebEidAuthenticating = true
-                        webEidAuthenticateAction()
-                    },
-                    enabled = isValidToWebEidAuthenticate,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                        ),
-                ) {
-                    Text(
-                        text = stringResource(R.string.web_eid_authenticate),
-                    )
+                if (authRequest != null) {
+                    Button(
+                        onClick = {
+                            isWebEidAuthenticating = true
+                            webEidAuthenticateAction()
+                        },
+                        enabled = isValidToWebEidAuthenticate,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                            ),
+                    ) {
+                        Text(text = stringResource(R.string.web_eid_authenticate))
+                    }
+                } else if (signRequest != null) {
+                    val responseUri = signRequest.responseUri.lowercase()
+                    val isCertificateFlow = responseUri.contains("/certificate") && !responseUri.contains("/signature")
+
+                    Button(
+                        onClick = {
+                            isWebEidAuthenticating = true
+                            webEidSignAction()
+                        },
+                        enabled = isValidToWebEidAuthenticate,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                            ),
+                    ) {
+                        Text(
+                            text =
+                                if (isCertificateFlow) {
+                                    stringResource(R.string.web_eid_get_certificate)
+                                } else {
+                                    stringResource(R.string.web_eid_sign)
+                                },
+                        )
+                    }
                 }
             }
 

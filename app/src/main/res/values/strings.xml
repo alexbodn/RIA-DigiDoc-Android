@@ -663,7 +663,15 @@
     <string name="web_eid_authenticate">Authenticate</string>
     <string name="web_eid_auth_title">Authenticate with ID-card</string>
     <string name="web_eid_auth_no_payload">No auth payload received.</string>
+    <string name="web_eid_auth_consent_text">By authenticating, I agree to the transfer of my name and personal identification code to the service provider.</string>
+    <string name="web_eid_get_certificate">Confirm</string>
+    <string name="web_eid_certificate_title">Select a certificate</string>
+    <string name="web_eid_certificate_consent_text">By choosing the certificate, I agree to the transfer of my name and personal identification code to the service provider.</string>
+    <string name="web_eid_sign">Sign</string>
+    <string name="web_eid_sign_title">Sign with ID-card</string>
     <string name="web_eid_requests_authentication">requests authentication</string>
+    <string name="web_eid_requests_certificate">requests certificate</string>
+    <string name="web_eid_requests_signing">requests signing</string>
     <string name="web_eid_ignore">Ignore</string>
     <string name="web_eid_invalid_request_error">Invalid Web eID request</string>
     <string name="web_eid_request_error">Request error</string>

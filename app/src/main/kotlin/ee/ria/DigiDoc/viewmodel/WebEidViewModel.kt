@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import ee.ria.DigiDoc.R
 import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.Companion.errorLog
 import ee.ria.DigiDoc.webEid.WebEidAuthService
+import ee.ria.DigiDoc.webEid.WebEidSignService
 import ee.ria.DigiDoc.webEid.domain.model.WebEidAuthRequest
 import ee.ria.DigiDoc.webEid.domain.model.WebEidSignRequest
 import ee.ria.DigiDoc.webEid.exception.WebEidErrorCode
@@ -30,6 +31,7 @@ class WebEidViewModel
     @Inject
     constructor(
         private val authService: WebEidAuthService,
+        private val signService: WebEidSignService,
     ) : ViewModel() {
         private val logTag = javaClass.simpleName
         private val _authRequest = MutableStateFlow<WebEidAuthRequest?>(null)
@@ -55,9 +57,23 @@ class WebEidViewModel
             }
         }
 
-        fun handleSign(uri: Uri) {
+        fun handleCertificate(uri: Uri) {
+            try {
+                _signRequest.value = WebEidRequestParser.parseCertificateUri(uri)
+            } catch (e: Exception) {
+                errorLog(logTag, "Unable parse Web eID certificate request: $uri", e)
+                _dialogError.postValue(R.string.web_eid_invalid_sign_request_error)
+            }
+        }
+
+        suspend fun handleSign(uri: Uri) {
             try {
                 _signRequest.value = WebEidRequestParser.parseSignUri(uri)
+            } catch (e: WebEidException) {
+                errorLog(logTag, "Invalid Web eID signing request: $uri", e)
+                val errorPayload = WebEidResponseUtil.createErrorPayload(e.errorCode, e.message)
+                val responseUri = WebEidResponseUtil.createResponseUri(e.responseUri, errorPayload)
+                _relyingPartyResponseEvents.emit(responseUri)
             } catch (e: Exception) {
                 errorLog(logTag, "Unable parse Web eID signing request: $uri", e)
                 _dialogError.postValue(R.string.web_eid_invalid_sign_request_error)
@@ -84,7 +100,7 @@ class WebEidViewModel
                         if (getSigningCertificate == true) signingCert else null,
                         signature,
                     )
-                val payload = JSONObject().put("auth-token", token)
+                val payload = JSONObject().put("auth_token", token)
                 val responseUri = WebEidResponseUtil.createResponseUri(loginUri, payload)
                 _relyingPartyResponseEvents.emit(responseUri)
             } catch (e: Exception) {
@@ -96,6 +112,52 @@ class WebEidViewModel
                     )
                 val responseUri = WebEidResponseUtil.createResponseUri(loginUri, errorPayload)
                 _relyingPartyResponseEvents.emit(responseUri)
+            }
+        }
+
+        suspend fun handleWebEidCertificateResult(signingCert: ByteArray) {
+            val signRequest = signRequest.value
+            val responseUri = signRequest?.responseUri
+
+            if (responseUri.isNullOrBlank()) {
+                errorLog(logTag, "Missing responseUri in sign payload for certificate step")
+                return
+            }
+
+            try {
+                val payload = signService.buildCertificatePayload(signingCert)
+                val response = WebEidResponseUtil.createResponseUri(responseUri, payload)
+                _relyingPartyResponseEvents.emit(response)
+            } catch (e: Exception) {
+                errorLog(logTag, "Unexpected error building certificate payload", e)
+                val errorPayload =
+                    WebEidResponseUtil.createErrorPayload(
+                        WebEidErrorCode.ERR_WEBEID_MOBILE_UNKNOWN_ERROR,
+                        "Unexpected error",
+                    )
+                val errorUri = WebEidResponseUtil.createResponseUri(responseUri, errorPayload)
+                _relyingPartyResponseEvents.emit(errorUri)
+            }
+        }
+
+        suspend fun handleWebEidSignResult(
+            signingCert: String,
+            signature: ByteArray,
+            responseUri: String,
+        ) {
+            try {
+                val payload = signService.buildSignPayload(signingCert, signature)
+                val response = WebEidResponseUtil.createResponseUri(responseUri, payload)
+                _relyingPartyResponseEvents.emit(response)
+            } catch (e: Exception) {
+                errorLog(logTag, "Unexpected error building sign payload", e)
+                val errorPayload =
+                    WebEidResponseUtil.createErrorPayload(
+                        WebEidErrorCode.ERR_WEBEID_MOBILE_UNKNOWN_ERROR,
+                        "Unexpected error",
+                    )
+                val errorUri = WebEidResponseUtil.createResponseUri(responseUri, errorPayload)
+                _relyingPartyResponseEvents.emit(errorUri)
             }
         }
     }

@@ -21,7 +21,6 @@ object WebEidRequestParser {
         val request = decodeUriFragment(authUri)
         val challenge = request.getString("challenge")
         val responseUri = validateResponseUri(request.getString("login_uri"))
-        val origin = parseOrigin(responseUri)
         if (challenge.isNullOrBlank() ||
             challenge.length < MIN_CHALLENGE_LENGTH ||
             challenge.length > MAX_CHALLENGE_LENGTH
@@ -37,19 +36,41 @@ object WebEidRequestParser {
             challenge = challenge,
             loginUri = responseUri.toString(),
             getSigningCertificate = request.optBoolean("get_signing_certificate", false),
-            origin = origin,
+            origin = parseOrigin(responseUri),
+        )
+    }
+
+    fun parseCertificateUri(uri: Uri): WebEidSignRequest {
+        val request = decodeUriFragment(uri)
+        val responseUri = validateResponseUri(request.optString("response_uri", ""))
+
+        return WebEidSignRequest(
+            responseUri = responseUri.toString(),
+            origin = parseOrigin(responseUri),
+            hash = null,
+            hashFunction = null,
         )
     }
 
     fun parseSignUri(uri: Uri): WebEidSignRequest {
         val request = decodeUriFragment(uri)
-        val responseUri = validateResponseUri(request.getString("response_uri"))
+        val responseUri = validateResponseUri(request.optString("response_uri", ""))
+        val hash = request.optString("hash", "")
+        val hashFunction = request.optString("hash_function", "")
+
+        if (hash.isBlank() || hashFunction.isBlank()) {
+            throw WebEidException(
+                ERR_WEBEID_MOBILE_INVALID_REQUEST,
+                "Invalid signing request: missing hash or hash_function",
+                responseUri.toString(),
+            )
+        }
 
         return WebEidSignRequest(
             responseUri = responseUri.toString(),
-            signCertificate = request.getString("sign_certificate"),
-            hash = request.getString("hash"),
-            hashFunction = request.getString("hash_function"),
+            origin = parseOrigin(responseUri),
+            hash = hash,
+            hashFunction = hashFunction,
         )
     }
 

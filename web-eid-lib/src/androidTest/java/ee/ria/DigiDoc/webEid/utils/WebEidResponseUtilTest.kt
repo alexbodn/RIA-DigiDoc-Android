@@ -2,7 +2,9 @@
 
 package ee.ria.DigiDoc.webEid.utils
 
+import android.util.Base64
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import ee.ria.DigiDoc.webEid.exception.WebEidErrorCode
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -22,7 +24,7 @@ class WebEidResponseUtilTest {
         val resultUri = WebEidResponseUtil.createResponseUri(loginUri, payload)
 
         val fragment = resultUri.fragment
-        val decodedJson = String(android.util.Base64.decode(fragment, android.util.Base64.URL_SAFE))
+        val decodedJson = String(Base64.decode(fragment, Base64.URL_SAFE))
         val json = JSONObject(decodedJson)
 
         assertEquals("ERR_CUSTOM", json.getString("code"))
@@ -40,7 +42,7 @@ class WebEidResponseUtilTest {
         val resultUri = WebEidResponseUtil.createResponseUri(loginUri, payload)
 
         val fragment = resultUri.fragment
-        val decodedJson = String(android.util.Base64.decode(fragment, android.util.Base64.URL_SAFE))
+        val decodedJson = String(Base64.decode(fragment, Base64.URL_SAFE))
         val json = JSONObject(decodedJson)
 
         assertEquals("sample-token", json.getString("auth-token"))
@@ -55,5 +57,23 @@ class WebEidResponseUtilTest {
         val resultUri = WebEidResponseUtil.createResponseUri(loginUri, payload)
 
         assertTrue(resultUri.toString().startsWith(loginUri))
+    }
+
+    @Test
+    fun createErrorPayload_and_createResponseUri_areCovered() {
+        val loginUri = "https://rp.example.com/auth/eid/login"
+
+        val errorPayload =
+            WebEidResponseUtil.createErrorPayload(
+                WebEidErrorCode.ERR_WEBEID_MOBILE_INVALID_REQUEST,
+                "Invalid request",
+            )
+
+        val resultUri = WebEidResponseUtil.createResponseUri(loginUri, errorPayload)
+        val decodedJson = String(Base64.decode(resultUri.fragment, Base64.URL_SAFE))
+        val json = JSONObject(decodedJson)
+
+        assertTrue(json.getBoolean("error"))
+        assertEquals("Invalid request", json.getString("message"))
     }
 }
