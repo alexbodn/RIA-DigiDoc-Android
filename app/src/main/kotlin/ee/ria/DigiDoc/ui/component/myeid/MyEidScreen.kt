@@ -123,7 +123,7 @@ fun MyEidScreen(
     val showForgotPin2Dialog = rememberSaveable { mutableStateOf(false) }
 
     val buttonName = stringResource(id = R.string.button_name)
-    val additionalInfo = stringResource(id = R.string.additional_information)
+    val additionalInfo = stringResource(id = R.string.puk_additional_information)
     var changePukText =
         stringResource(
             R.string.myeid_change_pin,
