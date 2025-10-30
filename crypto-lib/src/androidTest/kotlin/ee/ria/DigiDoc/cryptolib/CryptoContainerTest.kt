@@ -888,7 +888,7 @@ class CryptoContainerTest {
             assertEquals(1, result.getRecipients().size)
         }
 
-    @Test(expected = CryptoException::class)
+    @Test(expected = DataFilesEmptyException::class)
     fun cryptoContainer_encrypt_CDOC2OnlineException() =
         runTest {
             preferences
@@ -908,13 +908,13 @@ class CryptoContainerTest {
             val cdoc2Settings = CDOC2Settings(context)
             val recipient = Addressee(Base64.getDecoder().decode(authCert))
 
-            val testFiles = listOf(testFile)
+            val testFiles:List<File> = listOf()
             val container = openOrCreate(context, testFile, testFiles, cdoc2Settings)
 
             encrypt(context, container.file, testFiles, listOf(recipient), cdoc2Settings, configurationRepository)
         }
 
-    @Test(expected = CryptoException::class)
+    @Test
     fun cryptoContainer_encrypt_CDOC2OnlineSuccess() =
         runTest {
             preferences
