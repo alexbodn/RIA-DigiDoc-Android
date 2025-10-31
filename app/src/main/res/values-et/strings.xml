@@ -284,7 +284,7 @@
     <string name="signature_update_signature_error_message_exceeded_unsuccessful_requests">Päringu saatmine ebaõnnestus. Sellelt IP-aadressilt on ebaõnnestunud päringute arv ületatud. Palun proovige mõne aja pärast uuesti.</string>
     <string name="invalid_time_slot_message">Palun kontrolli oma nutiseadme kellaaega.</string>
     <string name="invalid_time_slot_url">https://www.id.ee/artikkel/ria-digidoc-viga-palun-kontrollige-oma-nutiseadme-kellaaega/</string>
-    <string name="sign_blocked_pin2_unchanged_message">ID-kaardiga allkirjastamine ei ole veel võimalik. Allkirjastamiseks tuleb PIN2-koodi muuta. </string>
+    <string name="sign_blocked_pin2_unchanged_message">Selle ID-kaardiga allkirjastamine ei ole veel võimalik. Allkirjastamiseks tuleb PIN2-koodi muuta.</string>
     <string name="sign_blocked_pin2_unchanged_url">https://www.id.ee/artikkel/id-kaardi-pin-ja-puk-koodide-muutmine/</string>
     <string name="signature_update_signature_error_message_certificate_revoked">Sertifikaat on kehtetu</string>
     <string name="signature_update_signature_error_message_certificate_unknown">Sertifikaadi staatus on teadmata</string>
@@ -296,6 +296,7 @@
     <string name="invalid_ssl_handshake">SSL ühenduskanali loomine ebaõnnestus. Kontrolli rakenduse seadeid või tarkvara uuendusi</string>
     <string name="too_many_requests_message">Sinu %1$s tasuta allkirjade kuulimiit on ületatud.</string>
     <string name="too_many_requests_url">https://www.id.ee/artikkel/asutustele-kus-allkirjastatakse-digidoc4-kliendi-kaudu-suuremates-kogustes-dokumente/</string>
+    <string name="puk_additional_information">Lisainfo</string>
     <string name="additional_information">Loe täpsemalt siit</string>
 
     <string name="no_lock_found">Sertifikaadi võtmega lukku ei leitud</string>
@@ -614,7 +615,7 @@
     <string name="myeid_forgot_pin">Unustasid %1$s-koodi?</string>
     <string name="myeid_change_pin">Muuda %1$s</string>
     <string name="myeid_pin">%1$s-kood</string>
-    <string name="myeid_puk_info">PUK-kood asub Sinu koodiümbrikus.</string>
+    <string name="myeid_puk_info">PUK-kood on ID-kaardi koodiümbrikus.</string>
     <string name="myeid_change_pin_info_title">%1$s muutmise juhend</string>
     <string name="myeid_pin1_guideline_1">Uus PIN1 peab olema erinev eelmisest.</string>
     <string name="myeid_pin1_guideline_2">PIN1-koodi kasutatakse isikutuvastamiseks.</string>
@@ -624,8 +625,8 @@
     <string name="myeid_pin2_guideline_3">Kui sisestad PIN2-koodi kolm korda valesti, siis allkirjastamise sertifikaat blokeeritakse ning ID-kaarti pole võimalik allkirjastamiseks kasutada enne blokeeringu tühistamist PUK-koodi abil.</string>
     <string name="myeid_puk_guideline_1">PUK-koodi abil saab tühistada sertifikaadi blokeeringu, kui PIN1- või PIN2-koodi on 3 korda järjest valesti sisestatud.</string>
     <string name="myeid_puk_guideline_2">Kui peale vahetamist PUK-kood ununeb ja sertifikaat jääb blokeerituks kolme vale PIN1 või PIN2 sisestamise järel, siis ainus võimalus ID-kaart jälle tööle saada on pöörduda klienditeeninduspunkti poole.</string>
-    <string name="myeid_puk_info_2">Tuvastatud ID-kaardil ei ole võimalik PUK-koodi muuta. Kui oled unustanud enda ID-kaardi PUK-koodi, siis saad sa seda vaadata Politsei- ja Piirivalveameti iseteenindusest.</string>
-    <string name="myeid_puk_info_3">https://www.id.ee/artikkel/pin-ja-puk-koodid-soovitused-turvalisuse-tagamiseks/</string>
+    <string name="myeid_puk_info_2">Tuvastatud kaardil ei saa PUK-koodi muuta. Kaotatud koodi saad vaadata Politsei- ja Piirivalveameti iseteenindusest.</string>
+    <string name="myeid_puk_info_3">https://www.id.ee/artikkel/id-kaardi-pin-ja-puk-koodide-muutmine/</string>
     <string name="myeid_pin_change_title">%1$s-koodi vahetus</string>
     <string name="myeid_pin_unblock_title">%1$s lahti blokeerimine</string>
     <string name="myeid_current_pin_code_title">Sisesta praegune %1$s-kood</string>
@@ -641,7 +642,7 @@
         <item quantity="other">Vale %1$s-kood. Saad veel proovida %2$s korda.</item>
     </plurals>
     <string name="myeid_pin_blocked">%1$s on blokeeritud, kuna %1$s-koodi on sisestatud 3 korda valesti.</string>
-    <string name="myeid_pin_not_activated">Allkirjastamiseks tuleb %1$s-koodi muuta.</string>
+    <string name="myeid_pin_not_activated">Selle ID-kaardiga allkirjastamine ei ole veel võimalik. Allkirjastamiseks tuleb %1$s-koodi muuta.</string>
     <string name="myeid_pin_blocked_with_unblock_message">%1$s on blokeeritud, kuna %1$s-koodi on sisestatud 3 korda valesti. Tühista blokeering, et %1$s taas kasutada.</string>
     <string name="myeid_puk_blocked">PUK on blokeeritud, kuna PUK-koodi on sisestatud 3 korda valesti. PUK-koodi ei saa ise lahti blokeerida.</string>
     <string name="myeid_cert_expired">Sertifikaat on &lt;c>aegunud&lt;/c>! %1$s ei saa kasutada, kuna sertifikaat on aegunud.</string>
