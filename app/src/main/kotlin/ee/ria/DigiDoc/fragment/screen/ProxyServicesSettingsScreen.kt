@@ -563,7 +563,7 @@ fun ProxyServicesSettingsScreen(
                                         .semantics { contentDescription = proxyPortErrorText }
                                         .testTag("proxyServicesPortErrorText"),
                                 text = proxyPortErrorText,
-                                color = MaterialTheme.colorScheme.errorContainer,
+                                color = MaterialTheme.colorScheme.error,
                             )
                         }
 
