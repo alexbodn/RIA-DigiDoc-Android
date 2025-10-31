@@ -642,7 +642,7 @@
         <item quantity="other">Vale %1$s-kood. Saad veel proovida %2$s korda.</item>
     </plurals>
     <string name="myeid_pin_blocked">%1$s on blokeeritud, kuna %1$s-koodi on sisestatud 3 korda valesti.</string>
-    <string name="myeid_pin_not_activated">Allkirjastamiseks tuleb %1$s-koodi muuta.</string>
+    <string name="myeid_pin_not_activated">Selle ID-kaardiga allkirjastamine ei ole veel võimalik. Allkirjastamiseks tuleb %1$s-koodi muuta.</string>
     <string name="myeid_pin_blocked_with_unblock_message">%1$s on blokeeritud, kuna %1$s-koodi on sisestatud 3 korda valesti. Tühista blokeering, et %1$s taas kasutada.</string>
     <string name="myeid_puk_blocked">PUK on blokeeritud, kuna PUK-koodi on sisestatud 3 korda valesti. PUK-koodi ei saa ise lahti blokeerida.</string>
     <string name="myeid_cert_expired">Sertifikaat on &lt;c>aegunud&lt;/c>! %1$s ei saa kasutada, kuna sertifikaat on aegunud.</string>

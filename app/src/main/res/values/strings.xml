@@ -642,7 +642,7 @@
         <item quantity="other">Wrong %1$s code. You can try %2$s more times.</item>
     </plurals>
     <string name="myeid_pin_blocked">%1$s is blocked, because %1$s has been inserted 3 times incorrectly.</string>
-    <string name="myeid_pin_not_activated">%1$s code must be changed in order to sign.</string>
+    <string name="myeid_pin_not_activated">Signing with the ID-card isn\'t possible yet. %1$s code must be changed in order to sign.</string>
     <string name="myeid_pin_blocked_with_unblock_message">%1$s has been blocked because %1$s code has been entered incorrectly 3 times. Unblock to reuse %1$s.</string>
     <string name="myeid_puk_blocked">PUK has been blocked because PUK code has been entered incorrectly 3 times. You can not unblock the PUK code yourself.</string>
     <string name="myeid_cert_expired">Certificate has &lt;c>expired&lt;/c>! %1$s cannot be used because the certificate has expired.</string>
