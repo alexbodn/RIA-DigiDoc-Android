@@ -57,7 +57,8 @@ fun HrefDynamicText(
     text2: String?,
     linkText: String,
     linkUrl: String,
-    showLinkOnOneLine: Boolean,
+    newLineBeforeLink: Boolean = false,
+    newLineBeforeText2: Boolean = false,
     textStyle: TextStyle =
         TextStyle(
             textAlign = TextAlign.Start,
@@ -66,7 +67,15 @@ fun HrefDynamicText(
     val uriHandler = LocalUriHandler.current
     val linkColor = MaterialTheme.colorScheme.onSecondaryContainer
     val annotatedStringWithLinks =
-        createAnnotatedStringWithLinks(text1, text2, linkText, linkUrl, linkColor, showLinkOnOneLine)
+        createAnnotatedStringWithLinks(
+            text1,
+            text2,
+            linkText,
+            linkUrl,
+            linkColor,
+            newLineBeforeLink,
+            newLineBeforeText2,
+        )
 
     val onClick: (Int) -> Unit = { offset ->
         annotatedStringWithLinks
@@ -123,26 +132,35 @@ fun createAnnotatedStringWithLinks(
     linkText: String,
     linkUrl: String,
     linkColor: Color,
-    showLinkOnOneLine: Boolean,
+    newLineBeforeLink: Boolean = false,
+    newLineBeforeText2: Boolean = false,
 ): AnnotatedString =
     buildAnnotatedString {
-        append("$text1 ")
+        text1?.let(::append)
+
+        if (newLineBeforeLink) {
+            appendLine()
+        } else if (!text1.isNullOrBlank()) {
+            append(" ")
+        }
 
         pushStringAnnotation(tag = "URL", annotation = linkUrl)
         withStyle(
-            style =
-                SpanStyle(
-                    color = linkColor,
-                    textDecoration = Underline,
-                ),
+            SpanStyle(
+                color = linkColor,
+                textDecoration = Underline,
+            ),
         ) {
             append(linkText)
         }
         pop()
 
-        if (showLinkOnOneLine) {
-            append("$text2")
-        } else {
-            append("\n$text2")
+        text2?.let {
+            if (newLineBeforeText2) {
+                appendLine()
+            } else {
+                append(" ")
+            }
+            append(it)
         }
     }

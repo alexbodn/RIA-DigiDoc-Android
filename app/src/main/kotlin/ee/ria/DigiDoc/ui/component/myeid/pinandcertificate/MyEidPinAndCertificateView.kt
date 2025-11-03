@@ -152,7 +152,7 @@ fun MyEidPinAndCertificateView(
                             text2 = "",
                             linkText = linkText,
                             linkUrl = linkUrl,
-                            showLinkOnOneLine = true,
+                            newLineBeforeLink = true,
                             textStyle =
                                 TextStyle(
                                     color = MaterialTheme.colorScheme.onSurface,
@@ -214,7 +214,7 @@ fun MyEidPinAndCertificateView(
                     Spacer(modifier = modifier.size(XSPadding))
 
                     Button(
-                        enabled = !isPinBlocked && !isPukBlocked,
+                        enabled = !isPinBlocked,
                         onClick = onChangePinClick ?: {},
                         modifier = modifier.align(Alignment.CenterVertically),
                         colors =

@@ -61,6 +61,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.lifecycle.asFlow
 import androidx.navigation.NavHostController
 import ee.ria.DigiDoc.R
@@ -72,9 +76,11 @@ import ee.ria.DigiDoc.smartcardreader.SmartCardReaderStatus
 import ee.ria.DigiDoc.ui.component.menu.SettingsMenuBottomSheet
 import ee.ria.DigiDoc.ui.component.myeid.mydata.MyEidMyDataView
 import ee.ria.DigiDoc.ui.component.myeid.pinandcertificate.MyEidPinAndCertificateView
+import ee.ria.DigiDoc.ui.component.shared.HrefDynamicText
 import ee.ria.DigiDoc.ui.component.shared.TabView
 import ee.ria.DigiDoc.ui.component.shared.TopBar
 import ee.ria.DigiDoc.ui.component.shared.dialog.PinGuideDialog
+import ee.ria.DigiDoc.ui.theme.Dimensions.LINE_HEIGHT
 import ee.ria.DigiDoc.ui.theme.Dimensions.SPadding
 import ee.ria.DigiDoc.utils.Route
 import ee.ria.DigiDoc.utils.snackbar.SnackBarManager
@@ -112,7 +118,9 @@ fun MyEidScreen(
     val isPukBlocked = idCardData?.pukRetryCount == 0
     val isPin2Activated = idCardData?.pin2CodeChanged == true
 
-    val alphaForBlockedState = if (!isPukBlocked) 1f else 0.7f
+    val alphaForPin1BlockedState = getAlphaForBlockedState(isPin1Blocked && isPukBlocked)
+    val alphaForPin2BlockedState = getAlphaForBlockedState(isPin2Blocked && isPukBlocked)
+    val alphaForPukBlockedState = getAlphaForBlockedState(isPukBlocked)
 
     val selectedMyEidTabIndex = rememberSaveable { mutableIntStateOf(0) }
 
@@ -136,6 +144,8 @@ fun MyEidScreen(
     var changePukContentDescription =
         "$changePukText. $changePukSubtitleText. $buttonName"
             .lowercase()
+    var pukBlockedText = stringResource(R.string.myeid_puk_blocked)
+    var pukBlockedUrl = stringResource(R.string.myeid_puk_blocked_url)
     if (idCardData?.personalData?.cardType() == CardType.THALES) {
         pukChangeEnabled = false
         changePukText =
@@ -157,6 +167,8 @@ fun MyEidScreen(
                 "$changePukText. $changePukSubtitleText" +
                     ". $additionalInfo. $changePukLinkUrl. $buttonName"
             ).lowercase()
+        pukBlockedText = stringResource(R.string.myeid_thales_puk_blocked)
+        pukBlockedUrl = stringResource(R.string.myeid_thales_puk_blocked_url)
     }
 
     val pin1Guidelines =
@@ -355,7 +367,7 @@ fun MyEidScreen(
                                         MyEidPinAndCertificateView(
                                             modifier =
                                                 modifier
-                                                    .alpha(alphaForBlockedState),
+                                                    .alpha(alphaForPin1BlockedState),
                                             title = stringResource(R.string.myeid_authentication_certificate_title),
                                             subtitle =
                                                 stringResource(
@@ -391,7 +403,7 @@ fun MyEidScreen(
                                             },
                                         )
 
-                                        if (isPin1Blocked) {
+                                        if (isPin1Blocked && !isPukBlocked) {
                                             Text(
                                                 modifier =
                                                     modifier
@@ -401,6 +413,21 @@ fun MyEidScreen(
                                                 text =
                                                     stringResource(
                                                         R.string.myeid_pin_blocked_with_unblock_message,
+                                                        CodeType.PIN1,
+                                                    ),
+                                                color = MaterialTheme.colorScheme.error,
+                                                style = MaterialTheme.typography.bodySmall,
+                                            )
+                                        } else if (isPin1Blocked) {
+                                            Text(
+                                                modifier =
+                                                    modifier
+                                                        .fillMaxWidth()
+                                                        .focusable(true)
+                                                        .testTag("myEidBlockedPin1DescriptionText"),
+                                                text =
+                                                    stringResource(
+                                                        R.string.myeid_pin_blocked,
                                                         CodeType.PIN1,
                                                     ),
                                                 color = MaterialTheme.colorScheme.error,
@@ -421,7 +448,7 @@ fun MyEidScreen(
                                         MyEidPinAndCertificateView(
                                             modifier =
                                                 modifier
-                                                    .alpha(alphaForBlockedState),
+                                                    .alpha(alphaForPin2BlockedState),
                                             title = stringResource(R.string.myeid_signing_certificate_title),
                                             subtitle =
                                                 stringResource(
@@ -474,7 +501,7 @@ fun MyEidScreen(
                                             )
                                         }
 
-                                        if (isPin2Blocked) {
+                                        if (isPin2Blocked && !isPukBlocked) {
                                             Text(
                                                 modifier =
                                                     modifier
@@ -484,6 +511,21 @@ fun MyEidScreen(
                                                 text =
                                                     stringResource(
                                                         R.string.myeid_pin_blocked_with_unblock_message,
+                                                        CodeType.PIN2,
+                                                    ),
+                                                color = MaterialTheme.colorScheme.error,
+                                                style = MaterialTheme.typography.bodySmall,
+                                            )
+                                        } else if (isPin2Blocked) {
+                                            Text(
+                                                modifier =
+                                                    modifier
+                                                        .fillMaxWidth()
+                                                        .focusable(true)
+                                                        .testTag("myEidBlockedPin2DescriptionText"),
+                                                text =
+                                                    stringResource(
+                                                        R.string.myeid_pin_blocked,
                                                         CodeType.PIN2,
                                                     ),
                                                 color = MaterialTheme.colorScheme.error,
@@ -523,7 +565,7 @@ fun MyEidScreen(
                                             MyEidPinAndCertificateView(
                                                 modifier =
                                                     modifier
-                                                        .alpha(alphaForBlockedState),
+                                                        .alpha(alphaForPukBlockedState),
                                                 title = changePukText,
                                                 isPinBlocked = isPukBlocked,
                                                 isPukBlocked = isPukBlocked,
@@ -541,15 +583,24 @@ fun MyEidScreen(
                                             verticalAlignment = Alignment.CenterVertically,
                                         ) {
                                             if (isPukBlocked) {
-                                                Text(
+                                                HrefDynamicText(
                                                     modifier =
                                                         modifier
                                                             .fillMaxWidth()
                                                             .focusable(true)
                                                             .testTag("myEidBlockedPukDescriptionText"),
-                                                    text = stringResource(R.string.myeid_puk_blocked),
-                                                    color = MaterialTheme.colorScheme.error,
-                                                    style = MaterialTheme.typography.bodySmall,
+                                                    text1 = pukBlockedText,
+                                                    text2 = "",
+                                                    linkText = stringResource(R.string.additional_information),
+                                                    linkUrl = pukBlockedUrl,
+                                                    newLineBeforeLink = true,
+                                                    textStyle =
+                                                        TextStyle(
+                                                            color = MaterialTheme.colorScheme.error,
+                                                            fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                                                            textAlign = TextAlign.Start,
+                                                            lineHeight = TextUnit(LINE_HEIGHT, TextUnitType.Sp),
+                                                        ),
                                                 )
                                             }
                                         }
@@ -618,3 +669,5 @@ fun MyEidScreen(
         onResult = handlePinDialogResult,
     )
 }
+
+fun getAlphaForBlockedState(isBlocked: Boolean) = if (!isBlocked) 1f else 0.7f
