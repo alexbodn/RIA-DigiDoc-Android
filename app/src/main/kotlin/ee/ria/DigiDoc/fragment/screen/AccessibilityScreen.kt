@@ -163,7 +163,7 @@ fun AccessibilityScreen(
                     text2 = ".",
                     linkText = stringResource(R.string.main_accessibility_link_tag),
                     linkUrl = stringResource(R.string.main_accessibility_link_url),
-                    showLinkOnOneLine = true,
+                    newLineBeforeText2 = false,
                     textStyle =
                         TextStyle(
                             color = MaterialTheme.colorScheme.onBackground,

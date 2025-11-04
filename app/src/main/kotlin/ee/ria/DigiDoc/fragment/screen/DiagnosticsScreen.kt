@@ -668,6 +668,8 @@ fun DiagnosticsScreen(
                                     text2 = R.string.main_diagnostics_restart_message_restart_now,
                                     linkText = R.string.main_diagnostics_restart_message_read_more,
                                     linkUrl = R.string.main_diagnostics_restart_message_href,
+                                    newLineBeforeLink = true,
+                                    newLineBeforeText2 = true,
                                 )
 
                                 CancelAndOkButtonRow(

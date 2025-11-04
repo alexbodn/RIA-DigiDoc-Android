@@ -45,7 +45,8 @@ fun HrefMessageDialog(
     @StringRes text2: Int?,
     @StringRes linkText: Int,
     @StringRes linkUrl: Int,
-    showLinkOnOneLine: Boolean = false,
+    newLineBeforeLink: Boolean = false,
+    newLineBeforeText2: Boolean = false,
 ) {
     Column(
         modifier = modifier.padding(SPadding),
@@ -56,7 +57,8 @@ fun HrefMessageDialog(
             text2 = text2?.let { stringResource(it) } ?: "",
             linkText = stringResource(linkText),
             linkUrl = stringResource(linkUrl),
-            showLinkOnOneLine = showLinkOnOneLine,
+            newLineBeforeText2 = newLineBeforeText2,
+            newLineBeforeLink = newLineBeforeLink,
             textStyle =
                 TextStyle(
                     color = MaterialTheme.colorScheme.onBackground,

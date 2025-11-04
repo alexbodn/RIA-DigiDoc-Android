@@ -311,6 +311,7 @@ fun SmartIdView(
                             text2 = text2,
                             linkText = linkText,
                             linkUrl = linkUrl,
+                            newLineBeforeLink = true,
                         )
 
                         CancelAndOkButtonRow(
