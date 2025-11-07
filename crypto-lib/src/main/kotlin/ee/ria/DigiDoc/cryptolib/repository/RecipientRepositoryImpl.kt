@@ -102,6 +102,8 @@ class RecipientRepositoryImpl
             val ldapFilter = LdapFilter(query)
             if (ldapFilter.isPersonalCode(query)) {
                 val ldapPersonUrls = configurationProvider?.ldapPersonUrls
+                val addressees = ArrayList<Addressee>()
+                var count = 0
                 for (url in ldapPersonUrls.orEmpty()) {
                     val ldapUrl = url.split("://")[1]
                     val ldapUrlComponents = ldapUrl.split("/")
@@ -109,10 +111,9 @@ class RecipientRepositoryImpl
                     val dn = if (ldapUrlComponents.size > 1) ldapUrlComponents[1] else null
 
                     try {
-                        val (addressees, count) = search(context, ldapPersonUrl, dn, LdapFilter(query))
-                        if (addressees.isNotEmpty()) {
-                            return Pair(addressees, count)
-                        }
+                        val (addresseesSearch, countSearch) = search(context, ldapPersonUrl, dn, LdapFilter(query))
+                        addressees.addAll(addresseesSearch)
+                        count += countSearch
                     } catch (e: NoInternetConnectionException) {
                         errorLog(logTag, "Unable to connect to LDAP url: $ldapPersonUrl", e)
                         throw e
@@ -121,7 +122,7 @@ class RecipientRepositoryImpl
                         throw CryptoException("Unable to get certificates from LDAP url: $ldapPersonUrl", ce)
                     }
                 }
-                return Pair(listOf(), 0)
+                return Pair(addressees, count)
             } else {
                 val ldapCorpUrl = configurationProvider?.ldapCorpUrl?.split("://")[1]
                 return search(context, ldapCorpUrl, null, LdapFilter(query))
