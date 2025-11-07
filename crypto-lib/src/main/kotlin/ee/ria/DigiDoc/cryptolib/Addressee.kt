@@ -188,24 +188,8 @@ class Addressee(
                             val policyInfo = PolicyInformation.getInstance(element)
                             val oid = policyInfo.policyIdentifier.id
 
-                            when {
-                                oid.startsWith(OID.ID_CARD_POLICY_PREFIX) ||
-                                    oid.startsWith(OID.ALTERNATE_ID_CARD_POLICY) ->
-                                    return CertType.IDCardType
-
-                                oid.startsWith(OID.DIGI_ID_POLICY_PREFIX) ||
-                                    oid.startsWith(OID.ALTERNATE_DIGI_ID_POLICY1) ||
-                                    oid.startsWith(OID.ALTERNATE_DIGI_ID_POLICY2) ->
-                                    return CertType.DigiIDType
-
-                                oid.startsWith(OID.MOBILE_ID_POLICY_PREFIX) ||
-                                    oid.startsWith(OID.ALTERNATE_MOBILE_ID_POLICY) ->
-                                    return CertType.MobileIDType
-
-                                oid.startsWith(OID.ESEAL_POLICY_PREFIX1) ||
-                                    oid.startsWith(OID.ESEAL_POLICY_PREFIX2) ||
-                                    oid.startsWith(OID.ESEAL_POLICY_PREFIX3) ->
-                                    return CertType.ESealType
+                            if (policyInfo.policyQualifiers != null) {
+                                return certType(listOf(oid))
                             }
                         }
                     }

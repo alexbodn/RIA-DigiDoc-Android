@@ -31,18 +31,39 @@ enum class CertType {
     ESealType,
 }
 
-object OID {
-    const val ID_CARD_POLICY_PREFIX = "1.3.6.1.4.1.10015.1.1"
-    const val ALTERNATE_ID_CARD_POLICY = "1.3.6.1.4.1.51361.1.1.1"
+fun certType(policies: List<String>): CertType {
+    for (oid in policies) {
+        when {
+            // DigiIDType
+            oid.startsWith("1.3.6.1.4.1.51361.1.1.3") ||
+                    oid.startsWith("1.3.6.1.4.1.51361.1.1.4") ||
+                    oid.startsWith("1.3.6.1.4.1.51361.2.1.6") ||
+                    oid.contains("1.3.6.1.4.1.51361.2.1.6") ->
+                return CertType.DigiIDType
 
-    const val DIGI_ID_POLICY_PREFIX = "1.3.6.1.4.1.10015.1.2"
-    const val ALTERNATE_DIGI_ID_POLICY1 = "1.3.6.1.4.1.51361.1.1"
-    const val ALTERNATE_DIGI_ID_POLICY2 = "1.3.6.1.4.1.51455.1.1"
+            // IDCardType
+            oid.startsWith("1.3.6.1.4.1.51361.1.1") ||
+                    oid.startsWith("1.3.6.1.4.1.51361.1.2") ||
+                    oid.startsWith("1.3.6.1.4.1.51361.2.1") ||
+                    oid.contains("1.3.6.1.4.1.51361.2.1") ||
+                    oid.startsWith("1.3.6.1.4.1.51455.1.1") ||
+                    oid.startsWith("1.3.6.1.4.1.51455.1.2") ||
+                    oid.startsWith("1.3.6.1.4.1.51455.2.1") ||
+                    oid.contains("1.3.6.1.4.1.51455.2.1") ->
+                return CertType.IDCardType
 
-    const val MOBILE_ID_POLICY_PREFIX = "1.3.6.1.4.1.10015.1.3"
-    const val ALTERNATE_MOBILE_ID_POLICY = "1.3.6.1.4.1.10015.11.1"
+            // MobileIDType
+            oid.startsWith("1.3.6.1.4.1.10015.1.3") ||
+                    oid.startsWith("1.3.6.1.4.1.10015.11.1") ->
+                return CertType.MobileIDType
 
-    const val ESEAL_POLICY_PREFIX1 = "1.3.6.1.4.1.10015.7.3"
-    const val ESEAL_POLICY_PREFIX2 = "1.3.6.1.4.1.10015.7.1"
-    const val ESEAL_POLICY_PREFIX3 = "1.3.6.1.4.1.10015.2.1"
+            // ESealType
+            oid.startsWith("1.3.6.1.4.1.10015.7.3") ||
+                    oid.startsWith("1.3.6.1.4.1.10015.7.1") ||
+                    oid.startsWith("1.3.6.1.4.1.10015.2.1") ->
+                return CertType.ESealType
+        }
+    }
+
+    return CertType.UnknownType
 }
