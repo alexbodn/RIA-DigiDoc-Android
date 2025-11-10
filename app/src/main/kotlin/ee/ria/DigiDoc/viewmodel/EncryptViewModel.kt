@@ -72,7 +72,7 @@ class EncryptViewModel
 
         fun isEmptyFileInContainer(cryptoContainer: CryptoContainer?): Boolean =
             cryptoContainer?.dataFiles?.any {
-                (it?.length() ?: 0L) == 0L
+                it.length() == 0L
             } == true
 
         fun isContainerWithoutRecipients(cryptoContainer: CryptoContainer?): Boolean =
@@ -162,17 +162,17 @@ class EncryptViewModel
             val containerFile = container.file
             val isEncrypted = isEncryptedContainer(container)
 
-            if (isEncrypted && containerFile != null) {
+            if (isEncrypted) {
                 uris += containerFile.toUri()
             } else {
                 val dataFiles = container.getDataFiles()
                 val dataFilesDir =
-                    containerFile?.let {
+                    containerFile.let {
                         ContainerUtil.getContainerDataFilesDir(context, it)
                     }
 
-                dataFiles.mapNotNullTo(uris) { dataFile ->
-                    container.getDataFile(dataFile, dataFilesDir)?.toUri()
+                dataFiles.mapTo(uris) { dataFile ->
+                    container.getDataFile(dataFile, dataFilesDir).toUri()
                 }
             }
 

@@ -92,7 +92,7 @@ object ContainerUtil {
     @Throws(IOException::class)
     suspend fun generateSignatureContainerFile(
         context: Context,
-        name: String?,
+        name: String,
     ): File {
         val file: File =
             increaseCounterIfExists(
@@ -111,7 +111,7 @@ object ContainerUtil {
     @Throws(IOException::class)
     suspend fun generateCryptoContainerFile(
         context: Context,
-        name: String?,
+        name: String,
     ): File {
         val file: File =
             increaseCounterIfExists(
@@ -131,7 +131,7 @@ object ContainerUtil {
         withContext(IO) {
             var updatedFile = file
             val directory = file.parentFile
-            val name: String? = FileUtil.sanitizeString(file.nameWithoutExtension, "")
+            val name: String = FileUtil.sanitizeString(file.nameWithoutExtension, "")
             val ext: String = file.extension.lowercase()
             var i = 1
             while (updatedFile.exists()) {
@@ -285,7 +285,7 @@ object ContainerUtil {
     fun removeExtensionFromContainerFilename(filename: String): String = FilenameUtils.removeExtension(filename)
 
     fun addExtensionToContainerFilename(filename: String): String {
-        val normalizedFilename = FileUtil.normalizePath(filename).path
+        val normalizedFilename = FileUtil.normalizePath(filename).path.toString()
         val sanitizedFilename = FileUtil.sanitizeString(normalizedFilename, "")
         val displayName = FilenameUtils.getName(sanitizedFilename)
 

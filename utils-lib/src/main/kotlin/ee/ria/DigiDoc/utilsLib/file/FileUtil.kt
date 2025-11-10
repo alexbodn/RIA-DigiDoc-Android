@@ -116,12 +116,9 @@ object FileUtil {
      * @return String with valid characters
      */
     fun sanitizeString(
-        input: String?,
-        replacement: String?,
-    ): String? {
-        if (input == null) {
-            return null
-        }
+        input: String,
+        replacement: String,
+    ): String {
         var trimmed = input.trim { it <= ' ' }
         if (trimmed.startsWith(".")) {
             trimmed = DEFAULT_FILENAME + trimmed

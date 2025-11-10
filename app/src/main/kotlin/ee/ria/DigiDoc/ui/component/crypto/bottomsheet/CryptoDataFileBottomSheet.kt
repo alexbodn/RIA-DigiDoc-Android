@@ -56,7 +56,7 @@ fun CryptoDataFileBottomSheet(
     handleSivaConfirmation: () -> Unit,
     context: Context,
     saveFileLauncher: ActivityResultLauncher<Intent>,
-    saveFile: (File?, String, ActivityResultLauncher<Intent>) -> Unit,
+    saveFile: (File, String, ActivityResultLauncher<Intent>) -> Unit,
     openRemoveFileDialog: MutableState<Boolean>,
     onBackButtonClick: () -> Unit,
 ) {
@@ -108,7 +108,9 @@ fun CryptoDataFileBottomSheet(
                     if (dataFile != null) {
                         try {
                             val file = sharedContainerViewModel.getCryptoContainerDataFile(cryptoContainer, dataFile)
-                            saveFile(file, dataFile.mimeType(context), saveFileLauncher)
+                            if (file != null) {
+                                saveFile(file, dataFile.mimeType(context), saveFileLauncher)
+                            }
                         } catch (ex: Exception) {
                             errorLog("SigningContainer", "Unable to save file. Unable to get datafile", ex)
                             onBackButtonClick()

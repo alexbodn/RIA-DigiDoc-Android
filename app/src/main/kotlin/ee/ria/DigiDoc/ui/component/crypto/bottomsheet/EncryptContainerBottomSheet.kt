@@ -44,7 +44,7 @@ fun EncryptContainerBottomSheet(
     cryptoContainer: CryptoContainer?,
     onSignClick: () -> Unit,
     saveFileLauncher: ActivityResultLauncher<Intent>,
-    saveFile: (File?, String?, ActivityResultLauncher<Intent>) -> Unit,
+    saveFile: (File, String?, ActivityResultLauncher<Intent>) -> Unit,
 ) {
     val buttonName = stringResource(id = R.string.button_name)
 
@@ -74,11 +74,14 @@ fun EncryptContainerBottomSheet(
                         R.string.container_save,
                     )} ${cryptoContainer?.getName() ?: ""} $buttonName",
                 ) {
-                    saveFile(
-                        cryptoContainer?.file,
-                        cryptoContainer?.containerMimetype(),
-                        saveFileLauncher,
-                    )
+                    val file = cryptoContainer?.file
+                    if (file != null) {
+                        saveFile(
+                            file,
+                            cryptoContainer.containerMimetype(),
+                            saveFileLauncher,
+                        )
+                    }
                 },
                 BottomSheetButton(
                     showButton = isSignButtonShown,

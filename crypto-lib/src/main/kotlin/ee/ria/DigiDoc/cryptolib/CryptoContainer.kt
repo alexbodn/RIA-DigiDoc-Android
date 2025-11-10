@@ -26,7 +26,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import ee.ria.DigiDoc.common.Constant.CDOC1_EXTENSION
 import ee.ria.DigiDoc.common.Constant.CDOC2_EXTENSION
 import ee.ria.DigiDoc.common.Constant.CONTAINER_MIME_TYPE
-import ee.ria.DigiDoc.common.Constant.DEFAULT_FILENAME
 import ee.ria.DigiDoc.common.container.Container
 import ee.ria.DigiDoc.configuration.provider.ConfigurationProvider
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
@@ -78,75 +77,63 @@ class CryptoContainer
     @Inject
     constructor(
         val context: Context,
-        var file: File?,
-        val dataFiles: ArrayList<File?>?,
-        val recipients: ArrayList<Addressee?>?,
+        var file: File,
+        val dataFiles: ArrayList<File>,
+        val recipients: ArrayList<Addressee>,
         val decrypted: Boolean,
         val encrypted: Boolean,
     ) : Container {
         fun containerMimetype(): String = CONTAINER_MIME_TYPE
 
-        fun getName(): String = file?.name ?: DEFAULT_FILENAME
+        fun getName(): String = file.name
 
         suspend fun setName(filename: String) {
             val name = sanitizeString(filename, "")
-            val containerName = name?.let { ContainerUtil.addExtensionToContainerFilename(it) }
-            val newFile = containerName?.let { File(file?.parent, it) }
+            val containerName = ContainerUtil.addExtensionToContainerFilename(name)
+            val newFile = File(file.parent, containerName)
 
-            if (newFile != null) {
-                withContext(IO) {
-                    file?.renameTo(newFile)
-                    file = newFile
-                }
+            withContext(IO) {
+                file.renameTo(newFile)
+                file = newFile
             }
         }
 
         fun addDataFiles(filesToAdd: List<File>) {
-            dataFiles?.addAll(filesToAdd)
+            dataFiles.addAll(filesToAdd)
         }
 
         fun addRecipients(recipientsToAdd: List<Addressee>) {
-            recipients?.addAll(recipientsToAdd)
+            recipients.addAll(recipientsToAdd)
         }
 
-        fun getDataFiles(): List<File> =
-            dataFiles
-                ?.filterNotNull()
-                ?.map { dataFile -> dataFile } ?: emptyList()
+        fun getDataFiles(): List<File> = dataFiles
 
-        fun getRecipients(): List<Addressee> =
-            recipients
-                ?.filterNotNull()
-                ?.map { recipient -> recipient } ?: emptyList()
+        fun getRecipients(): List<Addressee> = recipients
 
-        fun hasRecipients(): Boolean = recipients?.isNotEmpty() == true
+        fun hasRecipients(): Boolean = recipients.isNotEmpty()
 
         @Throws(Exception::class)
         fun getDataFile(
             dataFile: File,
-            directory: File?,
-        ): File? {
-            val file = sanitizeString(dataFile.name, "")?.let { File(directory, it) }
-            val dataFiles = dataFiles
-            if (dataFiles != null) {
-                for (i in dataFiles.indices) {
-                    val containerDataFile = dataFiles[i]
-                    if (containerDataFile != null) {
-                        if (dataFile.name == containerDataFile.name) {
-                            if (file != null && !file.exists()) {
-                                containerDataFile.saveAs(file.absolutePath)
-                            }
-                            return file
-                        }
+            directory: File,
+        ): File {
+            val tmp = sanitizeString(dataFile.name, "")
+            val file = File(directory, tmp)
+
+            for (containerDataFile in dataFiles) {
+                if (dataFile.name == containerDataFile.name) {
+                    if (!file.exists()) {
+                        containerDataFile.saveAs(file.absolutePath)
                     }
+                    return file
                 }
             }
-            throw IllegalArgumentException("Could not find file ${dataFile.name} in container ${file?.name}")
+            throw IllegalArgumentException("Could not find file ${dataFile.name} in container ${file.name}")
         }
 
         @Throws(Exception::class)
         suspend fun removeDataFile(dataFile: File) {
-            if ((dataFiles?.size ?: 0) == 1) {
+            if (dataFiles.size == 1) {
                 throw ContainerDataFilesEmptyException()
             }
 
@@ -154,7 +141,7 @@ class CryptoContainer
             withContext(IO) {
                 for (i in files.indices) {
                     if (dataFile.name == files[i].name) {
-                        dataFiles?.removeAt(i)
+                        dataFiles.removeAt(i)
                         break
                     }
                 }
@@ -167,7 +154,7 @@ class CryptoContainer
             if (signatures.isNotEmpty()) {
                 for (i in signatures.indices) {
                     if (recipient.identifier == signatures[i].identifier) {
-                        recipients?.removeAt(i)
+                        recipients.removeAt(i)
                         break
                     }
                 }
@@ -180,18 +167,18 @@ class CryptoContainer
             @Throws(CryptoException::class)
             private suspend fun open(
                 context: Context,
-                file: File?,
+                file: File,
             ): CryptoContainer {
                 val dataFiles = ArrayList<File>()
                 var recipients = ArrayList<Addressee>()
-                if (file?.extension == CDOC1_EXTENSION) {
+                if (file.extension == CDOC1_EXTENSION) {
                     val cdoc1Container = openCDOC1(context, file)
                     dataFiles.addAll(cdoc1Container.getDataFiles())
                     recipients.addAll(cdoc1Container.getRecipients())
                 }
 
                 val addressees = ArrayList<Addressee>()
-                val cdocReader = CDocReader.createReader(file?.path, null, null, null)
+                val cdocReader = CDocReader.createReader(file.path, null, null, null)
                 debugLog(LOG_TAG, "Reader created: (version ${cdocReader.version})")
 
                 withContext(IO) {
@@ -222,7 +209,7 @@ class CryptoContainer
                 if (!recipients.isEmpty()) {
                     addressees.forEach { addressee ->
                         recipients.forEach { recipient ->
-                            if (addressee.data.contentEquals(recipient.data) == true) {
+                            if (addressee.data.contentEquals(recipient.data)) {
                                 recipient.concatKDFAlgorithmURI = addressee.concatKDFAlgorithmURI
                             }
                         }
@@ -266,8 +253,8 @@ class CryptoContainer
             @Throws(CryptoException::class, SmartCardReaderException::class)
             fun decrypt(
                 context: Context,
-                file: File?,
-                recipients: List<Addressee?>?,
+                file: File,
+                recipients: List<Addressee>,
                 authCert: ByteArray?,
                 pin: ByteArray,
                 smartToken: Token,
@@ -318,13 +305,12 @@ class CryptoContainer
                                 context,
                                 file,
                             )
-                        val fileToSave = sanitizeString(ofile.name, "")?.let { File(dir, it) }
+                        val tmp = sanitizeString(ofile.name, "")
+                        val fileToSave = File(dir, tmp)
                         val ofs: OutputStream = FileOutputStream(fileToSave)
                         cdocReader.readFile(ofs)
-                        if (fileToSave != null) {
-                            dataFiles.add(fileToSave)
-                            ofs.close()
-                        }
+                        dataFiles.add(fileToSave)
+                        ofs.close()
                         result = cdocReader.nextFile(fi)
                     }
                 } catch (exc: IOException) {
@@ -341,17 +327,17 @@ class CryptoContainer
             @Throws(CryptoException::class)
             suspend fun encrypt(
                 context: Context,
-                file: File?,
-                dataFiles: List<File?>?,
-                recipients: List<Addressee?>?,
+                file: File,
+                dataFiles: List<File>,
+                recipients: List<Addressee>,
                 cdoc2Settings: CDOC2Settings,
                 configurationRepository: ConfigurationRepository,
             ): CryptoContainer {
-                if (dataFiles.isNullOrEmpty()) {
+                if (dataFiles.isEmpty()) {
                     throw DataFilesEmptyException("Cannot create an empty crypto container")
                 }
 
-                if (recipients.isNullOrEmpty()) {
+                if (recipients.isEmpty()) {
                     throw RecipientsEmptyException("Cannot create crypto container without recipients")
                 }
 
@@ -360,13 +346,13 @@ class CryptoContainer
                 val network = Network(cdoc2Settings, configurationProvider, context)
 
                 val version =
-                    if (file?.extension == CDOC2_EXTENSION) {
+                    if (file.extension == CDOC2_EXTENSION) {
                         2
                     } else {
                         1
                     }
 
-                val cdocWriter = CDocWriter.createWriter(version, file?.path, conf, null, network)
+                val cdocWriter = CDocWriter.createWriter(version, file.path, conf, null, network)
                 try {
                     if (cdocWriter.beginEncryption() != 0L) {
                         throw CryptoException("Failed to begin encryption")
@@ -376,14 +362,14 @@ class CryptoContainer
                         if (version == 2 && cdoc2Settings.getUseOnlineEncryption()) {
                             val serverId = cdoc2Settings.getCDOC2UUID()
                             recipients.forEach { addressee ->
-                                val recipient = Recipient.makeServer("", addressee?.data, serverId)
+                                val recipient = Recipient.makeServer("", addressee.data, serverId)
                                 if (cdocWriter.addRecipient(recipient) != 0L) {
                                     throw CryptoException("Failed to add recipient")
                                 }
                             }
                         } else {
                             recipients.forEach { addressee ->
-                                val recipient = Recipient.makeCertificate("", addressee?.data)
+                                val recipient = Recipient.makeCertificate("", addressee.data)
                                 if (cdocWriter.addRecipient(recipient) != 0L) {
                                     throw CryptoException("Failed to add recipient")
                                 }
@@ -395,7 +381,7 @@ class CryptoContainer
                         dataFiles.forEach { dataFile ->
                             val ifs: InputStream = FileInputStream(dataFile)
                             val bytes = ifs.readBytes()
-                            if (cdocWriter.addFile(dataFile?.name, bytes.size.toLong()) != 0L) {
+                            if (cdocWriter.addFile(dataFile.name, bytes.size.toLong()) != 0L) {
                                 throw CryptoException("Failed to add file")
                             }
 
@@ -425,17 +411,17 @@ class CryptoContainer
             @Throws(CryptoException::class)
             private fun create(
                 context: Context,
-                file: File?,
-                dataFiles: List<File?>?,
-                recipients: List<Addressee?>?,
+                file: File,
+                dataFiles: List<File>,
+                recipients: List<Addressee>,
                 decrypted: Boolean,
                 encrypted: Boolean,
             ): CryptoContainer =
                 CryptoContainer(
                     context,
                     file,
-                    dataFiles?.let { ArrayList(it) },
-                    recipients?.let { ArrayList(it) },
+                    ArrayList(dataFiles),
+                    ArrayList(recipients),
                     decrypted,
                     encrypted,
                 )
@@ -444,11 +430,11 @@ class CryptoContainer
             suspend fun openOrCreate(
                 @ApplicationContext context: Context,
                 file: File,
-                dataFiles: List<File?>?,
+                dataFiles: List<File>,
                 cdoc2Settings: CDOC2Settings,
                 forceCreate: Boolean = false,
             ): CryptoContainer {
-                if (dataFiles.isNullOrEmpty()) {
+                if (dataFiles.isEmpty()) {
                     throw DataFilesEmptyException("Cannot create an empty crypto container")
                 }
 

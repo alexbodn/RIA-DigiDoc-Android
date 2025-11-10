@@ -1153,11 +1153,14 @@ fun EncryptNavigation(
                         showContainerCloseConfirmationDialog.value = false
                     },
                     onDismissButton = {
-                        saveFile(
-                            cryptoContainer?.file,
-                            cryptoContainer?.containerMimetype(),
-                            saveFileLauncher,
-                        )
+                        val file = cryptoContainer?.file
+                        if (file != null) {
+                            saveFile(
+                                file,
+                                cryptoContainer?.containerMimetype(),
+                                saveFileLauncher,
+                            )
+                        }
                     },
                     onConfirmButton = {
                         showContainerCloseConfirmationDialog.value = false
@@ -1203,7 +1206,7 @@ private fun handleBackButtonClick(
 }
 
 private fun saveFile(
-    file: File?,
+    file: File,
     mimetype: String?,
     saveFileLauncher: ActivityResultLauncher<Intent>,
 ) {
@@ -1214,7 +1217,7 @@ private fun saveFile(
                     .addCategory(Intent.CATEGORY_OPENABLE)
                     .putExtra(
                         Intent.EXTRA_TITLE,
-                        sanitizeString(file?.name, ""),
+                        sanitizeString(file.name, ""),
                     ).setType(mimetype)
                     .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION),
                 null,
