@@ -1274,11 +1274,14 @@ fun SigningNavigation(
                         showContainerCloseConfirmationDialog.value = false
                     },
                     onDismissButton = {
-                        saveFile(
-                            signedContainer?.getContainerFile(),
-                            signedContainer?.containerMimetype(),
-                            saveFileLauncher,
-                        )
+                        val file = signedContainer?.getContainerFile()
+                        if (file != null) {
+                            saveFile(
+                                file,
+                                signedContainer?.containerMimetype(),
+                                saveFileLauncher,
+                            )
+                        }
                     },
                     onConfirmButton = {
                         showContainerCloseConfirmationDialog.value = false
@@ -1346,7 +1349,7 @@ private fun handleBackButtonClick(
 }
 
 private fun saveFile(
-    file: File?,
+    file: File,
     mimetype: String?,
     saveFileLauncher: ActivityResultLauncher<Intent>,
 ) {
@@ -1357,7 +1360,7 @@ private fun saveFile(
                     .addCategory(Intent.CATEGORY_OPENABLE)
                     .putExtra(
                         Intent.EXTRA_TITLE,
-                        sanitizeString(file?.name, ""),
+                        sanitizeString(file.name, ""),
                     ).setType(mimetype)
                     .addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION),
                 null,

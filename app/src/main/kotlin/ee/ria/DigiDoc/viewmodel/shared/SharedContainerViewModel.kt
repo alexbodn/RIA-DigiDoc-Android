@@ -273,7 +273,7 @@ class SharedContainerViewModel
         ): File? =
             cryptoContainer?.getDataFile(
                 dataFile,
-                cryptoContainer.file?.let {
+                cryptoContainer.file.let {
                     ContainerUtil.getContainerDataFilesDir(
                         context,
                         it,

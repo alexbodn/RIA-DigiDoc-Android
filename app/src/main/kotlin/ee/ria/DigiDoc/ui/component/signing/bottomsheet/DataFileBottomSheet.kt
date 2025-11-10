@@ -56,7 +56,7 @@ fun DataFileBottomSheet(
     handleSivaConfirmation: () -> Unit,
     context: Context,
     saveFileLauncher: ActivityResultLauncher<Intent>,
-    saveFile: (File?, String, ActivityResultLauncher<Intent>) -> Unit,
+    saveFile: (File, String, ActivityResultLauncher<Intent>) -> Unit,
     openRemoveFileDialog: MutableState<Boolean>,
     onBackButtonClick: () -> Unit,
 ) {
@@ -114,7 +114,9 @@ fun DataFileBottomSheet(
                                     else -> it.mediaType
                                 }
 
-                            saveFile(file, mimeType, saveFileLauncher)
+                            if (file != null) {
+                                saveFile(file, mimeType, saveFileLauncher)
+                            }
                         } catch (ex: Exception) {
                             errorLog("DataFileBottomSheet", "Unable to save file. Unable to get data file", ex)
                             onBackButtonClick()
