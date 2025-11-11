@@ -495,7 +495,7 @@ class CryptoContainerTest {
     fun cryptoContainer_openOrCreate_dataFilesNullExpectException() =
         runTest {
             val cdoc2Settings = CDOC2Settings(context)
-            openOrCreate(context, testFile, null, cdoc2Settings)
+            openOrCreate(context, testFile, listOf(), cdoc2Settings)
         }
 
     @Test(expected = DataFilesEmptyException::class)
@@ -1002,7 +1002,7 @@ class CryptoContainerTest {
 
             val testFiles = listOf(testFile)
             val container = openOrCreate(context, testFile, testFiles, cdoc2Settings)
-            encrypt(context, container.file, null, listOf(recipient), cdoc2Settings, configurationRepository)
+            encrypt(context, container.file, listOf(), listOf(recipient), cdoc2Settings, configurationRepository)
         }
 
     @Test(expected = DataFilesEmptyException::class)
@@ -1037,7 +1037,7 @@ class CryptoContainerTest {
 
             val testFiles = listOf(testFile)
             val container = openOrCreate(context, testFile, testFiles, cdoc2Settings)
-            encrypt(context, container.file, testFiles, null, cdoc2Settings, configurationRepository)
+            encrypt(context, container.file, testFiles, listOf(), cdoc2Settings, configurationRepository)
         }
 
     @Test(expected = RecipientsEmptyException::class)
