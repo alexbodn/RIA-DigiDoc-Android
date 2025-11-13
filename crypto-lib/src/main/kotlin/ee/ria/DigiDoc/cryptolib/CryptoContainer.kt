@@ -52,7 +52,6 @@ import ee.ria.cdoc.CryptoBackend
 import ee.ria.cdoc.DataBuffer
 import ee.ria.cdoc.FileInfo
 import ee.ria.cdoc.ILogger
-import ee.ria.cdoc.IStreamSource
 import ee.ria.cdoc.Lock
 import ee.ria.cdoc.NetworkBackend
 import ee.ria.cdoc.Recipient
@@ -163,6 +162,7 @@ class CryptoContainer
 
         companion object {
             val logger = JavaLogger()
+            var loggingIsSet = false
 
             @Throws(CryptoException::class)
             private suspend fun open(
@@ -218,7 +218,14 @@ class CryptoContainer
                     recipients = addressees
                 }
 
-                return create(context, file, dataFiles, recipients, false, true)
+                return create(
+                    context,
+                    file,
+                    dataFiles,
+                    recipients,
+                    decrypted = false,
+                    encrypted = true,
+                )
             }
 
             @Throws(CryptoException::class)
@@ -247,7 +254,14 @@ class CryptoContainer
                     }
                 }
 
-                return create(context, file, dataFiles, recipients, false, true)
+                return create(
+                    context,
+                    file,
+                    dataFiles,
+                    recipients,
+                    decrypted = false,
+                    encrypted = true,
+                )
             }
 
             @Throws(CryptoException::class, SmartCardReaderException::class)
@@ -271,9 +285,7 @@ class CryptoContainer
                 val network = CryptoLibNetworkBackend(cdoc2Settings, configurationProvider, context, authCert, token)
                 val dataFiles = ArrayList<File>()
 
-                val src = IStreamSource(FileInputStream(file))
-                val cdocReader = CDocReader.createReader(src, false, conf, token, network)
-
+                val cdocReader = CDocReader.createReader(file.path, conf, token, network)
                 debugLog(LOG_TAG, "Reader created: (version ${cdocReader.version})")
                 val idx = cdocReader.getLockForCert(authCert)
 
@@ -321,7 +333,14 @@ class CryptoContainer
                     throw CryptoException("Failed to finish decryption")
                 }
 
-                return create(context, file, dataFiles, recipients, true, false)
+                return create(
+                    context,
+                    file,
+                    dataFiles,
+                    recipients,
+                    decrypted = true,
+                    encrypted = false,
+                )
             }
 
             @Throws(CryptoException::class)
@@ -362,14 +381,14 @@ class CryptoContainer
                         if (version == 2 && cdoc2Settings.getUseOnlineEncryption()) {
                             val serverId = cdoc2Settings.getCDOC2UUID()
                             recipients.forEach { addressee ->
-                                val recipient = Recipient.makeEIDServer(addressee.data, serverId)
+                                val recipient = Recipient.makeServer("", addressee.data, serverId)
                                 if (cdocWriter.addRecipient(recipient) != 0L) {
                                     throw CryptoException("Failed to add recipient")
                                 }
                             }
                         } else {
                             recipients.forEach { addressee ->
-                                val recipient = Recipient.makeEID(addressee.data)
+                                val recipient = Recipient.makeCertificate("", addressee.data)
                                 if (cdocWriter.addRecipient(recipient) != 0L) {
                                     throw CryptoException("Failed to add recipient")
                                 }
@@ -468,22 +487,31 @@ class CryptoContainer
                 return if (!forceCreate && dataFiles.size == 1 && isFirstDataFileContainer) {
                     open(context, containerFileWithExtension)
                 } else {
-                    create(context, containerFileWithExtension, dataFiles, listOf(), false, false)
+                    create(
+                        context,
+                        containerFileWithExtension,
+                        dataFiles,
+                        listOf(),
+                        decrypted = false,
+                        encrypted = false,
+                    )
                 }
             }
 
             fun setLogging(isLoggingEnabled: Boolean) {
                 if (isLoggingEnabled) {
                     logger.SetMinLogLevel(ILogger.LogLevel.LEVEL_TRACE)
-                    ILogger.addLogger(logger)
-
+                    if (!loggingIsSet) {
+                        ILogger.addLogger(logger)
+                        loggingIsSet = true
+                    }
                     val lgr = ILogger.getLogger()
 
                     lgr.LogMessage(
                         ILogger.LogLevel.LEVEL_DEBUG,
                         "CryptoContainer",
                         450,
-                        "Set libcdoc logging: $isLoggingEnabled",
+                        "Set libcdoc logging: true",
                     )
                 }
             }
