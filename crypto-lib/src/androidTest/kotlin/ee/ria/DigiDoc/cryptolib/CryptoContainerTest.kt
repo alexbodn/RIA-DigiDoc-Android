@@ -89,7 +89,7 @@ class CryptoContainerTest {
         private lateinit var configurationLoader: ConfigurationLoader
         private lateinit var configurationRepository: ConfigurationRepository
 
-        private val cert =
+        private const val CERT =
             "MIIDuzCCAqOgAwIBAgIUBkYXJdruP6EuH/+I4YoXxIQ3WcowDQYJKoZIhvcNAQELBQAw" +
                 "bTELMAkGA1UEBhMCRUUxDTALBgNVBAgMBFRlc3QxDTALBgNVBAcMBFRlc3QxDTALBgNV" +
                 "BAoMBFRlc3QxDTALBgNVBAsMBFRlc3QxDTALBgNVBAMMBFRlc3QxEzARBgkqhkiG9w0B" +
@@ -133,7 +133,7 @@ class CryptoContainerTest {
                 sidV2SkRestUrl = "https://www.example.com",
                 certBundle =
                     listOf(
-                        cert,
+                        CERT,
                     ),
                 configurationLastUpdateCheckDate = null,
                 configurationUpdateDate = null,
@@ -318,7 +318,7 @@ class CryptoContainerTest {
             val result = cryptoContainer.file
 
             assertNotNull(result)
-            assertEquals(CDOC1_EXTENSION, result?.extension)
+            assertEquals(CDOC1_EXTENSION, result.extension)
         }
 
     @Test
@@ -339,7 +339,7 @@ class CryptoContainerTest {
             val result = cryptoContainer.file
 
             assertNotNull(result)
-            assertEquals(CDOC1_EXTENSION, result?.extension)
+            assertEquals(CDOC1_EXTENSION, result.extension)
         }
 
     @Test
@@ -360,9 +360,9 @@ class CryptoContainerTest {
             val result = cryptoContainer.file
 
             assertNotNull(result)
-            assertEquals(containerCDOC1.name, result?.name)
+            assertEquals(containerCDOC1.name, result.name)
             assertEquals(containerCDOC1.name, cryptoContainer.getDataFiles().first().name)
-            assertEquals(CDOC1_EXTENSION, result?.extension)
+            assertEquals(CDOC1_EXTENSION, result.extension)
         }
 
     @Test
@@ -383,7 +383,7 @@ class CryptoContainerTest {
             val result = cryptoContainer.file
 
             assertNotNull(result)
-            assertEquals(CDOC2_EXTENSION, result?.extension)
+            assertEquals(CDOC2_EXTENSION, result.extension)
         }
 
     @Test
@@ -404,7 +404,7 @@ class CryptoContainerTest {
             val result = cryptoContainer.file
 
             assertNotNull(result)
-            assertEquals(containerCDOC1.name, result?.name)
+            assertEquals(containerCDOC1.name, result.name)
         }
 
     @Test
@@ -426,7 +426,7 @@ class CryptoContainerTest {
 
             assertNotNull(result)
             // TODO: Replace expected with "containerCDOC2.name" when CDOC2 enabled
-            assertEquals("example_cdoc2.cdocna", result?.name)
+            assertEquals("example_cdoc2.cdocna", result.name)
         }
 
     @Test
@@ -447,7 +447,7 @@ class CryptoContainerTest {
             val result = cryptoContainer.file
 
             assertNotNull(result)
-            assertEquals(containerRIACDOC1.name, result?.name)
+            assertEquals(containerRIACDOC1.name, result.name)
         }
 
     @Test
@@ -469,7 +469,7 @@ class CryptoContainerTest {
 
             assertNotNull(result)
             // TODO: Replace with "containerRIACDOC2.name" when CDOC2 enabled
-            assertEquals("example_ria_cdoc2.cdocna", result?.name)
+            assertEquals("example_ria_cdoc2.cdocna", result.name)
         }
 
     @Test(expected = CryptoException::class)
@@ -589,7 +589,7 @@ class CryptoContainerTest {
             )
         }
 
-    @Test()
+    @Test
     fun cryptoContainer_decrypt_offlineSuccess() =
         runTest {
             val isTestEnabled = System.getenv("WITH_CRYTO_LIB_TESTS")?.toBoolean() == true
@@ -707,7 +707,7 @@ class CryptoContainerTest {
             }
 
             val cryptoCertFile = File(cryptoCertFolder, cryptoCertName)
-            val certInputStream = ByteArrayInputStream(cert.toByteArray(Charsets.UTF_8))
+            val certInputStream = ByteArrayInputStream(CERT.toByteArray(Charsets.UTF_8))
             FileUtils.copyInputStreamToFile(certInputStream, cryptoCertFile)
 
             preferences
@@ -884,11 +884,11 @@ class CryptoContainerTest {
                 encrypt(context, container.file, testFiles, listOf(recipient), cdoc2Settings, configurationRepository)
 
             assertTrue(result.encrypted)
-            assertEquals(container.file?.name, result.file?.name)
+            assertEquals(container.file.name, result.file.name)
             assertEquals(1, result.getRecipients().size)
         }
 
-    @Test(expected = CryptoException::class)
+    @Test(expected = DataFilesEmptyException::class)
     fun cryptoContainer_encrypt_CDOC2OnlineException() =
         runTest {
             preferences
@@ -908,13 +908,13 @@ class CryptoContainerTest {
             val cdoc2Settings = CDOC2Settings(context)
             val recipient = Addressee(Base64.getDecoder().decode(authCert))
 
-            val testFiles: List<File> = listOf(testFile)
+            val testFiles: List<File> = listOf()
             val container = openOrCreate(context, testFile, testFiles, cdoc2Settings)
 
             encrypt(context, container.file, testFiles, listOf(recipient), cdoc2Settings, configurationRepository)
         }
 
-    @Test(expected = CryptoException::class)
+    @Test
     fun cryptoContainer_encrypt_CDOC2OnlineSuccess() =
         runTest {
             preferences
@@ -955,7 +955,7 @@ class CryptoContainerTest {
                 encrypt(context, container.file, testFiles, listOf(recipient), cdoc2Settings, configurationRepository)
 
             assertTrue(result.encrypted)
-            assertEquals(container.file?.name, result.file?.name)
+            assertEquals(container.file.name, result.file.name)
             assertEquals(1, result.getRecipients().size)
         }
 
@@ -982,7 +982,7 @@ class CryptoContainerTest {
                 encrypt(context, container.file, testFiles, listOf(recipient), cdoc2Settings, configurationRepository)
 
             assertTrue(result.encrypted)
-            assertEquals(container.file?.name, result.file?.name)
+            assertEquals(container.file.name, result.file.name)
             assertEquals(1, result.getRecipients().size)
             assertEquals(1, result.getDataFiles().size)
         }
@@ -1086,11 +1086,11 @@ class CryptoContainerTest {
                 )
 
             assertTrue(result.encrypted)
-            assertEquals(container.file?.name, result.file?.name)
+            assertEquals(container.file.name, result.file.name)
             assertEquals(1, result.getRecipients().size)
         }
 
-    @Test()
+    @Test
     fun cryptoContainer_containerMimetype_success() =
         runTest {
             preferences
@@ -1107,7 +1107,7 @@ class CryptoContainerTest {
             assertEquals(CONTAINER_MIME_TYPE, cryptoContainer.containerMimetype())
         }
 
-    @Test()
+    @Test
     fun cryptoContainer_getName_success() =
         runTest {
             preferences
@@ -1126,7 +1126,7 @@ class CryptoContainerTest {
             assertEquals("example_cdoc2.cdocna", cryptoContainer.getName())
         }
 
-    @Test()
+    @Test
     fun cryptoContainer_setName_success() =
         runTest {
             preferences
@@ -1146,7 +1146,7 @@ class CryptoContainerTest {
             assertEquals("test_cdoc2.cdoc2.asice", cryptoContainer.getName())
         }
 
-    @Test()
+    @Test
     fun cryptoContainer_hasRecipients_success() =
         runTest {
             preferences
@@ -1165,7 +1165,7 @@ class CryptoContainerTest {
             assertFalse(cryptoContainer.hasRecipients())
         }
 
-    @Test()
+    @Test
     fun cryptoContainer_getDataFile_success() =
         runTest {
             preferences
@@ -1185,8 +1185,8 @@ class CryptoContainerTest {
                     cryptoContainer.getDataFiles().first(),
                     tempResourcesDir,
                 )
-            assertEquals("txt", dataFile?.extension)
-            assertTrue(dataFile?.exists() == true)
+            assertEquals("txt", dataFile.extension)
+            assertTrue(dataFile.exists())
         }
 
     @Test(expected = IllegalArgumentException::class)
@@ -1210,7 +1210,7 @@ class CryptoContainerTest {
             )
         }
 
-    @Test()
+    @Test
     fun cryptoContainer_addDataFiles_success() =
         runTest {
             preferences
@@ -1227,7 +1227,7 @@ class CryptoContainerTest {
             assertEquals(4, cryptoContainer.getDataFiles().size)
         }
 
-    @Test()
+    @Test
     fun cryptoContainer_addRecipients_success() =
         runTest {
             preferences
@@ -1244,7 +1244,7 @@ class CryptoContainerTest {
             assertEquals(1, cryptoContainer.getRecipients().size)
         }
 
-    @Test()
+    @Test
     fun cryptoContainer_removeDataFile_success() =
         runTest {
             preferences
@@ -1278,7 +1278,7 @@ class CryptoContainerTest {
             cryptoContainer.removeDataFile(testFile)
         }
 
-    @Test()
+    @Test
     fun cryptoContainer_removeRecipient_success() =
         runTest {
             preferences
@@ -1297,7 +1297,7 @@ class CryptoContainerTest {
             assertEquals(0, cryptoContainer.getRecipients().size)
         }
 
-    @Test()
+    @Test
     fun cryptoContainer_removeRecipient_removeFromEmptyRecipients() =
         runTest {
             preferences

@@ -28,6 +28,10 @@
 -dontwarn aQute.bnd.annotation.spi.ServiceProvider
 -dontwarn javax.security.sasl.SaslClient
 
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
 # libdigidoc
 -keep class ee.ria.libdigidocpp.* { *; }
 
