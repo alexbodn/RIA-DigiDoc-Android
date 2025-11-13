@@ -218,9 +218,13 @@ class CryptoContainer
                     recipients = addressees
                 }
 
-                return create(context, file, dataFiles, recipients,
+                return create(
+                    context,
+                    file,
+                    dataFiles,
+                    recipients,
                     decrypted = false,
-                    encrypted = true
+                    encrypted = true,
                 )
             }
 
@@ -250,9 +254,13 @@ class CryptoContainer
                     }
                 }
 
-                return create(context, file, dataFiles, recipients,
+                return create(
+                    context,
+                    file,
+                    dataFiles,
+                    recipients,
                     decrypted = false,
-                    encrypted = true
+                    encrypted = true,
                 )
             }
 
@@ -325,9 +333,13 @@ class CryptoContainer
                     throw CryptoException("Failed to finish decryption")
                 }
 
-                return create(context, file, dataFiles, recipients,
+                return create(
+                    context,
+                    file,
+                    dataFiles,
+                    recipients,
                     decrypted = true,
-                    encrypted = false
+                    encrypted = false,
                 )
             }
 
@@ -475,9 +487,13 @@ class CryptoContainer
                 return if (!forceCreate && dataFiles.size == 1 && isFirstDataFileContainer) {
                     open(context, containerFileWithExtension)
                 } else {
-                    create(context, containerFileWithExtension, dataFiles, listOf(),
+                    create(
+                        context,
+                        containerFileWithExtension,
+                        dataFiles,
+                        listOf(),
                         decrypted = false,
-                        encrypted = false
+                        encrypted = false,
                     )
                 }
             }
