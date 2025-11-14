@@ -1,0 +1,94 @@
+name: RIA DigiDoc Android
+on: [push]
+env:
+  BUILD_NUMBER: ${{ github.run_number }}
+jobs:
+  ubuntu:
+    name: Build on Ubuntu
+    if: contains(github.repository, 'open-eid/RIA-DigiDoc-Android')
+    runs-on: ubuntu-latest
+    env:
+      APK_RELEASE_DIRECTORY: "app/build/outputs/apk/release"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - name: Setup environment
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          echo "APP_VERSION_NAME=$(grep -E '^[[:space:]]*versionName[[:space:]]*=' gradle/libs.versions.toml \
+          | head -n1 \
+          | sed -E 's/.*=[[:space:]]*"([^"]+)".*/\1/' \
+          | cut -d'-' -f1)" >> "$GITHUB_ENV"
+          cd ${{ github.workspace }}/app
+          echo -n "$GOOGLE_SERVICES_JSON" | base64 --decode > "google-services.json"
+      - name: Enable KVM to run instrumented tests
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 21
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Generate debug.keystore
+        run: |
+          mkdir -p ${{ github.workspace }}/app/src/main/assets/keystore/
+          keytool -genkeypair \
+            -alias androiddebugkey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -keystore ${{ github.workspace }}/app/src/main/assets/keystore/debug.keystore \
+            -storepass android \
+            -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+          echo "Generated debug.keystore at ${{ github.workspace }}/app/src/main/assets/keystore/debug.keystore"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Run fetch default configuration
+        run: |
+          ./gradlew fetchAndPackageDefaultConfiguration
+      - name: Run unit tests
+        run: |
+          ./gradlew test
+      - name: Run instrumented tests on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          profile: pixel_7_pro
+          ram-size: 4096M
+          heap-size: 512M
+          disk-size: 2048M
+          script: ./gradlew connectedCheck -Dorg.gradle.jvmargs="-Xmx4g"
+      - name: Assemble application
+        run: ./gradlew -PappVersionName=${{ env.APP_VERSION_NAME }}.${{ env.BUILD_NUMBER }} assembleRelease --info --quiet
+      - name: Sign application APK
+        uses: r0adkll/sign-android-release@v1
+        id: signed_apk
+        with:
+          releaseDirectory: ${{ env.APK_RELEASE_DIRECTORY }}
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.SIGNING_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "35.0.0"
+      - name: Rename APK
+        run: |
+          mv ${{ github.workspace }}/${{ env.APK_RELEASE_DIRECTORY }}/app-release-unsigned-signed.apk ${{ github.workspace }}/${{ env.APK_RELEASE_DIRECTORY }}/"RIA_DigiDoc_debug_${{ env.APP_VERSION_NAME }}.${{ env.BUILD_NUMBER }}.apk"
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: "RIA_DigiDoc_debug_${{ env.APP_VERSION_NAME }}.${{ env.BUILD_NUMBER }}"
+          path: ${{ github.workspace }}/${{ env.APK_RELEASE_DIRECTORY }}/RIA_DigiDoc_debug_${{ env.APP_VERSION_NAME }}.${{ env.BUILD_NUMBER }}.apk
