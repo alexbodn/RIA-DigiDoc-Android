@@ -105,9 +105,13 @@ class CryptoContainer
             recipients.addAll(recipientsToAdd)
         }
 
-        fun getDataFiles(): List<File> = dataFiles
+        fun getDataFiles(): List<File> =
+            dataFiles
+                .toList()
 
-        fun getRecipients(): List<Addressee> = recipients
+        fun getRecipients(): List<Addressee> =
+            recipients
+                .toList()
 
         fun hasRecipients(): Boolean = recipients.isNotEmpty()
 
@@ -136,25 +140,21 @@ class CryptoContainer
                 throw ContainerDataFilesEmptyException()
             }
 
-            val files = getDataFiles()
             withContext(IO) {
-                for (i in files.indices) {
-                    if (dataFile.name == files[i].name) {
-                        dataFiles.removeAt(i)
-                        break
-                    }
+                val index = dataFiles.indexOfFirst { it.name == dataFile.name }
+                if (index != -1) {
+                    dataFiles.removeAt(index)
                 }
             }
         }
 
         @Throws(Exception::class)
-        fun removeRecipient(recipient: Addressee) {
-            val signatures = getRecipients()
-            if (signatures.isNotEmpty()) {
-                for (i in signatures.indices) {
-                    if (recipient.identifier == signatures[i].identifier) {
-                        recipients.removeAt(i)
-                        break
+        suspend fun removeRecipient(recipient: Addressee) {
+            if (recipients.isNotEmpty()) {
+                withContext(IO) {
+                    val index = recipients.indexOfFirst { it.identifier == recipient.identifier }
+                    if (index != -1) {
+                        recipients.removeAt(index)
                     }
                 }
             }
