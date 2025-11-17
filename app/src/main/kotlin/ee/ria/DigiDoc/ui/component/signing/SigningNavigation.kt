@@ -86,7 +86,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.asFlow
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -271,16 +271,6 @@ fun SigningNavigation(
             getAccessibilityEventType(),
             signatureRemovalCancelled,
         )
-    }
-
-    val openSignatureDialog = rememberSaveable { mutableStateOf(false) }
-    val signingCancelled = stringResource(id = R.string.signing_cancelled)
-    val dismissDialog = {
-        openSignatureDialog.value = false
-    }
-    val cancelButtonClick = {
-        dismissDialog()
-        sendAccessibilityEvent(context, getAccessibilityEventType(), signingCancelled)
     }
 
     var signatures by remember { mutableStateOf<List<SignatureInterface>>(emptyList()) }

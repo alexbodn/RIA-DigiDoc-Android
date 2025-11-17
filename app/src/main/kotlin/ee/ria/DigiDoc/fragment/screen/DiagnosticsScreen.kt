@@ -65,7 +65,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.asFlow
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -506,40 +506,38 @@ fun DiagnosticsScreen(
                     stringResource(id = R.string.main_diagnostics_rpuuid_title),
                     stringResource(diagnosticsViewModel.getRpUuid()),
                 )
-                if (diagnosticsViewModel.isCdoc2Enabled) {
-                    SpannableBoldText(
-                        modifier = modifier,
-                        stringResource(id = R.string.main_diagnostics_cdoc2_title),
-                        "",
-                    )
-                    DiagnosticsText(
-                        modifier =
-                            modifier
-                                .semantics {
-                                    testTagsAsResourceId = true
-                                }.testTag("mainDiagnosticsCdoc2Default"),
-                        stringResource(id = R.string.main_diagnostics_cdoc2_default_title),
-                        diagnosticsViewModel.isCdoc2Selected().toString(),
-                    )
-                    DiagnosticsText(
-                        modifier =
-                            modifier
-                                .semantics {
-                                    testTagsAsResourceId = true
-                                }.testTag("mainDiagnosticsCdoc2UseKeyserver"),
-                        stringResource(id = R.string.main_diagnostics_cdoc2_use_keyserver_title),
-                        diagnosticsViewModel.isCdoc2KeyServerUsed().toString(),
-                    )
-                    DiagnosticsText(
-                        modifier =
-                            modifier
-                                .semantics {
-                                    testTagsAsResourceId = true
-                                }.testTag("mainDiagnosticsCdoc2DefaultKeyserver"),
-                        stringResource(id = R.string.main_diagnostics_cdoc2_default_keyserver_title),
-                        diagnosticsViewModel.getCdoc2KeyServerUUID(),
-                    )
-                }
+                SpannableBoldText(
+                    modifier = modifier,
+                    stringResource(id = R.string.main_diagnostics_cdoc2_title),
+                    "",
+                )
+                DiagnosticsText(
+                    modifier =
+                        modifier
+                            .semantics {
+                                testTagsAsResourceId = true
+                            }.testTag("mainDiagnosticsCdoc2Default"),
+                    stringResource(id = R.string.main_diagnostics_cdoc2_default_title),
+                    diagnosticsViewModel.isCdoc2Selected().toString(),
+                )
+                DiagnosticsText(
+                    modifier =
+                        modifier
+                            .semantics {
+                                testTagsAsResourceId = true
+                            }.testTag("mainDiagnosticsCdoc2UseKeyserver"),
+                    stringResource(id = R.string.main_diagnostics_cdoc2_use_keyserver_title),
+                    diagnosticsViewModel.isCdoc2KeyServerUsed().toString(),
+                )
+                DiagnosticsText(
+                    modifier =
+                        modifier
+                            .semantics {
+                                testTagsAsResourceId = true
+                            }.testTag("mainDiagnosticsCdoc2DefaultKeyserver"),
+                    stringResource(id = R.string.main_diagnostics_cdoc2_default_keyserver_title),
+                    diagnosticsViewModel.getCdoc2KeyServerUUID(),
+                )
                 HorizontalDivider(
                     modifier =
                         modifier

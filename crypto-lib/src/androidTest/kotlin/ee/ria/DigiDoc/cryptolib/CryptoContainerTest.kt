@@ -62,7 +62,6 @@ import kotlinx.coroutines.test.runTest
 import org.apache.commons.io.FileUtils
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -425,8 +424,7 @@ class CryptoContainerTest {
             val result = cryptoContainer.file
 
             assertNotNull(result)
-            // TODO: Replace expected with "containerCDOC2.name" when CDOC2 enabled
-            assertEquals("example_cdoc2.cdocna", result.name)
+            assertEquals(containerCDOC2.name, result.name)
         }
 
     @Test
@@ -468,8 +466,7 @@ class CryptoContainerTest {
             val result = cryptoContainer.file
 
             assertNotNull(result)
-            // TODO: Replace with "containerRIACDOC2.name" when CDOC2 enabled
-            assertEquals("example_ria_cdoc2.cdocna", result.name)
+            assertEquals(containerRIACDOC2.name, result.name)
         }
 
     @Test(expected = CryptoException::class)
@@ -1121,9 +1118,7 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(containerCDOC2)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
-            // TODO: Replace commented "assertEquals" when CDOC2 enabled
-//            assertEquals("example_cdoc2.cdoc2", cryptoContainer.getName())
-            assertEquals("example_cdoc2.cdocna", cryptoContainer.getName())
+            assertEquals("example_cdoc2.cdoc2", cryptoContainer.getName())
         }
 
     @Test
@@ -1141,9 +1136,7 @@ class CryptoContainerTest {
             val dataFiles = listOf(containerCDOC2)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
             cryptoContainer.setName("test_cdoc2.cdoc2")
-            // TODO: Replace commented "assertEquals" when CDOC2 enabled
-//            assertEquals("test_cdoc2.cdoc2", cryptoContainer.getName())
-            assertEquals("test_cdoc2.cdoc2.asice", cryptoContainer.getName())
+            assertEquals("test_cdoc2.cdoc2", cryptoContainer.getName())
         }
 
     @Test
@@ -1160,9 +1153,7 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(containerCDOC2)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
-            // TODO: Uncomment "assertTrue" when CDOC2 enabled
-//            assertTrue(cryptoContainer.hasRecipients())
-            assertFalse(cryptoContainer.hasRecipients())
+            assertTrue(cryptoContainer.hasRecipients())
         }
 
     @Test

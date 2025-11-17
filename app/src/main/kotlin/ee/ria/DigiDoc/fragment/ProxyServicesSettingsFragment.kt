@@ -33,12 +33,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import ee.ria.DigiDoc.fragment.screen.ProxyServicesSettingsScreen
 import ee.ria.DigiDoc.ui.theme.RIADigiDocTheme
-import ee.ria.DigiDoc.viewmodel.shared.SharedCertificateViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedMenuViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedSettingsViewModel
 
@@ -49,7 +48,6 @@ fun ProxyServicesSettingsFragment(
     modifier: Modifier = Modifier,
     sharedMenuViewModel: SharedMenuViewModel,
     sharedSettingsViewModel: SharedSettingsViewModel,
-    sharedCertificateViewModel: SharedCertificateViewModel,
 ) {
     Surface(
         modifier =
@@ -79,7 +77,6 @@ fun ProxyServicesSettingsFragmentPreview() {
             navController = rememberNavController(),
             sharedMenuViewModel = hiltViewModel(),
             sharedSettingsViewModel = hiltViewModel(),
-            sharedCertificateViewModel = hiltViewModel(),
         )
     }
 }
