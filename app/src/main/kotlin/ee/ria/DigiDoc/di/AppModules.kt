@@ -84,9 +84,11 @@ class AppModules {
     @Provides
     fun provideCDOC2Settings(
         @ApplicationContext context: Context,
+        configurationRepository: ConfigurationRepository,
     ): CDOC2Settings =
         CDOC2Settings(
             context = context,
+            configurationRepository,
         )
 
     @Provides

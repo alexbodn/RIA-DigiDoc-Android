@@ -26,6 +26,7 @@ import android.content.SharedPreferences
 import android.content.res.Resources
 import androidx.preference.PreferenceManager
 import ee.ria.DigiDoc.common.Constant.DIR_CRYPTO_CERT
+import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
 import ee.ria.DigiDoc.utilsLib.file.FileUtil
 import javax.inject.Inject
 
@@ -33,6 +34,7 @@ class CDOC2Settings
     @Inject
     constructor(
         private var context: Context,
+        private var configurationRepository: ConfigurationRepository,
     ) {
         private var preferences: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
         private var resources: Resources = context.resources
@@ -55,17 +57,29 @@ class CDOC2Settings
                 "",
             ) ?: ""
 
-        fun getCDOC2PostURL(): String =
-            preferences.getString(
-                resources.getString(R.string.crypto_settings_use_cdoc2_post_url),
-                "",
-            ) ?: ""
+        fun getCDOC2PostURL(domain: String): String {
+            val configurationProvider = configurationRepository.getConfiguration()
+            val configPostUrl =
+                configurationProvider?.cdoc2Conf?.get(domain)?.post
+                    ?: return preferences.getString(
+                        resources.getString(R.string.crypto_settings_use_cdoc2_post_url),
+                        "",
+                    ) ?: ""
 
-        fun getCDOC2FetchURL(): String =
-            preferences.getString(
-                resources.getString(R.string.crypto_settings_use_cdoc2_fetch_url),
-                "",
-            ) ?: ""
+            return configPostUrl
+        }
+
+        fun getCDOC2FetchURL(domain: String): String {
+            val configurationProvider = configurationRepository.getConfiguration()
+            val configFetchUrl =
+                configurationProvider?.cdoc2Conf?.get(domain)?.fetch
+                    ?: return preferences.getString(
+                        resources.getString(R.string.crypto_settings_use_cdoc2_fetch_url),
+                        "",
+                    ) ?: ""
+
+            return configFetchUrl
+        }
 
         fun getCDOC2Cert(): String? {
             val cryptoCertName =
