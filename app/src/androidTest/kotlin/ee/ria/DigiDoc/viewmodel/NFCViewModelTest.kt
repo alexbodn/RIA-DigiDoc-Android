@@ -116,8 +116,8 @@ class NFCViewModelTest {
         `when`(mockContext.resources).thenReturn(resources)
 
         containerWrapper = ContainerWrapperImpl()
-        cdoc2Settings = CDOC2Settings(context)
         configurationRepository = mock(ConfigurationRepository::class.java)
+        cdoc2Settings = CDOC2Settings(context, configurationRepository)
 
         viewModel =
             NFCViewModel(

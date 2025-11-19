@@ -162,7 +162,7 @@ class FileOpeningViewModelTest {
     @Before
     fun setup() {
         MockitoAnnotations.openMocks(this)
-        cdoc2Settings = CDOC2Settings(context)
+        cdoc2Settings = CDOC2Settings(context, configurationRepository)
         viewModel =
             FileOpeningViewModel(
                 context,

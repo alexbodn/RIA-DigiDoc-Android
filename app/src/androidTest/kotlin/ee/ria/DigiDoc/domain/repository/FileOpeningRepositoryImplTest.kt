@@ -111,7 +111,7 @@ class FileOpeningRepositoryImplTest {
             sivaService = mock(SivaService::class.java)
             context = InstrumentationRegistry.getInstrumentation().targetContext
             contentResolver = mock(ContentResolver::class.java)
-            cdoc2Settings = CDOC2Settings(context)
+            cdoc2Settings = CDOC2Settings(context, configurationRepository)
             fileOpeningRepository = FileOpeningRepositoryImpl(fileOpeningService, sivaService, cdoc2Settings)
 
             signedPdfDocument =

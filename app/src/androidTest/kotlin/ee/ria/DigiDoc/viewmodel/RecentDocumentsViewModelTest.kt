@@ -124,7 +124,7 @@ class RecentDocumentsViewModelTest {
     fun setup() {
         MockitoAnnotations.openMocks(this)
         mimeTypeResolver = MimeTypeResolverImpl(mimeTypeCache)
-        cdoc2Settings = CDOC2Settings(context)
+        cdoc2Settings = CDOC2Settings(context, configurationRepository)
         viewModel = RecentDocumentsViewModel(context, sivaRepository, mimeTypeResolver, cdoc2Settings)
 
         container =
