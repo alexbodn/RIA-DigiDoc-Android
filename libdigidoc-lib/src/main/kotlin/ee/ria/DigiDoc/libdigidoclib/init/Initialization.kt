@@ -34,7 +34,6 @@ import ee.ria.DigiDoc.common.Constant.DIR_TSA_CERT
 import ee.ria.DigiDoc.common.preferences.EncryptedPreferences
 import ee.ria.DigiDoc.configuration.provider.ConfigurationProvider
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
-import ee.ria.DigiDoc.libdigidoclib.BuildConfig
 import ee.ria.DigiDoc.libdigidoclib.R
 import ee.ria.DigiDoc.libdigidoclib.exceptions.AlreadyInitializedException
 import ee.ria.DigiDoc.libdigidoclib.utils.FileUtils.getSchemaDir
@@ -140,9 +139,7 @@ class Initialization
         ) {
             val conf = DigiDocConf(getSchemaDir(context).absolutePath)
             Conf.init(conf.transfer())
-            if (BuildConfig.BUILD_TYPE.contentEquals("debug")) {
-                initLibDigiDocLogging(context, isLoggingEnabled)
-            }
+            initLibDigiDocLogging(context, isLoggingEnabled)
 
             forcePKCS12Certificate()
 
