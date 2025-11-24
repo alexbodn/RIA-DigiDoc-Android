@@ -743,10 +743,11 @@ fun ProxyServicesSettingsScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = {
+                    val proxyPort = proxyPort.text.toIntOrNull() ?: 80
                     sharedSettingsViewModel.checkConnection(
                         ManualProxy(
                             host = proxyHost.text,
-                            port = proxyPort.text.toInt(),
+                            port = proxyPort,
                             username = proxyUsername.text,
                             password = proxyPassword.text,
                         ),
