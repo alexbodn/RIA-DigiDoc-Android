@@ -523,7 +523,7 @@ class CryptoContainer
                     line: Int,
                     message: String?,
                 ) {
-                    System.out.format("%s:%s %s %s\n", file, line, level, message)
+                    debugLog("CryptoContainer", String.format("%s:%s %s %s\n", file, line, level, message))
                 }
             }
 

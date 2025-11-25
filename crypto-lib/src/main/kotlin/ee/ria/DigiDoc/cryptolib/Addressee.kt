@@ -93,6 +93,7 @@ class Addressee(
 
         val certType =
             when (type) {
+                "cert" -> CertType.IDCardType
                 "ID-card" -> CertType.IDCardType
                 "Digi-ID" -> CertType.DigiIDType
                 "Digi-ID E-RESIDENT" -> CertType.EResidentType
