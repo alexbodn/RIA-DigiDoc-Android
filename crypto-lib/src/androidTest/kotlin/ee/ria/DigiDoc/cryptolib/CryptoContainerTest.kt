@@ -312,7 +312,6 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(testFile)
 
-
             val cryptoContainer = openOrCreate(context, testFile, dataFiles, cdoc2Settings)
 
             val result = cryptoContainer.file
