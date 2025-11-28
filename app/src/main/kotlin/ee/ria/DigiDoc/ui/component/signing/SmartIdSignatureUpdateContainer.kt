@@ -41,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -53,7 +52,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.asFlow
 import ee.ria.DigiDoc.R
 import ee.ria.DigiDoc.ui.theme.Dimensions.LPadding
@@ -71,7 +70,6 @@ fun SmartIdSignatureUpdateContainer(
     smartIdViewModel: SmartIdViewModel,
     onError: () -> Unit = {},
 ) {
-    val context = LocalContext.current
     val controlCode = stringResource(id = R.string.challenge_code_text)
     val controlCodeLoadingText = stringResource(id = R.string.control_code_loading)
     var challengeText by remember { mutableStateOf("") }

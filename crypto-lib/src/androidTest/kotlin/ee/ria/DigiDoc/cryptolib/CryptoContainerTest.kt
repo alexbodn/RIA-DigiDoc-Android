@@ -62,7 +62,6 @@ import kotlinx.coroutines.test.runTest
 import org.apache.commons.io.FileUtils
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -180,7 +179,7 @@ class CryptoContainerTest {
     private var mockConfigurationRepository: ConfigurationRepository = mock()
 
     private lateinit var context: Context
-
+    private lateinit var cdoc2Settings: CDOC2Settings
     private lateinit var recipientRepository: RecipientRepository
 
     private lateinit var testFile: File
@@ -247,6 +246,7 @@ class CryptoContainerTest {
     fun setup() {
         MockitoAnnotations.openMocks(this)
         context = InstrumentationRegistry.getInstrumentation().targetContext
+        cdoc2Settings = CDOC2Settings(context, configurationRepository)
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
         preferences.edit().clear().commit()
         resources = context.resources
@@ -312,7 +312,6 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(testFile)
 
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, testFile, dataFiles, cdoc2Settings)
 
             val result = cryptoContainer.file
@@ -333,7 +332,6 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(dataFile1, dataFile2, dataFile3)
 
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, dataFile1, dataFiles, cdoc2Settings)
 
             val result = cryptoContainer.file
@@ -354,7 +352,6 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(containerCDOC1)
 
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerCDOC1, dataFiles, cdoc2Settings, true)
 
             val result = cryptoContainer.file
@@ -377,7 +374,6 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(testFile)
 
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, testFile, dataFiles, cdoc2Settings)
 
             val result = cryptoContainer.file
@@ -398,7 +394,6 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(containerCDOC1)
 
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerCDOC1, dataFiles, cdoc2Settings)
 
             val result = cryptoContainer.file
@@ -419,14 +414,12 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(containerCDOC2)
 
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
 
             val result = cryptoContainer.file
 
             assertNotNull(result)
-            // TODO: Replace expected with "containerCDOC2.name" when CDOC2 enabled
-            assertEquals("example_cdoc2.cdocna", result.name)
+            assertEquals(containerCDOC2.name, result.name)
         }
 
     @Test
@@ -441,7 +434,6 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(containerRIACDOC1)
 
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerRIACDOC1, dataFiles, cdoc2Settings)
 
             val result = cryptoContainer.file
@@ -462,14 +454,12 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(containerRIACDOC2)
 
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerRIACDOC2, dataFiles, cdoc2Settings)
 
             val result = cryptoContainer.file
 
             assertNotNull(result)
-            // TODO: Replace with "containerRIACDOC2.name" when CDOC2 enabled
-            assertEquals("example_ria_cdoc2.cdocna", result.name)
+            assertEquals(containerRIACDOC2.name, result.name)
         }
 
     @Test(expected = CryptoException::class)
@@ -487,21 +477,18 @@ class CryptoContainerTest {
 
             val dataFiles = listOf(containerCDOC2)
 
-            val cdoc2Settings = CDOC2Settings(context)
             openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
         }
 
     @Test(expected = DataFilesEmptyException::class)
     fun cryptoContainer_openOrCreate_dataFilesNullExpectException() =
         runTest {
-            val cdoc2Settings = CDOC2Settings(context)
             openOrCreate(context, testFile, listOf(), cdoc2Settings)
         }
 
     @Test(expected = DataFilesEmptyException::class)
     fun cryptoContainer_openOrCreate_dataFilesEmptyExpectException() =
         runTest {
-            val cdoc2Settings = CDOC2Settings(context)
             openOrCreate(context, testFile, listOf(), cdoc2Settings)
         }
 
@@ -516,7 +503,6 @@ class CryptoContainerTest {
                 ).apply()
 
             val dataFiles = listOf(containerCDOC2)
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
 
             val token = mock(Token::class.java)
@@ -544,7 +530,6 @@ class CryptoContainerTest {
                 ).apply()
 
             val dataFiles = listOf(containerCDOC2)
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
 
             val token = mock(Token::class.java)
@@ -572,7 +557,6 @@ class CryptoContainerTest {
                 ).apply()
 
             val dataFiles = listOf(containerCDOC2)
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
 
             val token = mock(Token::class.java)
@@ -603,7 +587,6 @@ class CryptoContainerTest {
                 ).apply()
 
             val dataFiles = listOf(containerCDOC2)
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
             val data = "+puuS4wUR3wz+5D3DknZmebWhrP0X7ngQlXiBuPBipow0mDXgixJ7OCwhxx/zkYg"
             val token = mock(Token::class.java)
@@ -664,7 +647,6 @@ class CryptoContainerTest {
                 ).apply()
 
             val dataFiles = listOf(containerCDOC2Network)
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerCDOC2Network, dataFiles, cdoc2Settings)
             val data = "zumNg86dm4q97avNnIuTGSGvMyKTSPRi0QBG2HSri3HwTm9jVEJKWiGsCUZ1Nudz"
             val authData =
@@ -746,7 +728,6 @@ class CryptoContainerTest {
                 ).apply()
 
             val dataFiles = listOf(containerCDOC2Network)
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerCDOC2Network, dataFiles, cdoc2Settings)
             val data = "zumNg86dm4q97avNnIuTGSGvMyKTSPRi0QBG2HSri3HwTm9jVEJKWiGsCUZ1Nudz"
             val authData =
@@ -783,7 +764,6 @@ class CryptoContainerTest {
                 ).apply()
 
             val dataFiles = listOf(containerCDOC2)
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
             val token = mock(Token::class.java)
 
@@ -813,7 +793,6 @@ class CryptoContainerTest {
                 ).apply()
 
             val dataFiles = listOf(containerRIACDOC1)
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerRIACDOC1, dataFiles, cdoc2Settings)
             val data = "+puuS4wUR3wz+5D3DknZmebWhrP0X7ngQlXiBuPBipow0mDXgixJ7OCwhxx/zkYg"
             val token = mock(Token::class.java)
@@ -842,7 +821,6 @@ class CryptoContainerTest {
                 ).apply()
 
             val dataFiles = listOf(containerRIACDOC1)
-            val cdoc2Settings = CDOC2Settings(context)
             val cryptoContainer = openOrCreate(context, containerRIACDOC1, dataFiles, cdoc2Settings)
             val token = mock(Token::class.java)
             decrypt(
@@ -874,7 +852,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val recipient = Addressee(Base64.getDecoder().decode(authCert))
 
             val testFiles = listOf(testFile)
@@ -905,7 +882,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val recipient = Addressee(Base64.getDecoder().decode(authCert))
 
             val testFiles: List<File> = listOf()
@@ -945,7 +921,6 @@ class CryptoContainerTest {
                     "https://cdoc2.id.ee:8443",
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val recipient = Addressee(Base64.getDecoder().decode(authCert))
 
             val testFiles = listOf(testFile)
@@ -972,7 +947,6 @@ class CryptoContainerTest {
                     false,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val recipient = Addressee(Base64.getDecoder().decode(authCert))
 
             val testFiles = listOf(testFile)
@@ -997,7 +971,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val recipient = Addressee(Base64.getDecoder().decode(authCert))
 
             val testFiles = listOf(testFile)
@@ -1015,7 +988,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val recipient = Addressee(Base64.getDecoder().decode(authCert))
 
             val testFiles = listOf(testFile)
@@ -1033,8 +1005,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
-
             val testFiles = listOf(testFile)
             val container = openOrCreate(context, testFile, testFiles, cdoc2Settings)
             encrypt(context, container.file, testFiles, listOf(), cdoc2Settings, configurationRepository)
@@ -1050,8 +1020,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
-
             val testFiles = listOf(testFile)
             val container = openOrCreate(context, testFile, testFiles, cdoc2Settings)
             encrypt(context, container.file, testFiles, listOf(), cdoc2Settings, configurationRepository)
@@ -1066,8 +1034,6 @@ class CryptoContainerTest {
                     resources.getString(R.string.crypto_settings_use_cdoc2_encryption),
                     true,
                 ).apply()
-
-            val cdoc2Settings = CDOC2Settings(context)
 
             val testFiles = listOf(testFile)
             val container = openOrCreate(context, testFile, testFiles, cdoc2Settings)
@@ -1100,8 +1066,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
-
             val dataFiles = listOf(containerCDOC2)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
             assertEquals(CONTAINER_MIME_TYPE, cryptoContainer.containerMimetype())
@@ -1117,13 +1081,9 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
-
             val dataFiles = listOf(containerCDOC2)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
-            // TODO: Replace commented "assertEquals" when CDOC2 enabled
-//            assertEquals("example_cdoc2.cdoc2", cryptoContainer.getName())
-            assertEquals("example_cdoc2.cdocna", cryptoContainer.getName())
+            assertEquals("example_cdoc2.cdoc2", cryptoContainer.getName())
         }
 
     @Test
@@ -1136,14 +1096,10 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
-
             val dataFiles = listOf(containerCDOC2)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
             cryptoContainer.setName("test_cdoc2.cdoc2")
-            // TODO: Replace commented "assertEquals" when CDOC2 enabled
-//            assertEquals("test_cdoc2.cdoc2", cryptoContainer.getName())
-            assertEquals("test_cdoc2.cdoc2.asice", cryptoContainer.getName())
+            assertEquals("test_cdoc2.cdoc2", cryptoContainer.getName())
         }
 
     @Test
@@ -1156,13 +1112,9 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
-
             val dataFiles = listOf(containerCDOC2)
             val cryptoContainer = openOrCreate(context, containerCDOC2, dataFiles, cdoc2Settings)
-            // TODO: Uncomment "assertTrue" when CDOC2 enabled
-//            assertTrue(cryptoContainer.hasRecipients())
-            assertFalse(cryptoContainer.hasRecipients())
+            assertTrue(cryptoContainer.hasRecipients())
         }
 
     @Test
@@ -1174,8 +1126,6 @@ class CryptoContainerTest {
                     resources.getString(R.string.crypto_settings_use_cdoc2_encryption),
                     false,
                 ).apply()
-
-            val cdoc2Settings = CDOC2Settings(context)
 
             val dataFiles = listOf(testFile)
             val cryptoContainer = openOrCreate(context, testFile, dataFiles, cdoc2Settings)
@@ -1199,8 +1149,6 @@ class CryptoContainerTest {
                     false,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
-
             val dataFiles = listOf(testFile)
             val cryptoContainer = openOrCreate(context, testFile, dataFiles, cdoc2Settings)
             val tempResourcesDir = Files.createTempDirectory("test_resources").toFile()
@@ -1220,7 +1168,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val dataFiles = listOf(testFile)
             val cryptoContainer = openOrCreate(context, testFile, dataFiles, cdoc2Settings)
             cryptoContainer.addDataFiles(listOf(dataFile1, dataFile2, dataFile3))
@@ -1237,7 +1184,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val dataFiles = listOf(testFile)
             val cryptoContainer = openOrCreate(context, testFile, dataFiles, cdoc2Settings)
             cryptoContainer.addRecipients(listOf(Addressee(Base64.getDecoder().decode(authCert))))
@@ -1254,7 +1200,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val dataFiles = listOf(testFile)
             val cryptoContainer = openOrCreate(context, testFile, dataFiles, cdoc2Settings)
             cryptoContainer.addDataFiles(listOf(dataFile1, dataFile2, dataFile3))
@@ -1272,7 +1217,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val dataFiles = listOf(testFile)
             val cryptoContainer = openOrCreate(context, testFile, dataFiles, cdoc2Settings)
             cryptoContainer.removeDataFile(testFile)
@@ -1288,7 +1232,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val dataFiles = listOf(testFile)
             val cryptoContainer = openOrCreate(context, testFile, dataFiles, cdoc2Settings)
             val recipient = Addressee(Base64.getDecoder().decode(authCert))
@@ -1307,7 +1250,6 @@ class CryptoContainerTest {
                     true,
                 ).apply()
 
-            val cdoc2Settings = CDOC2Settings(context)
             val dataFiles = listOf(testFile)
             val cryptoContainer = openOrCreate(context, testFile, dataFiles, cdoc2Settings)
             val recipient = Addressee(Base64.getDecoder().decode(authCert))

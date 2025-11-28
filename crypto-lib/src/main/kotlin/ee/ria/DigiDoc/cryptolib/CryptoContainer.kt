@@ -359,9 +359,9 @@ class CryptoContainer
                 if (recipients.isEmpty()) {
                     throw RecipientsEmptyException("Cannot create crypto container without recipients")
                 }
-
-                val conf = CryptoLibConf(cdoc2Settings)
                 val configurationProvider = configurationRepository.getConfiguration()
+                val conf = CryptoLibConf(cdoc2Settings)
+
                 val network = Network(cdoc2Settings, configurationProvider, context)
 
                 val version =
@@ -523,7 +523,7 @@ class CryptoContainer
                     line: Int,
                     message: String?,
                 ) {
-                    System.out.format("%s:%s %s %s\n", file, line, level, message)
+                    debugLog("CryptoContainer", String.format("%s:%s %s %s\n", file, line, level, message))
                 }
             }
 
@@ -531,12 +531,12 @@ class CryptoContainer
                 private val cdoc2Settings: CDOC2Settings,
             ) : Configuration() {
                 override fun getValue(
-                    domain: String?,
-                    param: String?,
+                    domain: String,
+                    param: String,
                 ): String =
                     when (param) {
-                        KEYSERVER_FETCH_URL -> cdoc2Settings.getCDOC2FetchURL()
-                        KEYSERVER_SEND_URL -> cdoc2Settings.getCDOC2PostURL()
+                        KEYSERVER_FETCH_URL -> cdoc2Settings.getCDOC2FetchURL(domain)
+                        KEYSERVER_SEND_URL -> cdoc2Settings.getCDOC2PostURL(domain)
                         else -> ""
                     }
             }

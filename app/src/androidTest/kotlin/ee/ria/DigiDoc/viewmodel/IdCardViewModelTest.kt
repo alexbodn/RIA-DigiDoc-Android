@@ -149,8 +149,8 @@ class IdCardViewModelTest {
         `when`(mockContext.resources).thenReturn(resources)
         `when`(smartCardReaderManager.connectedReader()).thenReturn(mockSmartCardReader)
         `when`(mockSmartCardReader.atr()).thenReturn(Hex.decode("3bdb960080b1fe451f830012233f536549440f9000f1"))
-        cdoc2Settings = CDOC2Settings(context)
         configurationRepository = mock(ConfigurationRepository::class.java)
+        cdoc2Settings = CDOC2Settings(context, configurationRepository)
         viewModel = IdCardViewModel(smartCardReaderManager, idCardService, cdoc2Settings, configurationRepository)
 
         container =

@@ -81,7 +81,7 @@ import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.zIndex
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.asFlow
 import ee.ria.DigiDoc.R
 import ee.ria.DigiDoc.common.Constant.NFCConstants.PIN1_MIN_LENGTH
