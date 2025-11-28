@@ -92,7 +92,7 @@ class EncryptRecipientViewModel
 
         private fun filterRecipients() =
             queryText
-                .combine(_recipientList) { text, recipients ->
+                .combine(_recipientList) { text, _ ->
                     if (!text.isEmpty()) {
                         var allRecipients: Pair<List<Addressee>, Int> = Pair(listOf(), 0)
                         try {
@@ -136,13 +136,15 @@ class EncryptRecipientViewModel
         ) {
             val cryptoContainer = sharedContainerViewModel.cryptoContainer.value
 
-            if (cryptoContainer?.getRecipients()?.contains(recipient) == true) {
-                _errorState.postValue(R.string.crypto_recipients_error_exists)
-                handleIsRecipientAdded(false)
-                return
-            } else {
-                cryptoContainer?.addRecipients(listOf(recipient))
+            cryptoContainer?.getRecipients()?.forEach {
+                if (recipient.data.contentEquals(it.data)) {
+                    _errorState.postValue(R.string.crypto_recipients_error_exists)
+                    handleIsRecipientAdded(false)
+                    return
+                }
             }
+
+            cryptoContainer?.addRecipients(listOf(recipient))
 
             sharedContainerViewModel.setCryptoContainer(cryptoContainer)
             handleIsRecipientAdded(true)
