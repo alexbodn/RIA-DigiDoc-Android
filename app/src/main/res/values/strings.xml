@@ -558,7 +558,7 @@
     <string name="main_settings_validation_services_title">Validation services</string>
     <string name="main_settings_crypto_services_title">Encryption settings</string>
     <string name="main_settings_timestamp_services_title">Time-Stamping service</string>
-    <string name="main_settings_mobile_id_and_smart_id_title">Mobile-ID ja Smart-ID</string>
+    <string name="main_settings_mobile_id_and_smart_id_title">Mobile-ID and Smart-ID</string>
     <string name="main_settings_ask_role_and_address_title">Ask role and address info on signing</string>
     <string name="main_settings_role_title">Role / resolution</string>
     <string name="main_settings_city_title">City</string>
