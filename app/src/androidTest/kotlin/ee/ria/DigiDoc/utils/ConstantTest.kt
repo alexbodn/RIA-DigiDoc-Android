@@ -32,11 +32,6 @@ class ConstantTest {
     }
 
     @Test
-    fun constantTest_Defaults_success() {
-        assertEquals("00000000-0000-0000-0000-000000000000", Constant.Defaults.DEFAULT_UUID_VALUE)
-    }
-
-    @Test
     fun constantTest_Routes_success() {
         assertEquals("init_route", Constant.Routes.INIT_SCREEN)
         assertEquals("home_route", Constant.Routes.HOME_SCREEN)

@@ -33,13 +33,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import ee.ria.DigiDoc.BuildConfig
 import ee.ria.DigiDoc.R
+import ee.ria.DigiDoc.common.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.configuration.loader.ConfigurationLoader
 import ee.ria.DigiDoc.configuration.provider.ConfigurationProvider
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
 import ee.ria.DigiDoc.configuration.utils.TSLUtil
 import ee.ria.DigiDoc.domain.model.settings.CDOCSetting
 import ee.ria.DigiDoc.domain.preferences.DataStore
-import ee.ria.DigiDoc.utils.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.utils.accessibility.AccessibilityUtil.Companion.getAccessibilityEventType
 import ee.ria.DigiDoc.utils.accessibility.AccessibilityUtil.Companion.sendAccessibilityEvent
 import ee.ria.DigiDoc.utilsLib.date.DateUtil
@@ -146,16 +146,20 @@ class DiagnosticsViewModel
             return uuid
         }
 
-        fun isCdoc2Selected(): Boolean = dataStore.getCdocSetting() == CDOCSetting.CDOC2
+        fun isCdoc2Selected(currentConfiguration: ConfigurationProvider?): Boolean {
+            val cdoc2Default = currentConfiguration?.cdoc2Default ?: false
 
-        fun isCdoc2KeyServerUsed(): Boolean {
-            val isCdoc2Setting = isCdoc2Selected()
-            val cdoc2UseKeyServer = updatedConfiguration.value?.cdoc2UseKeyServer ?: false
+            return dataStore.getCdocSetting(cdoc2Default) == CDOCSetting.CDOC2
+        }
+
+        fun isCdoc2KeyServerUsed(currentConfiguration: ConfigurationProvider?): Boolean {
+            val isCdoc2Setting = isCdoc2Selected(currentConfiguration)
+            val cdoc2UseKeyServer = currentConfiguration?.cdoc2UseKeyServer ?: false
             return isCdoc2Setting && dataStore.getUseOnlineEncryption(cdoc2UseKeyServer)
         }
 
-        fun getCdoc2KeyServerUUID(): String {
-            val defaultKeyServer = updatedConfiguration.value?.cdoc2DefaultKeyServer ?: DEFAULT_UUID_VALUE
+        fun getCdoc2KeyServerUUID(currentConfiguration: ConfigurationProvider?): String {
+            val defaultKeyServer = currentConfiguration?.cdoc2DefaultKeyServer ?: DEFAULT_UUID_VALUE
             return dataStore.getCDOC2UUID(defaultKeyServer)
         }
 
@@ -234,7 +238,10 @@ class DiagnosticsViewModel
             LoggingUtil.resetLogs(FileUtil.getLogsDirectory(context))
         }
 
-        fun createDiagnosticsFile(context: Context): File {
+        fun createDiagnosticsFile(
+            context: Context,
+            currentConfiguration: ConfigurationProvider?,
+        ): File {
             val diagnosticsFilePath: String = File(context.filesDir.path, "diagnostics").path
             val root = File(diagnosticsFilePath)
             if (!root.exists()) {
@@ -254,7 +261,7 @@ class DiagnosticsViewModel
                 FileOutputStream(diagnosticsFileLocation).use { fileStream ->
                     OutputStreamWriter(fileStream, StandardCharsets.UTF_8)
                         .use { writer ->
-                            writer.append(formatDiagnosticsText(context))
+                            writer.append(formatDiagnosticsText(context, currentConfiguration))
                             writer.flush()
                             return diagnosticsFileLocation
                         }
@@ -278,7 +285,10 @@ class DiagnosticsViewModel
             return FileUtil.normalizeText(tslFileName) + " (" + version + ")"
         }
 
-        private fun formatDiagnosticsText(context: Context): String {
+        private fun formatDiagnosticsText(
+            context: Context,
+            currentConfiguration: ConfigurationProvider?,
+        ): String {
             val diagnosticsText =
                 buildString {
                     appendLine(
@@ -364,21 +374,21 @@ class DiagnosticsViewModel
                             context.getString(
                                 R.string.main_diagnostics_cdoc2_default_title,
                             )
-                        } ${isCdoc2Selected()}",
+                        } ${isCdoc2Selected(currentConfiguration)}",
                     )
                     appendLine(
                         "${
                             context.getString(
                                 R.string.main_diagnostics_cdoc2_use_keyserver_title,
                             )
-                        } ${isCdoc2KeyServerUsed()}",
+                        } ${isCdoc2KeyServerUsed(currentConfiguration)}",
                     )
                     appendLine(
                         "${
                             context.getString(
                                 R.string.main_diagnostics_cdoc2_default_keyserver_title,
                             )
-                        } ${getCdoc2KeyServerUUID()}",
+                        } ${getCdoc2KeyServerUUID(currentConfiguration)}",
                     )
 
                     // Category

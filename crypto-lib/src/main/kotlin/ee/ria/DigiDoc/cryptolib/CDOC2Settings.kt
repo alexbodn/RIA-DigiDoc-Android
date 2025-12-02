@@ -26,6 +26,7 @@ import android.content.SharedPreferences
 import android.content.res.Resources
 import androidx.preference.PreferenceManager
 import ee.ria.DigiDoc.common.Constant.DIR_CRYPTO_CERT
+import ee.ria.DigiDoc.common.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
 import ee.ria.DigiDoc.utilsLib.file.FileUtil
 import javax.inject.Inject
@@ -36,26 +37,35 @@ class CDOC2Settings
         private var context: Context,
         private var configurationRepository: ConfigurationRepository,
     ) {
-        private var preferences: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+        private var preferences: SharedPreferences =
+            PreferenceManager.getDefaultSharedPreferences(context)
         private var resources: Resources = context.resources
 
-        fun getUseEncryption(): Boolean =
-            preferences.getBoolean(
+        fun getUseEncryption(): Boolean {
+            val defaultValue = configurationRepository.getConfiguration()?.cdoc2Default ?: false
+            return preferences.getBoolean(
                 resources.getString(R.string.crypto_settings_use_cdoc2_encryption),
-                false,
+                defaultValue,
             )
+        }
 
-        fun getUseOnlineEncryption(): Boolean =
-            preferences.getBoolean(
+        fun getUseOnlineEncryption(): Boolean {
+            val defaultValue =
+                configurationRepository.getConfiguration()?.cdoc2UseKeyServer ?: false
+            return preferences.getBoolean(
                 resources.getString(R.string.crypto_settings_use_cdoc2_online_encryption),
-                false,
+                defaultValue,
             )
+        }
 
-        fun getCDOC2UUID(): String =
-            preferences.getString(
+        fun getCDOC2UUID(): String {
+            val defaultValue =
+                configurationRepository.getConfiguration()?.cdoc2DefaultKeyServer ?: DEFAULT_UUID_VALUE
+            return preferences.getString(
                 resources.getString(R.string.crypto_settings_use_cdoc2_uuid),
-                "",
-            ) ?: ""
+                defaultValue,
+            ) ?: defaultValue
+        }
 
         fun getCDOC2PostURL(domain: String): String {
             val configurationProvider = configurationRepository.getConfiguration()

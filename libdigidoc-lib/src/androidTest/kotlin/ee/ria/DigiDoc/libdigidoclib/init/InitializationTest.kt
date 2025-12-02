@@ -25,6 +25,7 @@ import android.content.Context
 import android.content.res.Resources
 import android.content.res.Resources.NotFoundException
 import androidx.test.platform.app.InstrumentationRegistry
+import ee.ria.DigiDoc.common.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.configuration.provider.ConfigurationProvider
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
 import ee.ria.DigiDoc.libdigidoclib.exceptions.AlreadyInitializedException
@@ -72,15 +73,16 @@ class InitializationTest {
                 configurationUpdateDate = null,
                 cdoc2Conf =
                     mapOf(
-                        "00000000-0000-0000-0000-000000000000" to
+                        DEFAULT_UUID_VALUE to
                             ConfigurationProvider.CDOC2Conf(
                                 name = "RIA",
                                 post = "https://cdoc2.id.ee:8443",
                                 fetch = "https://cdoc2.id.ee:8444",
                             ),
                     ),
+                cdoc2Default = false,
                 cdoc2UseKeyServer = false,
-                cdoc2DefaultKeyServer = "00000000-0000-0000-0000-000000000000",
+                cdoc2DefaultKeyServer = DEFAULT_UUID_VALUE,
             )
 
         @Mock

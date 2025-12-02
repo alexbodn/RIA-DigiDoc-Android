@@ -25,6 +25,10 @@ import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
 object Constant {
+    object Defaults {
+        const val DEFAULT_UUID_VALUE = "00000000-0000-0000-0000-000000000000"
+    }
+
     object SignatureRequest {
         const val SIGNATURE_PROFILE_TS = "time-stamp"
         private const val ESTONIAN_PHONE_CODE = "372"

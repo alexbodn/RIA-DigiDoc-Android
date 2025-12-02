@@ -28,6 +28,7 @@ import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import ee.ria.DigiDoc.R
 import ee.ria.DigiDoc.common.Constant.Crypto.DECRYPT_METHOD_SETTING
+import ee.ria.DigiDoc.common.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.common.Constant.IS_CRASH_SENDING_ALWAYS_ENABLED
 import ee.ria.DigiDoc.common.Constant.KEY_LOCALE
 import ee.ria.DigiDoc.common.Constant.MyEID.IDENTIFICATION_METHOD_SETTING
@@ -43,7 +44,6 @@ import ee.ria.DigiDoc.domain.model.theme.ThemeSetting
 import ee.ria.DigiDoc.network.proxy.ManualProxy
 import ee.ria.DigiDoc.network.proxy.ProxySetting
 import ee.ria.DigiDoc.network.siva.SivaSetting
-import ee.ria.DigiDoc.utils.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.utils.snackbar.SnackBarManager.showMessage
 import ee.ria.DigiDoc.utilsLib.locale.LocaleUtil.getLocale
 import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.Companion.debugLog
@@ -341,10 +341,10 @@ class DataStore
             }
         }
 
-        fun getUseEncryption(): Boolean =
+        fun getUseEncryption(defaultValue: Boolean): Boolean =
             preferences.getBoolean(
                 resources.getString(ee.ria.DigiDoc.cryptolib.R.string.crypto_settings_use_cdoc2_encryption),
-                false,
+                defaultValue,
             )
 
         fun setUseEncryption(useEncryption: Boolean) {
@@ -436,8 +436,8 @@ class DataStore
             }
         }
 
-        fun getCdocSetting(): CDOCSetting {
-            if (getUseEncryption()) {
+        fun getCdocSetting(defaultValue: Boolean): CDOCSetting {
+            if (getUseEncryption(defaultValue)) {
                 return CDOCSetting.CDOC2
             }
             return CDOCSetting.CDOC1

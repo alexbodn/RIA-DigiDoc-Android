@@ -23,6 +23,7 @@ package ee.ria.DigiDoc.configuration.domain.model
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
+import ee.ria.DigiDoc.common.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.configuration.provider.ConfigurationProvider
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
 import ee.ria.DigiDoc.network.proxy.ManualProxy
@@ -115,7 +116,7 @@ class ConfigurationViewModelTest {
             ConfigurationProvider.MetaInf("url", "date", 1, 1),
             "sivaUrl",
             mapOf(
-                "00000000-0000-0000-0000-000000000000" to
+                DEFAULT_UUID_VALUE to
                     ConfigurationProvider.CDOC2Conf(
                         name = "RIA",
                         post = "https://cdoc2.id.ee:8443",
@@ -123,7 +124,8 @@ class ConfigurationViewModelTest {
                     ),
             ),
             false,
-            "00000000-0000-0000-0000-000000000000",
+            false,
+            DEFAULT_UUID_VALUE,
             "tslUrl",
             emptyList(),
             "tsaUrl",

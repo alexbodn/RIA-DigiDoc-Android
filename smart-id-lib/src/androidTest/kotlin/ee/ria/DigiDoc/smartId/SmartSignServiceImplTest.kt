@@ -25,6 +25,7 @@ import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
 import androidx.test.platform.app.InstrumentationRegistry
+import ee.ria.DigiDoc.common.Constant.SignatureRequest.RELYING_PARTY_UUID
 import ee.ria.DigiDoc.common.model.AppState
 import ee.ria.DigiDoc.common.testfiles.asset.AssetFile.Companion.getResourceFileAsFile
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
@@ -170,14 +171,14 @@ class SmartSignServiceImplTest {
     private val getSmartCertificateRequest =
         PostCertificateRequest(
             relyingPartyName = "DEMO",
-            relyingPartyUUID = "00000000-0000-0000-0000-000000000000",
+            relyingPartyUUID = RELYING_PARTY_UUID,
         )
     private val request =
         SmartCreateSignatureRequest(
             country = "EE",
             nationalIdentityNumber = "60001019906",
             url = url,
-            relyingPartyUUID = "00000000-0000-0000-0000-000000000000",
+            relyingPartyUUID = RELYING_PARTY_UUID,
             relyingPartyName = "DEMO",
             containerPath = "containerPath",
             hashType = "SHA256",
@@ -347,7 +348,7 @@ class SmartSignServiceImplTest {
             )
 
             verify(statusObserver, atLeastOnce()).onChanged(SessionStatusResponseProcessStatus.INVALID_ACCESS_RIGHTS)
-            request.relyingPartyUUID = "00000000-0000-0000-0000-000000000000"
+            request.relyingPartyUUID = RELYING_PARTY_UUID
         }
 
     @Test
