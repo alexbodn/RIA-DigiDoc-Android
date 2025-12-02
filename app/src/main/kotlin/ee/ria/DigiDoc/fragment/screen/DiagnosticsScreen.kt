@@ -256,7 +256,7 @@ fun DiagnosticsScreen(
                     onClickItem = {
                         try {
                             val diagnosticsFile =
-                                diagnosticsViewModel.createDiagnosticsFile(context)
+                                diagnosticsViewModel.createDiagnosticsFile(context, currentConfiguration)
                             actionFile = diagnosticsFile
                             val saveIntent =
                                 Intent.createChooser(
@@ -518,7 +518,7 @@ fun DiagnosticsScreen(
                                 testTagsAsResourceId = true
                             }.testTag("mainDiagnosticsCdoc2Default"),
                     stringResource(id = R.string.main_diagnostics_cdoc2_default_title),
-                    diagnosticsViewModel.isCdoc2Selected().toString(),
+                    diagnosticsViewModel.isCdoc2Selected(currentConfiguration).toString(),
                 )
                 DiagnosticsText(
                     modifier =
@@ -527,7 +527,7 @@ fun DiagnosticsScreen(
                                 testTagsAsResourceId = true
                             }.testTag("mainDiagnosticsCdoc2UseKeyserver"),
                     stringResource(id = R.string.main_diagnostics_cdoc2_use_keyserver_title),
-                    diagnosticsViewModel.isCdoc2KeyServerUsed().toString(),
+                    diagnosticsViewModel.isCdoc2KeyServerUsed(currentConfiguration).toString(),
                 )
                 DiagnosticsText(
                     modifier =
@@ -536,7 +536,7 @@ fun DiagnosticsScreen(
                                 testTagsAsResourceId = true
                             }.testTag("mainDiagnosticsCdoc2DefaultKeyserver"),
                     stringResource(id = R.string.main_diagnostics_cdoc2_default_keyserver_title),
-                    diagnosticsViewModel.getCdoc2KeyServerUUID(),
+                    diagnosticsViewModel.getCdoc2KeyServerUUID(currentConfiguration),
                 )
                 HorizontalDivider(
                     modifier =

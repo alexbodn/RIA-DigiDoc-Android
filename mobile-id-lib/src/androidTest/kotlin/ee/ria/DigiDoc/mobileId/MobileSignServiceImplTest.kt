@@ -25,6 +25,7 @@ import android.content.Context
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.lifecycle.Observer
 import androidx.test.platform.app.InstrumentationRegistry
+import ee.ria.DigiDoc.common.Constant.SignatureRequest.RELYING_PARTY_UUID
 import ee.ria.DigiDoc.common.model.AppState
 import ee.ria.DigiDoc.common.testfiles.asset.AssetFile
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
@@ -135,7 +136,7 @@ class MobileSignServiceImplTest {
             phoneNumber = "37200000766",
             nationalIdentityNumber = "60001019906",
             url = url,
-            relyingPartyUUID = "00000000-0000-0000-0000-000000000000",
+            relyingPartyUUID = RELYING_PARTY_UUID,
             relyingPartyName = "DEMO",
             containerPath = "containerPath",
             hashType = "SHA256",
@@ -147,7 +148,7 @@ class MobileSignServiceImplTest {
     private val getMobileCertificateRequest =
         PostMobileCreateSignatureCertificateRequest(
             relyingPartyName = "DEMO",
-            relyingPartyUUID = "00000000-0000-0000-0000-000000000000",
+            relyingPartyUUID = RELYING_PARTY_UUID,
             phoneNumber = "37200000766",
             nationalIdentityNumber = "60001019906",
         )
@@ -372,7 +373,7 @@ class MobileSignServiceImplTest {
 
             verify(statusObserver, atLeastOnce()).onChanged(MobileCreateSignatureProcessStatus.INVALID_ACCESS_RIGHTS)
 
-            request.relyingPartyUUID = "00000000-0000-0000-0000-000000000000"
+            request.relyingPartyUUID = RELYING_PARTY_UUID
         }
 
     @Test

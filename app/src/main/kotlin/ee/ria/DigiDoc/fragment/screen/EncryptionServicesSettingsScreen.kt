@@ -73,11 +73,9 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
@@ -91,10 +89,10 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.toSize
 import androidx.lifecycle.asFlow
 import androidx.navigation.NavHostController
 import ee.ria.DigiDoc.R
+import ee.ria.DigiDoc.common.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.configuration.provider.ConfigurationProvider.CDOC2Conf
 import ee.ria.DigiDoc.domain.model.settings.CDOCSetting
 import ee.ria.DigiDoc.ui.component.menu.SettingsMenuBottomSheet
@@ -109,7 +107,6 @@ import ee.ria.DigiDoc.ui.theme.Dimensions.SPadding
 import ee.ria.DigiDoc.ui.theme.Dimensions.XSBorder
 import ee.ria.DigiDoc.ui.theme.Dimensions.XSPadding
 import ee.ria.DigiDoc.ui.theme.buttonRoundedCornerShape
-import ee.ria.DigiDoc.utils.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.utils.Route
 import ee.ria.DigiDoc.utils.accessibility.AccessibilityUtil.Companion.isTalkBackEnabled
 import ee.ria.DigiDoc.utils.extensions.notAccessible
@@ -167,12 +164,13 @@ fun EncryptionServicesSettingsScreen(
     val getCDOC2PostURL = sharedSettingsViewModel.dataStore::getCDOC2PostURL
     val setCDOC2PostURL = sharedSettingsViewModel.dataStore::setCDOC2PostURL
 
+    val cdoc2Default = configuration?.cdoc2Default ?: false
     val cdoc2UseKeyServerDefault = configuration?.cdoc2UseKeyServer == true
     val cdoc2DefaultKeyServer = configuration?.cdoc2DefaultKeyServer ?: DEFAULT_UUID_VALUE
     val useKeyTransfer = rememberSaveable { mutableStateOf(getUseOnlineEncryption(cdoc2UseKeyServerDefault)) }
     val useDefaultKeyTransferServer = rememberSaveable { mutableStateOf(true) }
 
-    val settingsCdocServiceChoice = remember { mutableStateOf(getCdocSetting().name) }
+    val settingsCdocServiceChoice = remember { mutableStateOf(getCdocSetting(cdoc2Default)) }
 
     val cdoc2Conf = configuration?.cdoc2Conf ?: emptyMap()
 
@@ -217,14 +215,9 @@ fun EncryptionServicesSettingsScreen(
         index++
     }
     nameChoices.add(manualKeyTransferText)
-    val customDefaultCDOC2UUID = "00000000-0000-0000-0000-000000000002"
+    val customDefaultCDOC2UUID = "00000000-0000-0000-0000-00000000000" + (index + 1).toString()
     val customDefaultCDOC2FetchUrl = "https://cdoc2-keyserver-get"
     val customDefaultCDOC2PostUrl = "https://cdoc2-keyserver-post"
-
-    if (getCDOC2UUID(customDefaultCDOC2UUID) != cdoc2DefaultKeyServer) {
-        settingsCdocNameChoiceInt.intValue = index
-        useDefaultKeyTransferServer.value = false
-    }
 
     var uuidText by rememberSaveable(stateSaver = textFieldValueSaver) {
         mutableStateOf(
@@ -269,6 +262,8 @@ fun EncryptionServicesSettingsScreen(
     }
 
     val saveParameters = {
+        setCdocSetting(settingsCdocServiceChoice.value)
+        setUseOnlineEncryption(useKeyTransfer.value)
         var valueCDOC2UUID = customDefaultCDOC2UUID
         var valueCDOC2FetchUrl = customDefaultCDOC2FetchUrl
         var valueCDOC2PostUrl = customDefaultCDOC2PostUrl
@@ -277,6 +272,7 @@ fun EncryptionServicesSettingsScreen(
             if (value.name == nameChoices[settingsCdocNameChoiceInt.intValue]) {
                 settingsCdocNameChoice.value = value.name
                 settingsCDOC2SelectedService.value = key
+                useDefaultKeyTransferServer.value = true
                 valueCDOC2UUID = key
                 valueCDOC2FetchUrl = value.fetch
                 valueCDOC2PostUrl = value.post
@@ -290,32 +286,17 @@ fun EncryptionServicesSettingsScreen(
 
         uuidText =
             TextFieldValue(
-                text =
-                    if (nameChoices[settingsCdocNameChoiceInt.intValue] == manualKeyTransferText) {
-                        getCDOC2UUID(customDefaultCDOC2UUID)
-                    } else {
-                        settingsCDOC2UUID.value
-                    },
+                text = valueCDOC2UUID,
                 selection = TextRange.Zero,
             )
         fetchUrlText =
             TextFieldValue(
-                text =
-                    if (nameChoices[settingsCdocNameChoiceInt.intValue] == manualKeyTransferText) {
-                        getCDOC2FetchURL(customDefaultCDOC2FetchUrl)
-                    } else {
-                        settingsCDOC2FetchURL.value
-                    },
+                text = valueCDOC2FetchUrl,
                 selection = TextRange.Zero,
             )
         postUrlText =
             TextFieldValue(
-                text =
-                    if (nameChoices[settingsCdocNameChoiceInt.intValue] == manualKeyTransferText) {
-                        getCDOC2PostURL(customDefaultCDOC2PostUrl)
-                    } else {
-                        settingsCDOC2PostURL.value
-                    },
+                text = valueCDOC2PostUrl,
                 selection = TextRange.Zero,
             )
     }
@@ -358,7 +339,6 @@ fun EncryptionServicesSettingsScreen(
     val buttonName = stringResource(id = R.string.button_name)
 
     var openOptionChooserDialog by remember { mutableStateOf(false) }
-    var textFieldSize by remember { mutableStateOf(Size.Zero) }
     val interactionSource = remember { MutableInteractionSource() }
     val nameFocusRequester = remember { FocusRequester() }
     val uuidFocusRequester = remember { FocusRequester() }
@@ -392,6 +372,7 @@ fun EncryptionServicesSettingsScreen(
                 sharedMenuViewModel = sharedMenuViewModel,
                 title = R.string.main_settings_crypto_services_title,
                 onLeftButtonClick = {
+                    saveParameters()
                     navController.navigateUp()
                 },
                 onRightSecondaryButtonClick = {
@@ -433,8 +414,8 @@ fun EncryptionServicesSettingsScreen(
                             .fillMaxWidth()
                             .padding(SPadding)
                             .clickable {
-                                settingsCdocServiceChoice.value = CDOCSetting.CDOC1.name
-                                setCdocSetting(CDOCSetting.CDOC1)
+                                settingsCdocServiceChoice.value = CDOCSetting.CDOC1
+                                setCdocSetting(settingsCdocServiceChoice.value)
                             },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -451,9 +432,9 @@ fun EncryptionServicesSettingsScreen(
                                 .semantics {
                                     contentDescription = useCDOC1Label
                                 },
-                        selected = settingsCdocServiceChoice.value == CDOCSetting.CDOC1.name,
+                        selected = settingsCdocServiceChoice.value == CDOCSetting.CDOC1,
                         onClick = {
-                            settingsCdocServiceChoice.value = CDOCSetting.CDOC1.name
+                            settingsCdocServiceChoice.value = CDOCSetting.CDOC1
                             setCdocSetting(CDOCSetting.CDOC1)
                         },
                     )
@@ -484,8 +465,8 @@ fun EncryptionServicesSettingsScreen(
                         modifier =
                             modifier
                                 .clickable {
-                                    settingsCdocServiceChoice.value = CDOCSetting.CDOC2.name
-                                    setCdocSetting(CDOCSetting.CDOC2)
+                                    settingsCdocServiceChoice.value = CDOCSetting.CDOC2
+                                    setCdocSetting(settingsCdocServiceChoice.value)
                                 },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -503,15 +484,15 @@ fun EncryptionServicesSettingsScreen(
                                     .semantics {
                                         contentDescription = useCDOC2Label
                                     },
-                            selected = settingsCdocServiceChoice.value == CDOCSetting.CDOC2.name,
+                            selected = settingsCdocServiceChoice.value == CDOCSetting.CDOC2,
                             onClick = {
-                                settingsCdocServiceChoice.value = CDOCSetting.CDOC2.name
-                                setCdocSetting(CDOCSetting.CDOC2)
+                                settingsCdocServiceChoice.value = CDOCSetting.CDOC2
+                                setCdocSetting(settingsCdocServiceChoice.value)
                             },
                         )
                     }
 
-                    if (settingsCdocServiceChoice.value == CDOCSetting.CDOC2.name) {
+                    if (settingsCdocServiceChoice.value == CDOCSetting.CDOC2) {
                         Spacer(modifier = modifier.height(LPadding))
 
                         SettingsSwitchItem(
@@ -519,7 +500,6 @@ fun EncryptionServicesSettingsScreen(
                             checked = useKeyTransfer.value,
                             onCheckedChange = {
                                 useKeyTransfer.value = it
-                                setUseOnlineEncryption(it)
                                 saveParameters()
                             },
                             title = keyTransferText,
@@ -547,10 +527,7 @@ fun EncryptionServicesSettingsScreen(
                                     modifier =
                                         modifier
                                             .fillMaxWidth()
-                                            .focusRequester(nameFocusRequester)
-                                            .onGloballyPositioned { coordinates ->
-                                                textFieldSize = coordinates.size.toSize()
-                                            },
+                                            .focusRequester(nameFocusRequester),
                                     trailingIcon = {
                                         Icon(
                                             imageVector =
@@ -634,7 +611,7 @@ fun EncryptionServicesSettingsScreen(
                             ) {
                                 OutlinedTextField(
                                     enabled =
-                                        settingsCdocServiceChoice.value == CDOCSetting.CDOC2.name &&
+                                        settingsCdocServiceChoice.value == CDOCSetting.CDOC2 &&
                                             useKeyTransfer.value &&
                                             !useDefaultKeyTransferServer.value,
                                     value = uuidText,
@@ -714,7 +691,7 @@ fun EncryptionServicesSettingsScreen(
                             ) {
                                 OutlinedTextField(
                                     enabled =
-                                        settingsCdocServiceChoice.value == CDOCSetting.CDOC2.name &&
+                                        settingsCdocServiceChoice.value == CDOCSetting.CDOC2 &&
                                             useKeyTransfer.value &&
                                             !useDefaultKeyTransferServer.value,
                                     value = fetchUrlText,
@@ -795,7 +772,7 @@ fun EncryptionServicesSettingsScreen(
                             ) {
                                 OutlinedTextField(
                                     enabled =
-                                        settingsCdocServiceChoice.value == CDOCSetting.CDOC2.name &&
+                                        settingsCdocServiceChoice.value == CDOCSetting.CDOC2 &&
                                             useKeyTransfer.value &&
                                             !useDefaultKeyTransferServer.value,
                                     value = postUrlText,
@@ -863,7 +840,7 @@ fun EncryptionServicesSettingsScreen(
                                     }
                                 }
                             }
-                            if (settingsCdocServiceChoice.value == CDOCSetting.CDOC2.name &&
+                            if (settingsCdocServiceChoice.value == CDOCSetting.CDOC2 &&
                                 useKeyTransfer.value &&
                                 !useDefaultKeyTransferServer.value
                             ) {

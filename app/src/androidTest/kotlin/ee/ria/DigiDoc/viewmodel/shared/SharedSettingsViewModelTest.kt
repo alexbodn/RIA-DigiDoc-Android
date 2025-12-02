@@ -29,6 +29,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.gson.Gson
 import ee.ria.DigiDoc.common.Constant.DIR_TSA_CERT
+import ee.ria.DigiDoc.common.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.common.testfiles.asset.AssetFile
 import ee.ria.DigiDoc.configuration.ConfigurationProperty
 import ee.ria.DigiDoc.configuration.ConfigurationSignatureVerifierImpl
@@ -46,7 +47,6 @@ import ee.ria.DigiDoc.manager.ActivityManager
 import ee.ria.DigiDoc.network.proxy.ManualProxy
 import ee.ria.DigiDoc.network.proxy.ProxySetting
 import ee.ria.DigiDoc.network.siva.SivaSetting
-import ee.ria.DigiDoc.utils.Constant
 import kotlinx.coroutines.runBlocking
 import org.apache.commons.io.FileUtils
 import org.junit.Assert.assertEquals
@@ -158,7 +158,7 @@ class SharedSettingsViewModelTest {
         viewModel.resetToDefaultSettings()
 
         // resetSigningSettings
-        assertEquals(Constant.Defaults.DEFAULT_UUID_VALUE, dataStore.getSettingsUUID())
+        assertEquals(DEFAULT_UUID_VALUE, dataStore.getSettingsUUID())
         assertEquals("", dataStore.getSettingsTSAUrl())
         assertFalse(dataStore.getSettingsAskRoleAndAddress())
         assertFalse(dataStore.getIsTsaCertificateViewVisible())

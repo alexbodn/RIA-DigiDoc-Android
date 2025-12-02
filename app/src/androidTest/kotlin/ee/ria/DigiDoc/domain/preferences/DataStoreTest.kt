@@ -25,6 +25,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
 import androidx.test.platform.app.InstrumentationRegistry
+import ee.ria.DigiDoc.common.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.common.preferences.EncryptedPreferences
 import ee.ria.DigiDoc.configuration.repository.ConfigurationRepository
 import ee.ria.DigiDoc.domain.model.methods.SigningMethod
@@ -36,7 +37,6 @@ import ee.ria.DigiDoc.libdigidoclib.init.Initialization
 import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.network.proxy.ProxySetting
 import ee.ria.DigiDoc.network.siva.SivaSetting
-import ee.ria.DigiDoc.utils.Constant.Defaults.DEFAULT_UUID_VALUE
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -383,14 +383,14 @@ class DataStoreTest {
     fun dataStore_setCdocSetting_success() {
         dataStore.setCdocSetting(CDOCSetting.CDOC2)
 
-        val result = dataStore.getCdocSetting()
+        val result = dataStore.getCdocSetting(false)
 
         assertEquals(CDOCSetting.CDOC2, result)
     }
 
     @Test
     fun dataStore_getCdocSetting_success() {
-        val result = dataStore.getCdocSetting()
+        val result = dataStore.getCdocSetting(false)
 
         assertEquals(CDOCSetting.CDOC1, result)
     }

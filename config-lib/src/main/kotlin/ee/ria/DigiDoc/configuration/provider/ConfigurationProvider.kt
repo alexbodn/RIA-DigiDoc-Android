@@ -28,6 +28,7 @@ data class ConfigurationProvider(
     @SerializedName("META-INF") val metaInf: MetaInf,
     @SerializedName("SIVA-URL") val sivaUrl: String,
     @SerializedName("CDOC2-CONF") val cdoc2Conf: Map<String, CDOC2Conf>,
+    @SerializedName("CDOC2-DEFAULT") val cdoc2Default: Boolean?,
     @SerializedName("CDOC2-USE-KEYSERVER") val cdoc2UseKeyServer: Boolean,
     @SerializedName("CDOC2-DEFAULT-KEYSERVER") val cdoc2DefaultKeyServer: String,
     @SerializedName("TSL-URL") val tslUrl: String,

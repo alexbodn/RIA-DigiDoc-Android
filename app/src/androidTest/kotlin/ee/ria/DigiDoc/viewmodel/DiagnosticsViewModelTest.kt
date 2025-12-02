@@ -31,6 +31,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.gson.Gson
 import ee.ria.DigiDoc.R
+import ee.ria.DigiDoc.common.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.configuration.ConfigurationProperty
 import ee.ria.DigiDoc.configuration.ConfigurationSignatureVerifierImpl
 import ee.ria.DigiDoc.configuration.loader.ConfigurationLoader
@@ -47,7 +48,6 @@ import ee.ria.DigiDoc.libdigidoclib.init.Initialization
 import ee.ria.DigiDoc.libdigidoclib.init.LibdigidocLibraryLoader
 import ee.ria.DigiDoc.network.proxy.ManualProxy
 import ee.ria.DigiDoc.network.proxy.ProxySetting
-import ee.ria.DigiDoc.utils.Constant.Defaults.DEFAULT_UUID_VALUE
 import ee.ria.DigiDoc.utilsLib.file.FileUtil
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertTrue
@@ -113,15 +113,16 @@ class DiagnosticsViewModelTest {
             configurationUpdateDate = null,
             cdoc2Conf =
                 mapOf(
-                    "00000000-0000-0000-0000-000000000000" to
+                    DEFAULT_UUID_VALUE to
                         ConfigurationProvider.CDOC2Conf(
                             name = "RIA",
                             post = "https://cdoc2.id.ee:8443",
                             fetch = "https://cdoc2.id.ee:8444",
                         ),
                 ),
+            cdoc2Default = false,
             cdoc2UseKeyServer = false,
-            cdoc2DefaultKeyServer = "00000000-0000-0000-0000-000000000000",
+            cdoc2DefaultKeyServer = DEFAULT_UUID_VALUE,
         )
 
     private lateinit var proxySetting: ProxySetting
@@ -289,7 +290,7 @@ class DiagnosticsViewModelTest {
         val diagnosticsFileName =
             "ria_digidoc_${viewModel.getAppVersion()}.${viewModel.getAppVersionCode()}_diagnostics.log"
         val diagnosticsFilePath: String = File(context.filesDir.path, "diagnostics").path
-        val resultFile = viewModel.createDiagnosticsFile(context)
+        val resultFile = viewModel.createDiagnosticsFile(context, configurationProvider)
 
         assertEquals(File(diagnosticsFilePath, diagnosticsFileName).path, resultFile.path)
         assertTrue(resultFile.exists())
@@ -375,7 +376,7 @@ class DiagnosticsViewModelTest {
         dataStore.setCdocSetting(CDOCSetting.CDOC2)
         viewModel.updatedConfiguration = MutableLiveData(configurationProvider)
 
-        val isCdoc2Selected = viewModel.isCdoc2Selected()
+        val isCdoc2Selected = viewModel.isCdoc2Selected(configurationProvider)
 
         assertTrue(isCdoc2Selected)
     }
@@ -385,7 +386,7 @@ class DiagnosticsViewModelTest {
         dataStore.setCdocSetting(CDOCSetting.CDOC1)
         viewModel.updatedConfiguration = MutableLiveData(configurationProvider)
 
-        val isCdoc2Selected = viewModel.isCdoc2Selected()
+        val isCdoc2Selected = viewModel.isCdoc2Selected(configurationProvider)
 
         assertFalse(isCdoc2Selected)
     }
@@ -396,7 +397,7 @@ class DiagnosticsViewModelTest {
         dataStore.setUseOnlineEncryption(true)
         viewModel.updatedConfiguration = MutableLiveData(configurationProvider)
 
-        val isCdoc2KeyServerUsed = viewModel.isCdoc2KeyServerUsed()
+        val isCdoc2KeyServerUsed = viewModel.isCdoc2KeyServerUsed(configurationProvider)
 
         assertTrue(isCdoc2KeyServerUsed)
     }
@@ -407,7 +408,7 @@ class DiagnosticsViewModelTest {
         dataStore.setUseOnlineEncryption(false)
         viewModel.updatedConfiguration = MutableLiveData(configurationProvider)
 
-        val isCdoc2KeyServerUsed = viewModel.isCdoc2KeyServerUsed()
+        val isCdoc2KeyServerUsed = viewModel.isCdoc2KeyServerUsed(configurationProvider)
 
         assertFalse(isCdoc2KeyServerUsed)
     }
@@ -418,11 +419,12 @@ class DiagnosticsViewModelTest {
         dataStore.setCDOC2UUID(DEFAULT_UUID_VALUE)
         viewModel.updatedConfiguration = MutableLiveData(configurationProvider)
 
-        val cdoc2KeyServerUUID = viewModel.getCdoc2KeyServerUUID()
+        val cdoc2KeyServerUUID = viewModel.getCdoc2KeyServerUUID(configurationProvider)
 
         assertEquals(DEFAULT_UUID_VALUE, cdoc2KeyServerUUID)
     }
 
+    @Suppress("SameParameterValue")
     private fun createTempFileWithStringContent(
         filename: String,
         content: String,

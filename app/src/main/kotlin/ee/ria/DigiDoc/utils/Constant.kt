@@ -68,8 +68,4 @@ object Constant {
         const val MYEID_SCREEN = "myeid_screen_route"
         const val MYEID_PIN_SCREEN = "myeid_pin_screen_route"
     }
-
-    object Defaults {
-        const val DEFAULT_UUID_VALUE = "00000000-0000-0000-0000-000000000000"
-    }
 }
