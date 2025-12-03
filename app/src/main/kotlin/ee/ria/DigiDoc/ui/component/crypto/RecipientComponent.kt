@@ -72,6 +72,7 @@ import ee.ria.DigiDoc.utilsLib.container.NameUtil.formatCompanyName
 import ee.ria.DigiDoc.utilsLib.container.NameUtil.formatName
 import ee.ria.DigiDoc.utilsLib.date.DateUtil.dateFormat
 import ee.ria.DigiDoc.utilsLib.validator.PersonalCodeValidator
+import java.util.Date
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -83,7 +84,6 @@ fun RecipientComponent(
     onClick: (Addressee) -> Unit,
     isCDOC2Container: Boolean = false,
 ) {
-    val context = LocalContext.current
     val recipientText = stringResource(R.string.crypto_recipient_title)
     val buttonName = stringResource(id = R.string.button_name)
 
@@ -114,6 +114,7 @@ fun RecipientComponent(
                         formatCompanyName(recipient.identifier, recipient.serialNumber)
                     }
                 val certTypeText = getRecipientCertTypeText(LocalContext.current, recipient.certType)
+                var expired = false
                 var certValidTo =
                     recipient.validTo
                         ?.let {
@@ -130,17 +131,22 @@ fun RecipientComponent(
                 val decryptionValidToText =
                     if (isCDOC2Container) {
                         certValidTo = ""
-                        recipient.validTo
-                            ?.let {
-                                dateFormat.format(
-                                    it,
+
+                        recipient.validTo?.let { validToDate ->
+                            val formattedDate = dateFormat.format(validToDate)
+                            if (validToDate.before(Date())) {
+                                expired = true
+                                stringResource(
+                                    R.string.crypto_decryption_expired,
+                                    formattedDate,
                                 )
-                            }?.let {
+                            } else {
                                 stringResource(
                                     R.string.crypto_decryption_valid_to,
-                                    it,
+                                    formattedDate,
                                 )
-                            } ?: ""
+                            }
+                        } ?: ""
                     } else {
                         ""
                     }
@@ -234,6 +240,7 @@ fun RecipientComponent(
                                 if (decryptionValidToText.isNotEmpty()) {
                                     ColoredRecipientStatusText(
                                         text = decryptionValidToText,
+                                        expired = expired,
                                         modifier =
                                             modifier
                                                 .padding(vertical = SBorder)

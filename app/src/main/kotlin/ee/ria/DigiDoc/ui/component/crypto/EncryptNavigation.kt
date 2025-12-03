@@ -789,7 +789,7 @@ fun EncryptNavigation(
                                 leftActionButtonName = R.string.sign_button,
                                 rightActionButtonName = rightActionButtonName,
                                 leftActionButtonContentDescription = R.string.sign_button,
-                                rightActionButtonContentDescription = R.string.decrypt_button_accessibility,
+                                rightActionButtonContentDescription = rightActionButtonName,
                                 onLeftActionButtonClick = onSignActionClick,
                                 onRightActionButtonClick = {
                                     if (encryptViewModel.isDecryptButtonShown(cryptoContainer, isNestedContainer)) {

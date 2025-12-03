@@ -30,15 +30,18 @@ import androidx.compose.ui.platform.testTag
 import ee.ria.DigiDoc.ui.component.shared.TagBadge
 import ee.ria.DigiDoc.ui.theme.Green_2_50
 import ee.ria.DigiDoc.ui.theme.Green_2_700
+import ee.ria.DigiDoc.ui.theme.Red50
+import ee.ria.DigiDoc.ui.theme.Red800
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ColoredRecipientStatusText(
     text: String,
     modifier: Modifier = Modifier,
+    expired: Boolean = false,
 ) {
-    val tagBackgroundColor = Green_2_50
-    val tagContentColor = Green_2_700
+    val tagBackgroundColor = if (!expired) Green_2_50 else Red50
+    val tagContentColor = if (!expired) Green_2_700 else Red800
 
     FlowRow(
         modifier = modifier,
