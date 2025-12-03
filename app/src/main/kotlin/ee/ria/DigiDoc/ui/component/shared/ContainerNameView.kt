@@ -52,7 +52,6 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -87,9 +86,12 @@ fun ContainerNameView(
     onRightActionButtonClick: () -> Unit = {},
     onMoreOptionsActionButtonClick: () -> Unit = {},
 ) {
-    val context = LocalContext.current
     val leftActionButtonContentDescriptionText = stringResource(leftActionButtonContentDescription)
-    val rightActionButtonContentDescriptionText = stringResource(rightActionButtonContentDescription)
+
+    var rightActionButtonContentDescriptionText = ""
+    if (showRightActionButton) {
+        rightActionButtonContentDescriptionText = stringResource(rightActionButtonContentDescription)
+    }
 
     val containerTitleText = stringResource(R.string.container_title)
 

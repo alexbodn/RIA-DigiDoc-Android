@@ -45,6 +45,7 @@ import ee.ria.DigiDoc.viewmodel.shared.SharedContainerViewModel
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -99,7 +100,20 @@ class EncryptViewModel
         fun isDecryptButtonShown(
             cryptoContainer: CryptoContainer?,
             isNestedContainer: Boolean,
-        ): Boolean = isEncryptedContainer(cryptoContainer) && !isNestedContainer
+        ): Boolean {
+            val base = isEncryptedContainer(cryptoContainer) && !isNestedContainer
+            if (!base) return false
+
+            val now = Date()
+            val allExpired =
+                cryptoContainer
+                    ?.recipients
+                    ?.all { recipient ->
+                        recipient.validTo?.before(now) == true
+                    } ?: false
+
+            return !allExpired
+        }
 
         fun isEncryptButtonShown(
             cryptoContainer: CryptoContainer?,
