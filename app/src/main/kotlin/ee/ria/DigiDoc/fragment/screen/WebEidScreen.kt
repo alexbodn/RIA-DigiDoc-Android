@@ -53,7 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.asFlow
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -254,7 +254,9 @@ fun WebEidScreen(
                 modifier = Modifier.semantics { heading() },
             )
             if (authRequest != null) {
-                WebEidAuthInfo(authRequest = authRequest)
+                if (!isWebEidAuthenticating) {
+                    WebEidAuthInfo(authRequest = authRequest)
+                }
 
                 NFCView(
                     activity = activity,
@@ -291,10 +293,14 @@ fun WebEidScreen(
                     webEidViewModel = viewModel,
                 )
 
-                WebEidRememberMe(
-                    rememberMe = rememberMe,
-                    onRememberMeChange = { rememberMe = it },
-                )
+                if (!isWebEidAuthenticating) {
+                    Spacer(modifier = Modifier.height(SPadding))
+
+                    WebEidRememberMe(
+                        rememberMe = rememberMe,
+                        onRememberMeChange = { rememberMe = it },
+                    )
+                }
             } else if (signRequest != null) {
                 val responseUri = signRequest.responseUri.lowercase()
                 val isCertificateFlow = responseUri.contains("/certificate") && !responseUri.contains("/signature")
@@ -456,9 +462,7 @@ fun WebEidScreen(
 }
 
 @Composable
-private fun WebEidAuthInfo(
-    authRequest: WebEidAuthRequest,
-) {
+private fun WebEidAuthInfo(authRequest: WebEidAuthRequest) {
     Column(
         modifier = Modifier.fillMaxWidth(),
     ) {
