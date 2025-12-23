@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -46,9 +48,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.asFlow
 import androidx.navigation.NavHostController
@@ -56,6 +60,7 @@ import androidx.navigation.compose.rememberNavController
 import ee.ria.DigiDoc.R
 import ee.ria.DigiDoc.domain.model.IdentityAction
 import ee.ria.DigiDoc.ui.component.menu.SettingsMenuBottomSheet
+import ee.ria.DigiDoc.ui.component.settings.SettingsSwitchItem
 import ee.ria.DigiDoc.ui.component.shared.DynamicText
 import ee.ria.DigiDoc.ui.component.shared.InvisibleElement
 import ee.ria.DigiDoc.ui.component.shared.TopBar
@@ -70,6 +75,7 @@ import ee.ria.DigiDoc.viewmodel.WebEidViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedContainerViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedMenuViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedSettingsViewModel
+import ee.ria.DigiDoc.webEid.domain.model.WebEidAuthRequest
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.filterNotNull
@@ -105,6 +111,7 @@ fun WebEidScreen(
     val messages by SnackBarManager.messages.collectAsState(emptyList())
     val dialogError by viewModel.dialogError.asFlow().collectAsState(0)
     val showErrorDialog = rememberSaveable { mutableStateOf(false) }
+    var rememberMe by rememberSaveable { mutableStateOf(true) }
 
     LaunchedEffect(messages) {
         messages.forEach { message ->
@@ -247,35 +254,12 @@ fun WebEidScreen(
                 modifier = Modifier.semantics { heading() },
             )
             if (authRequest != null) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = stringResource(R.string.web_eid_auth_consent_text),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center,
-                    )
-                    Text(
-                        text = authRequest.origin.take(80),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = stringResource(R.string.web_eid_requests_authentication),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+                WebEidAuthInfo(authRequest = authRequest)
 
                 NFCView(
                     activity = activity,
                     identityAction = IdentityAction.AUTH,
+                    rememberMe = rememberMe,
                     isSigning = false,
                     isDecrypting = false,
                     isWebEidAuthenticating = isWebEidAuthenticating,
@@ -305,6 +289,11 @@ fun WebEidScreen(
                     isValidToDecrypt = {},
                     isAuthenticated = { _, _ -> },
                     webEidViewModel = viewModel,
+                )
+
+                WebEidRememberMe(
+                    rememberMe = rememberMe,
+                    onRememberMeChange = { rememberMe = it },
                 )
             } else if (signRequest != null) {
                 val responseUri = signRequest.responseUri.lowercase()
@@ -463,6 +452,80 @@ fun WebEidScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun WebEidAuthInfo(
+    authRequest: WebEidAuthRequest,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = stringResource(R.string.web_eid_auth_request_from),
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Left,
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = authRequest.origin.take(80),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Left,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = stringResource(R.string.web_eid_auth_details_forwarded),
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Left,
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = "NAME, PERSONAL IDENTIFICATION CODE",
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Left,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = stringResource(R.string.web_eid_auth_consent_text),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Left,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun WebEidRememberMe(
+    rememberMe: Boolean,
+    onRememberMeChange: (Boolean) -> Unit,
+) {
+    val rememberMeText = stringResource(R.string.signature_update_remember_me)
+
+    SettingsSwitchItem(
+        checked = rememberMe,
+        onCheckedChange = onRememberMeChange,
+        title = rememberMeText,
+        contentDescription = rememberMeText,
+        testTag = "webEidRememberMeSwitch",
+    )
+
+    if (rememberMe) {
+        Text(
+            text = stringResource(R.string.web_eid_remember_me_message),
+        )
     }
 }
 

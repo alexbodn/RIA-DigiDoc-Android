@@ -664,6 +664,9 @@
     <string name="web_eid_auth_title">Authenticate with ID-card</string>
     <string name="web_eid_auth_no_payload">No auth payload received.</string>
     <string name="web_eid_auth_consent_text">By authenticating, I agree to the transfer of my name and personal identification code to the service provider.</string>
+    <string name="web_eid_auth_request_from">Authentication request from:</string>
+    <string name="web_eid_auth_details_forwarded">Details forwarded:</string>
+    <string name="web_eid_remember_me_message">The entered data will be filled the next time you authenticate.</string>
     <string name="web_eid_get_certificate">Confirm</string>
     <string name="web_eid_certificate_title">Select a certificate</string>
     <string name="web_eid_certificate_consent_text">By choosing the certificate, I agree to the transfer of my name and personal identification code to the service provider.</string>
