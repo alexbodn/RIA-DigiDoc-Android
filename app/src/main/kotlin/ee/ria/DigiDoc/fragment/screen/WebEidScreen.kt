@@ -304,35 +304,11 @@ fun WebEidScreen(
             } else if (signRequest != null) {
                 val responseUri = signRequest.responseUri.lowercase()
                 val isCertificateFlow = responseUri.contains("/certificate") && !responseUri.contains("/signature")
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = stringResource(R.string.web_eid_certificate_consent_text),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = XSPadding),
-                    )
-                    Text(
-                        text = signRequest.origin.take(80),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text =
-                            if (isCertificateFlow) {
-                                stringResource(R.string.web_eid_requests_certificate)
-                            } else {
-                                stringResource(R.string.web_eid_requests_signing)
-                            },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center,
+
+                if (!isWebEidAuthenticating) {
+                    WebEidSignOrCertificateInfo(
+                        origin = signRequest.origin,
+                        isCertificateFlow = isCertificateFlow,
                     )
                 }
 
@@ -372,6 +348,7 @@ fun WebEidScreen(
                         isSigning = false,
                         isDecrypting = false,
                         isWebEidAuthenticating = isWebEidAuthenticating,
+                        canNumberReadOnly = true,
                         onError = {
                             isWebEidAuthenticating = false
                             cancelWebEidSignAction()
@@ -486,7 +463,7 @@ private fun WebEidAuthInfo(authRequest: WebEidAuthRequest) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = stringResource(R.string.web_eid_auth_details_forwarded),
+            text = stringResource(R.string.web_eid_details_forwarded),
             style = MaterialTheme.typography.labelMedium,
             textAlign = TextAlign.Left,
         )
@@ -503,6 +480,64 @@ private fun WebEidAuthInfo(authRequest: WebEidAuthRequest) {
 
         Text(
             text = stringResource(R.string.web_eid_auth_consent_text),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Left,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun WebEidSignOrCertificateInfo(
+    origin: String,
+    isCertificateFlow: Boolean,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text =
+                if (isCertificateFlow) {
+                    stringResource(R.string.web_eid_cert_request_from)
+                } else {
+                    stringResource(R.string.web_eid_sign_request_from)
+                },
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Left,
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = origin.take(80),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Left,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = stringResource(R.string.web_eid_details_forwarded),
+            style = MaterialTheme.typography.labelMedium,
+            textAlign = TextAlign.Left,
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = "NAME, PERSONAL IDENTIFICATION CODE",
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.Left,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = stringResource(R.string.web_eid_certificate_consent_text),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Left,

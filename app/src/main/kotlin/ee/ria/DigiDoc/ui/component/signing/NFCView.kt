@@ -166,6 +166,7 @@ fun NFCView(
     cancelWebEidSignAction: (() -> Unit) -> Unit = {},
     isAuthenticated: (Boolean, IdCardData) -> Unit,
     webEidViewModel: WebEidViewModel? = null,
+    canNumberReadOnly: Boolean = false,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -757,6 +758,8 @@ fun NFCView(
                                         )
                                 }
                             },
+                            readOnly = canNumberReadOnly,
+                            enabled = !canNumberReadOnly,
                             modifier =
                                 modifier
                                     .focusRequester(canNumberFocusRequester)
@@ -774,7 +777,7 @@ fun NFCView(
                                         contentDescription = canNumberLocationText
                                     }.testTag("signatureUpdateNFCCAN"),
                             trailingIcon = {
-                                if (!isTalkBackEnabled(context) && canNumber.text.isNotEmpty()) {
+                                if (!isTalkBackEnabled(context) && canNumber.text.isNotEmpty() && !canNumberReadOnly) {
                                     IconButton(onClick = {
                                         canNumber = TextFieldValue("")
                                     }) {
