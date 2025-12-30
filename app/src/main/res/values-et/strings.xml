@@ -666,6 +666,7 @@
     <string name="web_eid_auth_consent_text">Autentides nõustun oma nime ja isikukoodi edastamisega teenusepakkujale.</string>
     <string name="web_eid_auth_request_from">Autentimispäring:</string>
     <string name="web_eid_details_forwarded">Edastatavad andmed:</string>
+    <string name="web_eid_name_personal_identification_code">NIMI, ISIKUKOOD</string>
     <string name="web_eid_remember_me_message">Järgmisel kasutamisel on andmeväljad eeltäidetud.</string>
     <string name="web_eid_get_certificate">Kinnita</string>
     <string name="web_eid_certificate_title">Vali sertifikaat</string>

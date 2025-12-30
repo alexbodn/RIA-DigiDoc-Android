@@ -112,6 +112,7 @@ fun WebEidScreen(
     val dialogError by viewModel.dialogError.asFlow().collectAsState(0)
     val showErrorDialog = rememberSaveable { mutableStateOf(false) }
     var rememberMe by rememberSaveable { mutableStateOf(true) }
+    val hasStoredCanNumber = sharedSettingsViewModel.dataStore.getCanNumber().isNotEmpty()
 
     LaunchedEffect(messages) {
         messages.forEach { message ->
@@ -316,6 +317,7 @@ fun WebEidScreen(
                     NFCView(
                         activity = activity,
                         identityAction = IdentityAction.CERTIFICATE,
+                        rememberMe = rememberMe,
                         isCertificate = true,
                         showPinField = false,
                         isSigning = false,
@@ -340,6 +342,15 @@ fun WebEidScreen(
                         isAuthenticated = { _, _ -> },
                         webEidViewModel = viewModel,
                     )
+
+                    if (!isWebEidAuthenticating) {
+                        Spacer(modifier = Modifier.height(SPadding))
+
+                        WebEidRememberMe(
+                            rememberMe = rememberMe,
+                            onRememberMeChange = { rememberMe = it },
+                        )
+                    }
                 } else {
                     NFCView(
                         activity = activity,
@@ -348,7 +359,7 @@ fun WebEidScreen(
                         isSigning = false,
                         isDecrypting = false,
                         isWebEidAuthenticating = isWebEidAuthenticating,
-                        canNumberReadOnly = true,
+                        canNumberReadOnly = hasStoredCanNumber,
                         onError = {
                             isWebEidAuthenticating = false
                             cancelWebEidSignAction()
@@ -471,7 +482,7 @@ private fun WebEidAuthInfo(authRequest: WebEidAuthRequest) {
         Spacer(modifier = Modifier.height(2.dp))
 
         Text(
-            text = "NAME, PERSONAL IDENTIFICATION CODE",
+            text = stringResource(R.string.web_eid_name_personal_identification_code),
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Left,
         )
@@ -529,7 +540,7 @@ private fun WebEidSignOrCertificateInfo(
         Spacer(modifier = Modifier.height(2.dp))
 
         Text(
-            text = "NAME, PERSONAL IDENTIFICATION CODE",
+            text = stringResource(R.string.web_eid_name_personal_identification_code),
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Left,
         )
