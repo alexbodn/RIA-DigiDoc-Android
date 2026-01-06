@@ -649,7 +649,9 @@ fun NFCView(
                             }
                         }
                         signWebEidAction {
-                            saveFormParams()
+                            if (sharedSettingsViewModel.dataStore.getCanNumber().isNotEmpty()) {
+                                saveFormParams()
+                            }
                             scope.launch(IO) {
                                 val isCertificateFlow = responseUriString.contains("/certificate", ignoreCase = true)
                                 val cachedCert = sharedSettingsViewModel.dataStore.getSigningCertificate()
