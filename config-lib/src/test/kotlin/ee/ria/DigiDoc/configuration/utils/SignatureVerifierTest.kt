@@ -40,12 +40,12 @@ class SignatureVerifierTest {
                 }
         try {
             classLoader.getResourceAsStream("config.json").use { configJsonStream ->
-                classLoader.getResourceAsStream("config.rsa").use { configSignatureStream ->
+                classLoader.getResourceAsStream("config.ecc").use { configSignatureStream ->
                     classLoader
-                        .getResourceAsStream("config.pub")
+                        .getResourceAsStream("config.ecpub")
                         .use { configSignaturePublicKeyStream ->
-                            val configJson: String =
-                                FileUtil.readFileContent(configJsonStream)
+                            val configJson: ByteArray =
+                                FileUtil.readFileContentBytes(configJsonStream)
                             val configSignature: ByteArray =
                                 FileUtil.readFileContentBytes(configSignatureStream)
                             val configSignaturePublicKey: String =
@@ -54,7 +54,7 @@ class SignatureVerifierTest {
                                 SignatureVerifier.verify(
                                     configSignature,
                                     configSignaturePublicKey,
-                                    configJson,
+                                    configJson.toString(Charsets.UTF_8),
                                 ),
                             )
                         }
@@ -77,12 +77,12 @@ class SignatureVerifierTest {
                 }
         try {
             classLoader.getResourceAsStream("config.json").use { configJsonStream ->
-                classLoader.getResourceAsStream("config.rsa").use { configSignatureStream ->
+                classLoader.getResourceAsStream("config.ecc").use { configSignatureStream ->
                     classLoader
-                        .getResourceAsStream("config.pub")
+                        .getResourceAsStream("config.ecpub")
                         .use { configSignaturePublicKeyStream ->
-                            val configJson: String =
-                                FileUtil.readFileContent(configJsonStream)
+                            val configJson: ByteArray =
+                                FileUtil.readFileContentBytes(configJsonStream)
                             val configSignature: ByteArray =
                                 FileUtil.readFileContentBytes(configSignatureStream)
                             val configSignaturePublicKey: String =
@@ -91,7 +91,7 @@ class SignatureVerifierTest {
                                 SignatureVerifier.verify(
                                     configSignature,
                                     configSignaturePublicKey,
-                                    configJson + "a",
+                                    configJson.toString(Charsets.UTF_8) + "a",
                                 ),
                             )
                         }

@@ -31,11 +31,11 @@ interface CentralConfigurationRepository {
     suspend fun fetchConfiguration(): String
 
     @Throws(Exception::class)
-    @GET("config.pub")
+    @GET("config.ecpub")
     suspend fun fetchPublicKey(): String
 
     @Throws(Exception::class)
-    @GET("config.rsa")
+    @GET("config.ecc")
     suspend fun fetchSignature(): String
 
     suspend fun setupProxy(

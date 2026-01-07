@@ -62,8 +62,8 @@ class ConfigurationCacheTest {
 
         assertEquals(3, File(context.cacheDir, CACHE_CONFIG_FOLDER).listFiles()?.size ?: 0)
         assertTrue(File(File(context.cacheDir, CACHE_CONFIG_FOLDER), "active-config.json").exists())
-        assertTrue(File(File(context.cacheDir, CACHE_CONFIG_FOLDER), "active-config.pub").exists())
-        assertTrue(File(File(context.cacheDir, CACHE_CONFIG_FOLDER), "active-config.rsa").exists())
+        assertTrue(File(File(context.cacheDir, CACHE_CONFIG_FOLDER), "active-config.ecpub").exists())
+        assertTrue(File(File(context.cacheDir, CACHE_CONFIG_FOLDER), "active-config.ecc").exists())
     }
 
     @Test

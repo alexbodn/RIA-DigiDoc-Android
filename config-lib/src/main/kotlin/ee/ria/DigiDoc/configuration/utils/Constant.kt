@@ -38,12 +38,12 @@ object Constant {
         "default-configuration.properties"
 
     const val DEFAULT_CONFIG_JSON = "default-config.json"
-    const val DEFAULT_CONFIG_RSA = "default-config.rsa"
-    const val DEFAULT_CONFIG_PUB = "default-config.pub"
+    const val DEFAULT_CONFIG_RSA = "default-config.ecc"
+    const val DEFAULT_CONFIG_PUB = "default-config.ecpub"
 
     const val CACHED_CONFIG_JSON = "active-config.json"
-    const val CACHED_CONFIG_RSA = "active-config.rsa"
-    const val CACHED_CONFIG_PUB = "active-config.pub"
+    const val CACHED_CONFIG_RSA = "active-config.ecc"
+    const val CACHED_CONFIG_PUB = "active-config.ecpub"
 
     const val CONFIGURATION_PREFERENCES = "ConfigurationPreferences"
     const val CACHE_CONFIG_FOLDER = "/config/"

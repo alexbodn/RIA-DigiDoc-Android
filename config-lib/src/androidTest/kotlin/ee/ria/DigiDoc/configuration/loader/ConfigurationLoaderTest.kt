@@ -110,8 +110,8 @@ class ConfigurationLoaderTest {
 
         propertiesFile = AssetFile.getAssetFileAsFile(context, "config/configuration.properties")
         confFile = AssetFile.getAssetFileAsFile(context, "config/default-config.json")
-        publicKeyFile = AssetFile.getAssetFileAsFile(context, "config/default-config.pub")
-        signatureFile = AssetFile.getAssetFileAsFile(context, "config/default-config.rsa")
+        publicKeyFile = AssetFile.getAssetFileAsFile(context, "config/default-config.ecpub")
+        signatureFile = AssetFile.getAssetFileAsFile(context, "config/default-config.ecc")
 
         File(context.cacheDir, CACHE_CONFIG_FOLDER).mkdirs()
         Files.copy(confFile, File(File(context.cacheDir, CACHE_CONFIG_FOLDER), CACHED_CONFIG_JSON))
