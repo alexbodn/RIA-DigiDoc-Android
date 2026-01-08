@@ -649,14 +649,12 @@ fun NFCView(
                             }
                         }
                         signWebEidAction {
-                            if (sharedSettingsViewModel.dataStore.getCanNumber().isNotEmpty()) {
-                                saveFormParams()
-                            }
                             scope.launch(IO) {
                                 val isCertificateFlow = responseUriString.contains("/certificate", ignoreCase = true)
                                 val cachedCert = sharedSettingsViewModel.dataStore.getSigningCertificate()
 
                                 if (isCertificateFlow) {
+                                    saveFormParams()
                                     if (cachedCert.isNotEmpty()) {
                                         val certBytes = Base64.getDecoder().decode(cachedCert)
                                         webEidViewModel?.handleWebEidCertificateResult(certBytes)
@@ -668,6 +666,9 @@ fun NFCView(
                                         )
                                     }
                                 } else {
+                                    if (sharedSettingsViewModel.dataStore.getCanNumber().isNotEmpty()) {
+                                        saveFormParams()
+                                    }
                                     nfcViewModel.performNFCWebEidSignWorkRequest(
                                         activity = activity,
                                         context = context,
