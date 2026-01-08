@@ -31,13 +31,13 @@ import ee.ria.DigiDoc.configuration.properties.ConfigurationProperties
 import ee.ria.DigiDoc.configuration.provider.ConfigurationProvider
 import ee.ria.DigiDoc.configuration.repository.CentralConfigurationRepository
 import ee.ria.DigiDoc.configuration.utils.ConfigurationUtil
+import ee.ria.DigiDoc.configuration.utils.Constant.CACHED_CONFIG_ECC
+import ee.ria.DigiDoc.configuration.utils.Constant.CACHED_CONFIG_ECPUB
 import ee.ria.DigiDoc.configuration.utils.Constant.CACHED_CONFIG_JSON
-import ee.ria.DigiDoc.configuration.utils.Constant.CACHED_CONFIG_PUB
-import ee.ria.DigiDoc.configuration.utils.Constant.CACHED_CONFIG_RSA
 import ee.ria.DigiDoc.configuration.utils.Constant.CACHE_CONFIG_FOLDER
+import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_CONFIG_ECC
+import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_CONFIG_ECPUB
 import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_CONFIG_JSON
-import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_CONFIG_PUB
-import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_CONFIG_RSA
 import ee.ria.DigiDoc.network.proxy.ManualProxy
 import ee.ria.DigiDoc.network.proxy.ProxySetting
 import ee.ria.DigiDoc.utilsLib.date.DateUtil
@@ -106,8 +106,8 @@ class ConfigurationLoaderImpl
             val cacheDir = File(context.cacheDir, CACHE_CONFIG_FOLDER)
 
             val confFile = File(cacheDir, CACHED_CONFIG_JSON)
-            val publicKeyFile = File(cacheDir, CACHED_CONFIG_PUB)
-            val signatureFile = File(cacheDir, CACHED_CONFIG_RSA)
+            val publicKeyFile = File(cacheDir, CACHED_CONFIG_ECPUB)
+            val signatureFile = File(cacheDir, CACHED_CONFIG_ECC)
 
             if (confFile.exists() && publicKeyFile.exists() && signatureFile.exists()) {
                 val signatureBytes = signatureFile.readBytes()
@@ -159,8 +159,8 @@ class ConfigurationLoaderImpl
             val assets = context.assets
 
             val confData = assets.open("config/${DEFAULT_CONFIG_JSON}").bufferedReader().use { it.readText() }
-            val publicKey = assets.open("config/${DEFAULT_CONFIG_PUB}").bufferedReader().use { it.readText() }
-            val signatureBytes = assets.open("config/${DEFAULT_CONFIG_RSA}").readBytes()
+            val publicKey = assets.open("config/${DEFAULT_CONFIG_ECPUB}").bufferedReader().use { it.readText() }
+            val signatureBytes = assets.open("config/${DEFAULT_CONFIG_ECC}").readBytes()
 
             val signatureText = String(signatureBytes, Charsets.UTF_8)
 
@@ -219,7 +219,7 @@ class ConfigurationLoaderImpl
             proxy: ManualProxy,
         ) {
             val cachedSignature =
-                ConfigurationCache.getCachedFile(context, CACHED_CONFIG_RSA)
+                ConfigurationCache.getCachedFile(context, CACHED_CONFIG_ECC)
 
             val currentSignature = cachedSignature.readBytes()
 

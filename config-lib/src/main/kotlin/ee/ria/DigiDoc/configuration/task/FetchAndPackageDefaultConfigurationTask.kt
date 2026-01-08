@@ -30,9 +30,9 @@ import ee.ria.DigiDoc.configuration.utils.Constant.CONFIGURATION_DOWNLOAD_DATE_P
 import ee.ria.DigiDoc.configuration.utils.Constant.CONFIGURATION_UPDATE_INTERVAL_PROPERTY
 import ee.ria.DigiDoc.configuration.utils.Constant.CONFIGURATION_VERSION_SERIAL_PROPERTY
 import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_CONFIGURATION_PROPERTIES_FILE_NAME
+import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_CONFIG_ECC
+import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_CONFIG_ECPUB
 import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_CONFIG_JSON
-import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_CONFIG_PUB
-import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_CONFIG_RSA
 import ee.ria.DigiDoc.configuration.utils.Constant.DEFAULT_UPDATE_INTERVAL
 import ee.ria.DigiDoc.configuration.utils.Constant.PROPERTIES_FILE_NAME
 import ee.ria.DigiDoc.configuration.utils.Parser
@@ -179,8 +179,8 @@ object FetchAndPackageDefaultConfigurationTask {
 
     private fun storeAsDefaultConfiguration(confData: ConfigurationData) {
         confData.configurationJson?.let { storeFile(DEFAULT_CONFIG_JSON, it) }
-        confData.configurationSignature?.let { storeFile(DEFAULT_CONFIG_RSA, it) }
-        confData.configurationSignaturePublicKey?.let { storeFile(DEFAULT_CONFIG_PUB, it) }
+        confData.configurationSignature?.let { storeFile(DEFAULT_CONFIG_ECC, it) }
+        confData.configurationSignaturePublicKey?.let { storeFile(DEFAULT_CONFIG_ECPUB, it) }
     }
 
     private fun storeApplicationProperties(

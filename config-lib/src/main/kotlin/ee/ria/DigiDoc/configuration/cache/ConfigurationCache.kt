@@ -22,9 +22,9 @@
 package ee.ria.DigiDoc.configuration.cache
 
 import android.content.Context
+import ee.ria.DigiDoc.configuration.utils.Constant.CACHED_CONFIG_ECC
+import ee.ria.DigiDoc.configuration.utils.Constant.CACHED_CONFIG_ECPUB
 import ee.ria.DigiDoc.configuration.utils.Constant.CACHED_CONFIG_JSON
-import ee.ria.DigiDoc.configuration.utils.Constant.CACHED_CONFIG_PUB
-import ee.ria.DigiDoc.configuration.utils.Constant.CACHED_CONFIG_RSA
 import ee.ria.DigiDoc.configuration.utils.Constant.CACHE_CONFIG_FOLDER
 import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil
 import java.io.File
@@ -43,8 +43,8 @@ object ConfigurationCache {
         signature: ByteArray,
     ) {
         cacheFile(context, CACHED_CONFIG_JSON, confData)
-        cacheFile(context, CACHED_CONFIG_PUB, publicKey)
-        cacheFile(context, CACHED_CONFIG_RSA, signature)
+        cacheFile(context, CACHED_CONFIG_ECPUB, publicKey)
+        cacheFile(context, CACHED_CONFIG_ECC, signature)
     }
 
     private fun cacheFile(
@@ -71,6 +71,7 @@ object ConfigurationCache {
         }
     }
 
+    @Suppress("SameParameterValue")
     private fun cacheFile(
         context: Context,
         fileName: String,
