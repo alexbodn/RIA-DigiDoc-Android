@@ -675,7 +675,7 @@
     <string name="web_eid_sign_title">Allkirjasta ID-kaardiga</string>
     <string name="web_eid_cert_request_from">Sertifikaadipäring:</string>
     <string name="web_eid_sign_request_from">Allirjastamispäring:</string>
-    <string name="web_eid_ignore">Ignoreeri</string>
+    <string name="web_eid_cancel">Tühista</string>
     <string name="web_eid_invalid_request_error">Vigane Web eID päring</string>
     <string name="web_eid_request_error">Päringu viga</string>
     <string name="web_eid_invalid_auth_request_error">Vigane autentimispäring</string>

@@ -65,7 +65,6 @@ import ee.ria.DigiDoc.ui.component.shared.DynamicText
 import ee.ria.DigiDoc.ui.component.shared.InvisibleElement
 import ee.ria.DigiDoc.ui.component.shared.TopBar
 import ee.ria.DigiDoc.ui.component.signing.NFCView
-import ee.ria.DigiDoc.ui.theme.Dimensions.MSPadding
 import ee.ria.DigiDoc.ui.theme.Dimensions.SPadding
 import ee.ria.DigiDoc.ui.theme.Dimensions.XSPadding
 import ee.ria.DigiDoc.ui.theme.RIADigiDocTheme
@@ -235,7 +234,7 @@ fun WebEidScreen(
                     .padding(paddingValues)
                     .padding(SPadding)
                     .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(MSPadding),
+            verticalArrangement = Arrangement.spacedBy(XSPadding),
         ) {
             val responseUri = signRequest?.responseUri?.lowercase() ?: ""
             val isCertificateFlow = responseUri.contains("/certificate") && !responseUri.contains("/signature")
@@ -442,7 +441,7 @@ fun WebEidScreen(
                     ),
             ) {
                 Text(
-                    text = stringResource(R.string.web_eid_ignore),
+                    text = stringResource(R.string.web_eid_cancel),
                 )
             }
         }
