@@ -52,7 +52,6 @@ import ee.ria.DigiDoc.fragment.MyEidIdentificationFragment
 import ee.ria.DigiDoc.fragment.MyEidIdentificationMethodChooserFragment
 import ee.ria.DigiDoc.fragment.MyEidPinFragment
 import ee.ria.DigiDoc.fragment.ProxyServicesSettingsFragment
-import ee.ria.DigiDoc.fragment.RecentDocumentsFragment
 import ee.ria.DigiDoc.fragment.RootFragment
 import ee.ria.DigiDoc.fragment.SignatureInputFragment
 import ee.ria.DigiDoc.fragment.SignatureMethodFragment
@@ -218,33 +217,6 @@ fun RIADigiDocAppScreen(externalFileUris: List<Uri>) {
                 navController = navController,
                 sharedMenuViewModel = sharedMenuViewModel,
                 sharedSettingsViewModel = sharedSettingsViewModel,
-            )
-        }
-        composable(route = Route.RecentDocuments.route) {
-            RecentDocumentsFragment(
-                modifier = Modifier.safeDrawingPadding(),
-                navController = navController,
-                sharedMenuViewModel = sharedMenuViewModel,
-                sharedContainerViewModel = sharedContainerViewModel,
-                fileOpeningMethod = FileOpeningMethod.ALL,
-            )
-        }
-        composable(route = Route.RecentDocumentsFromSigning.route) {
-            RecentDocumentsFragment(
-                modifier = Modifier.safeDrawingPadding(),
-                navController = navController,
-                sharedMenuViewModel = sharedMenuViewModel,
-                sharedContainerViewModel = sharedContainerViewModel,
-                fileOpeningMethod = FileOpeningMethod.SIGNING,
-            )
-        }
-        composable(route = Route.RecentDocumentsFromEncrypt.route) {
-            RecentDocumentsFragment(
-                modifier = Modifier.safeDrawingPadding(),
-                navController = navController,
-                sharedMenuViewModel = sharedMenuViewModel,
-                sharedContainerViewModel = sharedContainerViewModel,
-                fileOpeningMethod = FileOpeningMethod.CRYPTO,
             )
         }
         composable(route = Route.Settings.route) {
