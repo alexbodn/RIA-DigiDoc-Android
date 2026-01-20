@@ -189,7 +189,7 @@ fun EncryptNavigation(
             stringResource(id = R.string.document_remove_last_confirmation_message)
     }
     val closeContainerMessage = stringResource(id = R.string.crypto_close_container_message)
-    val confirmCloseContainerMessage = stringResource(id = R.string.close_container)
+    val confirmCloseContainerMessage = stringResource(id = R.string.crypto_close_container_title)
     val saveContainerMessage = stringResource(id = R.string.container_save)
     val dismissRemoveFileDialog = {
         closeRemoveFileDialog()
@@ -1153,7 +1153,7 @@ fun EncryptNavigation(
                     dismissIcon = dismissIcon,
                     confirmIcon = R.drawable.ic_m3_delete_48dp_wght400,
                     dismissButtonText = dismissButtonText,
-                    confirmButtonText = stringResource(R.string.close_title),
+                    confirmButtonText = stringResource(R.string.close_button),
                     dismissButtonContentDescription = saveContainerMessage,
                     confirmButtonContentDescription = confirmCloseContainerMessage,
                     onDismissRequest = {
@@ -1175,6 +1175,10 @@ fun EncryptNavigation(
                     },
                     onConfirmButton = {
                         showContainerCloseConfirmationDialog.value = false
+                        val containerFile = cryptoContainer?.file
+                        if (containerFile?.exists() == true) {
+                            containerFile.delete()
+                        }
                         sharedContainerViewModel.resetCryptoContainer()
                         handleBackButtonClick(navController, encryptViewModel, sharedContainerViewModel)
                     },
