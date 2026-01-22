@@ -219,7 +219,7 @@ fun EncryptRecipientScreen(
 
                     encryptRecipientViewModel.handleIsContainerEncrypted(false)
                     containerEncryptedSuccess.value = false
-                    navController.navigate(Route.Encrypt.route) {
+                    navController.navigate(Route.Encrypted.route) {
                         popUpTo(Route.Home.route) {
                             inclusive = false
                         }
@@ -607,7 +607,7 @@ fun EncryptRecipientScreen(
             )
         }
 
-        if (showLoading.value == true) {
+        if (showLoading.value) {
             LoadingScreen(modifier = modifier)
         }
 

@@ -180,6 +180,16 @@ fun RIADigiDocAppScreen(externalFileUris: List<Uri>) {
                 sharedRecipientViewModel = sharedRecipientViewModel,
             )
         }
+        composable(route = Route.Encrypted.route) {
+            EncryptFragment(
+                modifier = Modifier.safeDrawingPadding(),
+                navController = navController,
+                sharedMenuViewModel = sharedMenuViewModel,
+                sharedContainerViewModel = sharedContainerViewModel,
+                sharedRecipientViewModel = sharedRecipientViewModel,
+                withEncryption = true,
+            )
+        }
         composable(route = Route.DecryptScreen.route) {
             DecryptFragment(
                 modifier = Modifier.safeDrawingPadding(),
