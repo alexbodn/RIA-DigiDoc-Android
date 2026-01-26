@@ -574,7 +574,6 @@ fun EncryptNavigation(
             status?.let {
                 if (status) {
                     withContext(Main) {
-                        isSaveContainerShown.value = true
                         containerDecryptedSuccess.value = true
                         sendAccessibilityEvent(
                             context,
@@ -595,7 +594,6 @@ fun EncryptNavigation(
             status?.let {
                 if (status) {
                     withContext(Main) {
-                        isSaveContainerShown.value = true
                         containerDecryptedSuccess.value = true
                         sendAccessibilityEvent(
                             context,
@@ -736,7 +734,6 @@ fun EncryptNavigation(
                 if (containerDecryptedSuccess.value) {
                     showMessage(containerDecryptedSuccessText)
                     containerDecryptedSuccess.value = false
-                    isSaveContainerShown.value = true
                 }
 
                 if (encryptViewModel.isEmptyFileInContainer(cryptoContainer) &&
