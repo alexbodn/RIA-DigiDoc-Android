@@ -544,10 +544,7 @@ fun EncryptNavigation(
             if (showContainerCloseConfirmationDialog.value) {
                 showContainerCloseConfirmationDialog.value = false
 
-                val containerFile = cryptoContainer?.file
-                if (containerFile?.exists() == true) {
-                    containerFile.delete()
-                }
+                ContainerUtil.removeCryptoContainersDir(context)
 
                 handleBackButtonClick(
                     navController,
@@ -737,7 +734,8 @@ fun EncryptNavigation(
                 }
 
                 if (encryptViewModel.isEmptyFileInContainer(cryptoContainer) &&
-                    !encryptViewModel.isEncryptedContainer(cryptoContainer)
+                    !encryptViewModel.isEncryptedContainer(cryptoContainer) &&
+                    !encryptViewModel.isDecryptedContainer(cryptoContainer)
                 ) {
                     showMessage(emptyFileInContainerText)
                 }
