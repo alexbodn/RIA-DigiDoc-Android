@@ -1,3 +1,22 @@
+/*
+ * Copyright 2017 - 2026 Riigi Infosüsteemi Amet
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
 @file:Suppress("PackageName", "FunctionName")
 
 package ee.ria.DigiDoc.fragment.screen
@@ -80,6 +99,9 @@ import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private const val WEB_EID_CERTIFICATE_PATH = "/certificate"
+private const val WEB_EID_SIGNATURE_PATH = "/signature"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -237,7 +259,11 @@ fun WebEidScreen(
             verticalArrangement = Arrangement.spacedBy(XSPadding),
         ) {
             val responseUri = signRequest?.responseUri?.lowercase() ?: ""
-            val isCertificateFlow = responseUri.contains("/certificate") && !responseUri.contains("/signature")
+            val isCertificateFlow =
+                responseUri.contains(WEB_EID_CERTIFICATE_PATH) &&
+                    !responseUri.contains(
+                        WEB_EID_SIGNATURE_PATH,
+                    )
 
             val title =
                 when {
@@ -303,7 +329,11 @@ fun WebEidScreen(
                 }
             } else if (signRequest != null) {
                 val responseUri = signRequest.responseUri.lowercase()
-                val isCertificateFlow = responseUri.contains("/certificate") && !responseUri.contains("/signature")
+                val isCertificateFlow =
+                    responseUri.contains(WEB_EID_CERTIFICATE_PATH) &&
+                        !responseUri.contains(
+                            WEB_EID_SIGNATURE_PATH,
+                        )
 
                 if (!isWebEidAuthenticating) {
                     WebEidSignOrCertificateInfo(
@@ -403,7 +433,11 @@ fun WebEidScreen(
                     }
                 } else if (signRequest != null) {
                     val responseUri = signRequest.responseUri.lowercase()
-                    val isCertificateFlow = responseUri.contains("/certificate") && !responseUri.contains("/signature")
+                    val isCertificateFlow =
+                        responseUri.contains(WEB_EID_CERTIFICATE_PATH) &&
+                            !responseUri.contains(
+                                WEB_EID_SIGNATURE_PATH,
+                            )
 
                     Button(
                         onClick = {
