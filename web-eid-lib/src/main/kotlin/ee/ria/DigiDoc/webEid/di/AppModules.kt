@@ -29,13 +29,16 @@ import ee.ria.DigiDoc.webEid.WebEidAuthService
 import ee.ria.DigiDoc.webEid.WebEidAuthServiceImpl
 import ee.ria.DigiDoc.webEid.WebEidSignService
 import ee.ria.DigiDoc.webEid.WebEidSignServiceImpl
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 class AppModules {
     @Provides
+    @Singleton
     fun provideWebEidAuthService(): WebEidAuthService = WebEidAuthServiceImpl()
 
     @Provides
+    @Singleton
     fun provideWebEidSignService(): WebEidSignService = WebEidSignServiceImpl()
 }

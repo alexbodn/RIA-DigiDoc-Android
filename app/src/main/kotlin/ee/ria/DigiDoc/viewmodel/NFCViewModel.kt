@@ -106,8 +106,8 @@ class NFCViewModel
         val webEidAuthResult: LiveData<Triple<ByteArray, ByteArray, ByteArray>?> = _webEidAuthResult
         private val _webEidSignResult = MutableLiveData<Triple<String, ByteArray, String>?>()
         val webEidSignResult: LiveData<Triple<String, ByteArray, String>?> = _webEidSignResult
-        private val _webEidCertificateResult = MutableLiveData<Pair<String, String>?>()
-        val webEidCertificateResult: LiveData<Pair<String, String>?> = _webEidCertificateResult
+        private val _webEidCertificateResult = MutableLiveData<String?>()
+        val webEidCertificateResult: LiveData<String?> = _webEidCertificateResult
 
         private val dialogMessages: ImmutableMap<SessionStatusResponseProcessStatus, Int> =
             ImmutableMap
@@ -777,11 +777,9 @@ class NFCViewModel
                             val signingCertB64 = Base64.getEncoder().encodeToString(signingCert)
 
                             CoroutineScope(Main).launch {
-                                _webEidCertificateResult.postValue(signingCertB64 to "")
+                                _webEidCertificateResult.postValue(signingCertB64)
                             }
                         } catch (ex: SmartCardReaderException) {
-                            _decryptStatus.postValue(false)
-
                             if (ex.message?.contains("TagLostException") == true) {
                                 _errorState.postValue(Triple(R.string.signature_update_nfc_tag_lost, null, null))
                             } else if (ex is ApduResponseException) {
@@ -798,8 +796,6 @@ class NFCViewModel
 
                             errorLog(logTag, "Exception: " + ex.message, ex)
                         } catch (ex: Exception) {
-                            _decryptStatus.postValue(false)
-
                             val message = ex.message ?: ""
 
                             when {

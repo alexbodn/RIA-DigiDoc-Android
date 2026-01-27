@@ -135,8 +135,7 @@ class WebEidViewModel
         }
 
         suspend fun handleWebEidCertificateResult(signingCert: ByteArray) {
-            val signRequest = signRequest.value
-            val responseUri = signRequest?.responseUri
+            val responseUri = signRequest.value?.responseUri
 
             if (responseUri.isNullOrBlank()) {
                 errorLog(logTag, "Missing responseUri in sign payload for certificate step")

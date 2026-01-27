@@ -94,11 +94,7 @@ import ee.ria.DigiDoc.viewmodel.shared.SharedContainerViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedMenuViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedSettingsViewModel
 import ee.ria.DigiDoc.webEid.domain.model.WebEidAuthRequest
-import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.flow.filterNot
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 private const val WEB_EID_CERTIFICATE_PATH = "/certificate"
 private const val WEB_EID_SIGNATURE_PATH = "/signature"
@@ -131,7 +127,6 @@ fun WebEidScreen(
     val snackBarScope = rememberCoroutineScope()
     val messages by SnackBarManager.messages.collectAsState(emptyList())
     val dialogError by viewModel.dialogError.asFlow().collectAsState(0)
-    val showErrorDialog = rememberSaveable { mutableStateOf(false) }
     var rememberMe by rememberSaveable { mutableStateOf(true) }
     val hasStoredCanNumber = sharedSettingsViewModel.dataStore.getCanNumber().isNotEmpty()
 
@@ -142,18 +137,6 @@ fun WebEidScreen(
             }
             SnackBarManager.removeMessage(message)
         }
-    }
-
-    LaunchedEffect(viewModel.dialogError) {
-        viewModel.dialogError
-            .asFlow()
-            .filterNotNull()
-            .filterNot { it == 0 }
-            .collect {
-                withContext(Main) {
-                    showErrorDialog.value = true
-                }
-            }
     }
 
     Scaffold(
@@ -181,7 +164,7 @@ fun WebEidScreen(
             isBottomSheetVisible = isSettingsMenuBottomSheetVisible,
         )
 
-        if (showErrorDialog.value) {
+        if (dialogError != 0) {
             BasicAlertDialog(
                 modifier =
                     modifier
