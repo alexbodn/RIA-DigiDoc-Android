@@ -360,7 +360,7 @@ fun NFCView(
 
     LaunchedEffect(nfcViewModel.webEidCertificateResult) {
         nfcViewModel.webEidCertificateResult.asFlow().collect { result ->
-            result?.let { (signCert, _) ->
+            result?.let { signCert ->
                 sharedSettingsViewModel.dataStore.setSigningCertificate(signCert)
                 val certBytes = Base64.getDecoder().decode(signCert)
                 webEidViewModel?.handleWebEidCertificateResult(certBytes)
