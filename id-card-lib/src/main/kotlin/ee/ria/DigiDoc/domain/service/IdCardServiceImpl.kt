@@ -112,6 +112,35 @@ class IdCardServiceImpl
             return data(token)
         }
 
+        @Throws(CodeVerificationException::class, Exception::class)
+        override suspend fun verifyPin1(
+            token: Token,
+            pin1: ByteArray,
+        ): Boolean =
+            withContext(IO) {
+                val digest = ByteArray(32)
+                java.security.SecureRandom().nextBytes(digest)
+                token.authenticate(pin1, digest)
+                true
+            }
+
+        @Throws(CodeVerificationException::class, Exception::class)
+        override suspend fun verifyPin2(
+            token: Token,
+            pin2: ByteArray,
+        ): Boolean =
+            withContext(IO) {
+                val idCardData = data(token)
+                val digest = ByteArray(32)
+                java.security.SecureRandom().nextBytes(digest)
+                token.calculateSignature(
+                    pin2,
+                    digest,
+                    idCardData.signCertificate.ellipticCurve,
+                )
+                true
+            }
+
         @Throws(Exception::class)
         private suspend fun sign(
             signedContainer: SignedContainer,

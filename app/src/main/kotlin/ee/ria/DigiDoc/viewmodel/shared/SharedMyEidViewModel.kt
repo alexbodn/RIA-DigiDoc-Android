@@ -94,10 +94,63 @@ class SharedMyEidViewModel
         private val _identificationMethod = MutableLiveData<MyEidIdentificationMethodSetting?>(null)
         val identificationMethod: LiveData<MyEidIdentificationMethodSetting?> = _identificationMethod
 
+        private val _verificationResult = MutableLiveData<Boolean?>(null)
+        val verificationResult: LiveData<Boolean?> = _verificationResult
+
         init {
             viewModelScope.launch(Main) {
                 smartCardReaderManager.status().asFlow().distinctUntilChanged().collect { status ->
                     _idCardStatus.postValue(status)
+                }
+            }
+        }
+
+        fun resetVerificationResult() {
+            _verificationResult.postValue(null)
+        }
+
+        fun verifyPin(token: Token, codeType: CodeType, pin: ByteArray) {
+            viewModelScope.launch(Main) {
+                try {
+                    val result =
+                        if (codeType == CodeType.PIN1) {
+                            idCardService.verifyPin1(token, pin)
+                        } else {
+                            idCardService.verifyPin2(token, pin)
+                        }
+                    if (result) {
+                        _verificationResult.postValue(true)
+                    }
+                } catch (cve: CodeVerificationException) {
+                    val idCardData = idCardService.data(token)
+                    _idCardData.postValue(idCardData)
+
+                    if (cve.retries == 0) {
+                        _isPinBlocked.postValue(true)
+                        _errorState.postValue(Triple(R.string.myeid_pin_blocked, cve.type.name, null))
+                    } else {
+                        _errorState.postValue(
+                            Triple(R.plurals.myeid_pin_error_code_verification, cve.type.name, cve.retries),
+                        )
+                    }
+                } catch (scre: SmartCardReaderException) {
+                    errorLog(
+                        tag = logTag,
+                        message = "Unable to verify PIN code. ${scre.message}",
+                        throwable = scre,
+                    )
+                    _errorState.postValue(Triple(R.string.error_general_client, null, null))
+                } catch (e: Exception) {
+                    errorLog(
+                        tag = logTag,
+                        message = "Unable to verify PIN code. ${e.message}",
+                        throwable = e,
+                    )
+                    _errorState.postValue(Triple(R.string.error_general_client, null, null))
+                } finally {
+                    if (pin.isNotEmpty()) {
+                        Arrays.fill(pin, 0.toByte())
+                    }
                 }
             }
         }
@@ -352,6 +405,7 @@ class SharedMyEidViewModel
 
         fun getToken(
             activity: Activity,
+            canNumber: String? = null,
             onResult: (Token?, Exception?) -> Unit,
         ) {
             try {
@@ -373,7 +427,7 @@ class SharedMyEidViewModel
                                 return@startDiscovery
                             }
 
-                            handleNfcToken(reader, onResult)
+                            handleNfcToken(reader, canNumber, onResult)
                         }
                     }
 
@@ -394,13 +448,20 @@ class SharedMyEidViewModel
 
         private fun handleNfcToken(
             reader: NfcSmartCardReader,
+            canNumber: String?,
             onResult: (Token?, Exception?) -> Unit,
         ) {
             try {
                 val token = TokenWithPace.create(reader)
-                val canNumber = dataStore.getCanNumber()
+                val finalCanNumber =
+                    if (canNumber != null) {
+                        dataStore.setCanNumber(canNumber)
+                        canNumber
+                    } else {
+                        dataStore.getCanNumber()
+                    }
 
-                token.tunnel(canNumber)
+                token.tunnel(finalCanNumber)
                 onResult(token, null)
             } catch (e: Exception) {
                 errorLog(logTag, "Unable to get NFC token", e)
