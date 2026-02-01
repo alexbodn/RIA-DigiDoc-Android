@@ -405,6 +405,7 @@ class SharedMyEidViewModel
 
         fun getToken(
             activity: Activity,
+            canNumber: String? = null,
             onResult: (Token?, Exception?) -> Unit,
         ) {
             try {
@@ -426,7 +427,7 @@ class SharedMyEidViewModel
                                 return@startDiscovery
                             }
 
-                            handleNfcToken(reader, onResult)
+                            handleNfcToken(reader, canNumber, onResult)
                         }
                     }
 
@@ -447,13 +448,20 @@ class SharedMyEidViewModel
 
         private fun handleNfcToken(
             reader: NfcSmartCardReader,
+            canNumber: String?,
             onResult: (Token?, Exception?) -> Unit,
         ) {
             try {
                 val token = TokenWithPace.create(reader)
-                val canNumber = dataStore.getCanNumber()
+                val finalCanNumber =
+                    if (canNumber != null) {
+                        dataStore.setCanNumber(canNumber)
+                        canNumber
+                    } else {
+                        dataStore.getCanNumber()
+                    }
 
-                token.tunnel(canNumber)
+                token.tunnel(finalCanNumber)
                 onResult(token, null)
             } catch (e: Exception) {
                 errorLog(logTag, "Unable to get NFC token", e)

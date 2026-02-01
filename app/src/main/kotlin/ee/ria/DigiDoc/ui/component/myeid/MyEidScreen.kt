@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.TextUnitType
 import androidx.lifecycle.asFlow
 import androidx.navigation.NavHostController
 import ee.ria.DigiDoc.R
+import ee.ria.DigiDoc.domain.model.myeid.MyEidIdentificationMethodSetting
 import ee.ria.DigiDoc.domain.model.pin.PinChangeVariant
 import ee.ria.DigiDoc.idcard.CardType
 import ee.ria.DigiDoc.idcard.CodeType
@@ -135,6 +136,7 @@ fun MyEidScreen(
     val showTestPin1Dialog = rememberSaveable { mutableStateOf(false) }
     val showTestPin2Dialog = rememberSaveable { mutableStateOf(false) }
     val verificationResult by sharedMyEidViewModel.verificationResult.asFlow().collectAsState(null)
+    val identificationMethod by sharedMyEidViewModel.identificationMethod.asFlow().collectAsState(null)
     val activity = LocalActivity.current as Activity
 
     val buttonName = stringResource(id = R.string.button_name)
@@ -697,10 +699,13 @@ fun MyEidScreen(
         showDialog = showTestPin1Dialog,
         title = stringResource(R.string.myeid_authentication_certificate_title),
         codeType = CodeType.PIN1,
-        onResult = { pin ->
-            sharedMyEidViewModel.getToken(activity) { token, error ->
+        showCanField = identificationMethod == MyEidIdentificationMethodSetting.NFC,
+        onResult = { pin, canNumber ->
+            sharedMyEidViewModel.getToken(activity, canNumber) { token, error ->
                 if (token != null) {
                     sharedMyEidViewModel.verifyPin(token, CodeType.PIN1, pin)
+                } else if (error != null) {
+                    SnackBarManager.showMessage(error.message ?: activity.getString(R.string.error_general_client))
                 }
             }
         },
@@ -710,10 +715,13 @@ fun MyEidScreen(
         showDialog = showTestPin2Dialog,
         title = stringResource(R.string.myeid_signing_certificate_title),
         codeType = CodeType.PIN2,
-        onResult = { pin ->
-            sharedMyEidViewModel.getToken(activity) { token, error ->
+        showCanField = identificationMethod == MyEidIdentificationMethodSetting.NFC,
+        onResult = { pin, canNumber ->
+            sharedMyEidViewModel.getToken(activity, canNumber) { token, error ->
                 if (token != null) {
                     sharedMyEidViewModel.verifyPin(token, CodeType.PIN2, pin)
+                } else if (error != null) {
+                    SnackBarManager.showMessage(error.message ?: activity.getString(R.string.error_general_client))
                 }
             }
         },
