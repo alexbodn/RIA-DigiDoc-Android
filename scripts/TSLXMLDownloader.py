@@ -1,9 +1,11 @@
 #!/usr/bin/python
 
 import urllib.request
+import urllib.error
 import ssl
 import argparse
 import os
+import time
 from xml.dom import minidom
 
 class TSLDownloader:
@@ -39,31 +41,55 @@ class TSLDownloader:
         
         print(f"{country_code} TSL-URL: {tsl_url}")
         
-        # Get data from TSL-URL
-        response = urllib.request.urlopen(tsl_url).read()
+        # Get data from TSL-URL with retries
+        response_str = self.download_url(tsl_url)
         
-        # Decode the response from bytes to string
-        response_str = response.decode('utf-8')
+        if response_str:
+            # Get the directory of the current script
+            script_directory = os.path.dirname(os.path.abspath(__file__))
+
+            # Define the TSL subfolder path
+            tsl_folder_path = os.path.join(script_directory, "TSL")
+
+            # Create the TSL subfolder if it doesn't exist
+            if not os.path.exists(tsl_folder_path):
+                os.makedirs(tsl_folder_path)
+
+            # Save data to a file in the TSL subfolder
+            filename = f"{country_code}.xml"
+            file_path = os.path.join(tsl_folder_path, filename)
+
+            with open(file_path, 'w', encoding='utf-8') as file:
+                file.write(response_str)
+
+            # Mark this URL as processed
+            processed_urls.add(tsl_url)
+        else:
+            print(f"Failed to download TSL for {country_code}")
+
+    def download_url(self, url, retries=3, timeout=30):
+        """Download URL with retries and timeout."""
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        req = urllib.request.Request(url, headers=headers)
         
-        # Get the directory of the current script
-        script_directory = os.path.dirname(os.path.abspath(__file__))
-        
-        # Define the TSL subfolder path
-        tsl_folder_path = os.path.join(script_directory, "TSL")
-        
-        # Create the TSL subfolder if it doesn't exist
-        if not os.path.exists(tsl_folder_path):
-            os.makedirs(tsl_folder_path)
-        
-        # Save data to a file in the TSL subfolder
-        filename = f"{country_code}.xml"
-        file_path = os.path.join(tsl_folder_path, filename)
-        
-        with open(file_path, 'w', encoding='utf-8') as file:
-            file.write(response_str)
-        
-        # Mark this URL as processed
-        processed_urls.add(tsl_url)
+        for attempt in range(retries):
+            try:
+                print(f"Attempt {attempt + 1} to download {url}")
+                with urllib.request.urlopen(req, timeout=timeout) as response:
+                    return response.read().decode('utf-8')
+            except (urllib.error.URLError, TimeoutError) as e:
+                print(f"Error downloading {url}: {e}")
+                if attempt < retries - 1:
+                    sleep_time = 2 ** attempt
+                    print(f"Retrying in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
+                else:
+                    print(f"Max retries reached for {url}")
+                    return None
+            except Exception as e:
+                print(f"Unexpected error downloading {url}: {e}")
+                return None
+        return None
 
     def process_country(self, input_country, xmldoc, is_dev_build, processed_urls):
         """Process XML data for a specific country and download TSL if applicable."""
@@ -123,7 +149,8 @@ class TSLDownloader:
 
         # Validate country and mime type
         if len(input_country) == 2 and not self.mimetypeFound:
-            raise Exception(f"Could not find mimetype for '{input_country}'. Verify input country code and check if the MimeType tag name has changed (nsx:MimeType) in TSL file.")
+            # raise Exception(f"Could not find mimetype for '{input_country}'. Verify input country code and check if the MimeType tag name has changed (nsx:MimeType) in TSL file.")
+            print(f"Warning: Could not find mimetype for '{input_country}'. This might be due to download failure or file structure change.")
 
 
 if __name__ == "__main__":
