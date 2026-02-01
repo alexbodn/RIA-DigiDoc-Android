@@ -76,7 +76,7 @@ jobs:
       - name: Fetch Default Configuration
         run: |
           ./gradlew clean --no-daemon fetchAndPackageDefaultConfiguration \
-            --args="https://id.test.eesti.ee 4" \
+            --args="https://id-test.eesti.ee 4" \
             -Dorg.gradle.jvmargs="-Xmx4g"
 
       - name: Update Version Code
