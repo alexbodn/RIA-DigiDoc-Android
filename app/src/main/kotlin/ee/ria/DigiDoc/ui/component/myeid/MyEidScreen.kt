@@ -21,7 +21,9 @@
 
 package ee.ria.DigiDoc.ui.component.myeid
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
@@ -130,6 +132,11 @@ fun MyEidScreen(
     val showForgotPin1Dialog = rememberSaveable { mutableStateOf(false) }
     val showForgotPin2Dialog = rememberSaveable { mutableStateOf(false) }
 
+    val showTestPin1Dialog = rememberSaveable { mutableStateOf(false) }
+    val showTestPin2Dialog = rememberSaveable { mutableStateOf(false) }
+    val verificationResult by sharedMyEidViewModel.verificationResult.asFlow().collectAsState(null)
+    val activity = LocalActivity.current as Activity
+
     val buttonName = stringResource(id = R.string.button_name)
     val additionalInfo = stringResource(id = R.string.puk_additional_information)
     var changePukText =
@@ -223,6 +230,15 @@ fun MyEidScreen(
                 snackBarHostState.showSnackbar(message)
             }
             SnackBarManager.removeMessage(message)
+        }
+    }
+
+    LaunchedEffect(verificationResult) {
+        if (verificationResult == true) {
+            snackBarScope.launch {
+                snackBarHostState.showSnackbar(activity.getString(R.string.myeid_status_valid))
+            }
+            sharedMyEidViewModel.resetVerificationResult()
         }
     }
 
@@ -401,6 +417,10 @@ fun MyEidScreen(
                                             onChangePinClick = {
                                                 showChangePin1Dialog.value = true
                                             },
+                                            testPinText = stringResource(R.string.test_button),
+                                            onTestPinClick = {
+                                                showTestPin1Dialog.value = true
+                                            },
                                         )
 
                                         if (isPin1Blocked && !isPukBlocked) {
@@ -481,6 +501,10 @@ fun MyEidScreen(
                                                 ),
                                             onChangePinClick = {
                                                 showChangePin2Dialog.value = true
+                                            },
+                                            testPinText = stringResource(R.string.test_button),
+                                            onTestPinClick = {
+                                                showTestPin2Dialog.value = true
                                             },
                                         )
 
@@ -667,6 +691,32 @@ fun MyEidScreen(
         confirmButton = R.string.myeid_pin_unblock_button,
         confirmButtonExtra = CodeType.PIN2.name,
         onResult = handlePinDialogResult,
+    )
+
+    TestPinDialog(
+        showDialog = showTestPin1Dialog,
+        title = stringResource(R.string.myeid_authentication_certificate_title),
+        codeType = CodeType.PIN1,
+        onResult = { pin ->
+            sharedMyEidViewModel.getToken(activity) { token, error ->
+                if (token != null) {
+                    sharedMyEidViewModel.verifyPin(token, CodeType.PIN1, pin)
+                }
+            }
+        },
+    )
+
+    TestPinDialog(
+        showDialog = showTestPin2Dialog,
+        title = stringResource(R.string.myeid_signing_certificate_title),
+        codeType = CodeType.PIN2,
+        onResult = { pin ->
+            sharedMyEidViewModel.getToken(activity) { token, error ->
+                if (token != null) {
+                    sharedMyEidViewModel.verifyPin(token, CodeType.PIN2, pin)
+                }
+            }
+        },
     )
 }
 
