@@ -246,7 +246,7 @@ fun MyEidScreen(
 
     LaunchedEffect(idCardStatus) {
         idCardStatus?.let { status ->
-            if (idCardData?.personalData != null) {
+            if (idCardData?.personalData != null && !showTestPin1Dialog.value && !showTestPin2Dialog.value) {
                 when (status) {
                     SmartCardReaderStatus.CARD_DETECTED -> {}
                     else -> {
