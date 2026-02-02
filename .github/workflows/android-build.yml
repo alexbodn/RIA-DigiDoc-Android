@@ -131,11 +131,15 @@ jobs:
         id: check_secret
         env:
           MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_SERVER: ${{ secrets.MAIL_SERVER }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
         run: |
-          if [ -n "$MAIL_TO" ]; then
+          if [ -n "$MAIL_TO" ] && [ -n "$MAIL_SERVER" ] && [ -n "$MAIL_USERNAME" ] && [ -n "$MAIL_PASSWORD" ]; then
             echo "has_mail=true" >> $GITHUB_OUTPUT
           else
             echo "has_mail=false" >> $GITHUB_OUTPUT
+            echo "Warning: One or more email secrets (MAIL_TO, MAIL_SERVER, MAIL_USERNAME, MAIL_PASSWORD) are missing. Skipping notification."
           fi
 
       - name: Send Email Notification
