@@ -125,11 +125,11 @@ jobs:
   notify:
     needs: build
     runs-on: ubuntu-latest
-    if: always()
+    if: success()
     steps:
       - name: Send Email Notification
         uses: dawidd6/action-send-mail@v3
-        if: ${{ secrets.MAIL_TO != '' }}
+        if: "${{ secrets.MAIL_TO != '' }}"
         with:
           server_address: ${{ secrets.MAIL_SERVER }}
           server_port: ${{ secrets.MAIL_PORT }}
