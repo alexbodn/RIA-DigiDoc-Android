@@ -127,9 +127,20 @@ jobs:
     runs-on: ubuntu-latest
     if: success()
     steps:
+      - name: Check for Mail Secret
+        id: check_secret
+        env:
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: |
+          if [ -n "$MAIL_TO" ]; then
+            echo "has_mail=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_mail=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Send Email Notification
         uses: dawidd6/action-send-mail@v3
-        if: "${{ secrets.MAIL_TO != '' }}"
+        if: steps.check_secret.outputs.has_mail == 'true'
         with:
           server_address: ${{ secrets.MAIL_SERVER }}
           server_port: ${{ secrets.MAIL_PORT }}
