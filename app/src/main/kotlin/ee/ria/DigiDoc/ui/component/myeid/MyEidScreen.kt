@@ -77,8 +77,10 @@ import ee.ria.DigiDoc.idcard.CodeType
 import ee.ria.DigiDoc.idcard.DateOfBirthUtil
 import ee.ria.DigiDoc.smartcardreader.SmartCardReaderStatus
 import ee.ria.DigiDoc.ui.component.menu.SettingsMenuBottomSheet
+import androidx.compose.ui.text.input.TextFieldValue
 import ee.ria.DigiDoc.ui.component.myeid.mydata.MyEidMyDataView
 import ee.ria.DigiDoc.ui.component.myeid.pinandcertificate.MyEidPinAndCertificateView
+import ee.ria.DigiDoc.ui.component.myeid.test.MyEidTestView
 import ee.ria.DigiDoc.ui.component.shared.HrefDynamicText
 import ee.ria.DigiDoc.ui.component.shared.TabView
 import ee.ria.DigiDoc.ui.component.shared.TopBar
@@ -138,6 +140,12 @@ fun MyEidScreen(
     val verificationResult by sharedMyEidViewModel.verificationResult.asFlow().collectAsState(null)
     val identificationMethod by sharedMyEidViewModel.identificationMethod.asFlow().collectAsState(null)
     val activity = LocalActivity.current as Activity
+
+    val testCanNumber = rememberSaveable(stateSaver = androidx.compose.runtime.saveable.Saver(
+        save = { it.text },
+        restore = { TextFieldValue(it) }
+    )) { mutableStateOf(TextFieldValue(sharedMyEidViewModel.getStoredCanNumber())) }
+    val testPin1 = remember { mutableStateOf(byteArrayOf()) }
 
     val buttonName = stringResource(id = R.string.button_name)
     val additionalInfo = stringResource(id = R.string.puk_additional_information)
@@ -241,6 +249,7 @@ fun MyEidScreen(
                 snackBarHostState.showSnackbar(activity.getString(R.string.myeid_status_valid))
             }
             sharedMyEidViewModel.resetVerificationResult()
+            testPin1.value = byteArrayOf() // Clear PIN after successful test
         }
     }
 
@@ -634,6 +643,25 @@ fun MyEidScreen(
                                 }
                             }
                         },
+                        Pair(
+                            stringResource(R.string.myeid_test_tab_title),
+                        ) {
+                            MyEidTestView(
+                                modifier = modifier,
+                                canNumber = testCanNumber,
+                                pin1 = testPin1,
+                                onTestClick = {
+                                    sharedMyEidViewModel.getToken(activity, testCanNumber.value.text) { token, error ->
+                                        if (token != null) {
+                                            sharedMyEidViewModel.verifyPin(token, CodeType.PIN1, testPin1.value)
+                                        } else if (error != null) {
+                                            SnackBarManager.showMessage(error.message ?: activity.getString(R.string.error_general_client))
+                                        }
+                                    }
+                                },
+                                testResult = null // Result is handled via SnackBar for consistency
+                            )
+                        }
                     ),
                 )
             }

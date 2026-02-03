@@ -119,8 +119,13 @@ class SharedMyEidViewModel
                             idCardService.verifyPin2(token, pin)
                         }
                     if (result) {
-                        val idCardData = idCardService.data(token)
-                        _idCardData.postValue(idCardData)
+                        try {
+                            val idCardData = idCardService.data(token)
+                            _idCardData.postValue(idCardData)
+                        } catch (e: Exception) {
+                            // If reading data fails (e.g. timeout), just ignore for verification result
+                            errorLog(logTag, "Verification successful, but failed to read card data", e)
+                        }
                         _verificationResult.postValue(true)
                     }
                 } catch (cve: CodeVerificationException) {

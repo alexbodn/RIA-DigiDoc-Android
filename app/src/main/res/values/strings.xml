@@ -352,6 +352,9 @@
     <string name="close_button">Close</string>
     <string name="test_button">Test</string>
     <string name="skip_identification_button">Skip identification</string>
+    <string name="myeid_test_tab_title">Test</string>
+    <string name="myeid_test_tab_description">Enter the CAN number from the front of your ID-card and your PIN1 to test authentication.</string>
+    <string name="myeid_test_button">Test Authentication</string>
 
     <!-- Crypto -->
     <string name="encrypt_button">Encrypt</string>
