@@ -351,6 +351,7 @@
     <string name="choose_button">Choose</string>
     <string name="close_button">Close</string>
     <string name="test_button">Test</string>
+    <string name="skip_identification_button">Skip identification</string>
 
     <!-- Crypto -->
     <string name="encrypt_button">Encrypt</string>
