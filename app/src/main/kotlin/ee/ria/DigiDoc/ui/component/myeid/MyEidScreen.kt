@@ -700,6 +700,7 @@ fun MyEidScreen(
         title = stringResource(R.string.myeid_authentication_certificate_title),
         codeType = CodeType.PIN1,
         showCanField = identificationMethod == MyEidIdentificationMethodSetting.NFC,
+        initialCan = sharedMyEidViewModel.getStoredCanNumber(),
         onResult = { pin, canNumber ->
             sharedMyEidViewModel.getToken(activity, canNumber) { token, error ->
                 if (token != null) {
@@ -716,6 +717,7 @@ fun MyEidScreen(
         title = stringResource(R.string.myeid_signing_certificate_title),
         codeType = CodeType.PIN2,
         showCanField = identificationMethod == MyEidIdentificationMethodSetting.NFC,
+        initialCan = sharedMyEidViewModel.getStoredCanNumber(),
         onResult = { pin, canNumber ->
             sharedMyEidViewModel.getToken(activity, canNumber) { token, error ->
                 if (token != null) {

@@ -66,17 +66,18 @@ fun TestPinDialog(
     title: String,
     codeType: CodeType,
     showCanField: Boolean,
+    initialCan: String = "",
     onResult: (ByteArray, String?) -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
     val pin = remember { mutableStateOf(byteArrayOf()) }
-    val can = remember { mutableStateOf(TextFieldValue()) }
+    val can = remember { mutableStateOf(TextFieldValue(initialCan)) }
     val pinCodeLabel = stringResource(R.string.myeid_pin, codeType.name)
 
     LaunchedEffect(Unit, showDialog.value) {
         if (showDialog.value) {
             pin.value = byteArrayOf()
-            can.value = TextFieldValue()
+            can.value = TextFieldValue(initialCan)
             focusRequester.requestFocus()
         }
     }

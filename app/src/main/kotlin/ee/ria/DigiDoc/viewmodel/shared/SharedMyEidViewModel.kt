@@ -119,6 +119,8 @@ class SharedMyEidViewModel
                             idCardService.verifyPin2(token, pin)
                         }
                     if (result) {
+                        val idCardData = idCardService.data(token)
+                        _idCardData.postValue(idCardData)
                         _verificationResult.postValue(true)
                     }
                 } catch (cve: CodeVerificationException) {
@@ -158,6 +160,8 @@ class SharedMyEidViewModel
         fun setIdentificationMethod(identificationMethod: MyEidIdentificationMethodSetting) {
             _identificationMethod.postValue(identificationMethod)
         }
+
+        fun getStoredCanNumber(): String = dataStore.getCanNumber()
 
         fun setIdCardData(idCardData: IdCardData) {
             _idCardData.postValue(idCardData)
