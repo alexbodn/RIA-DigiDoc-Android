@@ -128,11 +128,26 @@ jobs:
   notify:
     needs: build
     runs-on: ubuntu-latest
-    if: always()
+    if: success()
     steps:
+      - name: Check for Mail Secret
+        id: check_secret
+        env:
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          MAIL_SERVER: ${{ secrets.MAIL_SERVER }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+        run: |
+          if [ -n "$MAIL_TO" ] && [ -n "$MAIL_SERVER" ] && [ -n "$MAIL_USERNAME" ] && [ -n "$MAIL_PASSWORD" ]; then
+            echo "has_mail=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_mail=false" >> $GITHUB_OUTPUT
+            echo "Warning: One or more email secrets (MAIL_TO, MAIL_SERVER, MAIL_USERNAME, MAIL_PASSWORD) are missing. Skipping notification."
+          fi
+
       - name: Send Email Notification
         uses: dawidd6/action-send-mail@v3
-        if: ${{ secrets.MAIL_TO != '' }}
+        if: steps.check_secret.outputs.has_mail == 'true'
         with:
           server_address: ${{ secrets.MAIL_SERVER }}
           server_port: ${{ secrets.MAIL_PORT }}
