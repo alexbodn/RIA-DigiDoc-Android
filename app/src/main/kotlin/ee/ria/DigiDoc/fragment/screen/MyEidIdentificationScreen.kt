@@ -405,6 +405,27 @@ fun MyEidIdentificationScreen(
                         color = MaterialTheme.colorScheme.surface,
                     )
                 }
+
+                Spacer(modifier = modifier.height(SPadding))
+
+                Button(
+                    onClick = {
+                        navController.navigate(Route.MyEidScreen.route)
+                    },
+                    modifier =
+                        modifier
+                            .fillMaxWidth()
+                            .focusable(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(R.string.skip_identification_button),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
 
             InvisibleElement(modifier = modifier)
