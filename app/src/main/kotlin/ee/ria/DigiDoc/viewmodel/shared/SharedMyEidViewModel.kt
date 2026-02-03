@@ -422,7 +422,15 @@ class SharedMyEidViewModel
                     MyEidIdentificationMethodSetting.NFC -> {
                         nfcSmartCardReaderManager.startDiscovery(activity) { reader, error ->
                             if (error != null) {
-                                onResult(null, error)
+                                val msg = error.message ?: ""
+                                val userFriendlyError = if (msg.contains("ATS not supported", ignoreCase = true)) {
+                                    activity.getString(R.string.nfc_error_ats_not_supported)
+                                } else if (msg.contains("Tag was lost", ignoreCase = true)) {
+                                    activity.getString(R.string.nfc_error_tag_lost)
+                                } else {
+                                    msg
+                                }
+                                onResult(null, Exception(userFriendlyError))
                                 return@startDiscovery
                             }
 
