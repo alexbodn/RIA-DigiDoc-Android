@@ -1,13 +1,10 @@
 name: Android Build
 
-on: [push, workflow_dispatch]
+on:
+  push:
+  workflow_dispatch:
 
 jobs:
-  # reference: https://docs.github.com/en/actions/learn-github-actions/reusing-workflows#example-caller-workflow
-  org-checks:
-    uses: repo/.github/workflows/main_workflow.yml@main
-    secrets:
-      MAIL_TO: ${{ secrets.MAIL_TO }}
   build:
     runs-on: ubuntu-24.04
 
