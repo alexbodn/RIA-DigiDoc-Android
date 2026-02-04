@@ -39,6 +39,7 @@ import ee.ria.DigiDoc.idcard.Token
 import ee.ria.DigiDoc.libdigidoclib.SignedContainer
 import ee.ria.DigiDoc.libdigidoclib.domain.model.RoleData
 import ee.ria.DigiDoc.libdigidoclib.domain.model.ValidatorInterface
+import ee.ria.DigiDoc.smartcardreader.SmartCardReaderException
 import ee.ria.DigiDoc.smartcardreader.SmartCardReaderManager
 import ee.ria.DigiDoc.smartcardreader.SmartCardReaderStatus
 import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.Companion.debugLog
@@ -173,7 +174,9 @@ class IdCardViewModel
                             Token.create(smartCardReaderManager.connectedReader())
                         }
 
-                    val authCert = idCardService.data(token).authCertificate!!.data
+                    val idCardData = idCardService.data(token)
+                    val authCert = idCardData.authCertificate?.data
+                        ?: throw SmartCardReaderException("Authentication certificate not found.")
 
                     debugLog(
                         logTag,

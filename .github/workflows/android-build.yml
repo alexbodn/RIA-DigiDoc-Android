@@ -142,6 +142,13 @@ jobs:
             echo "Warning: One or more email secrets (MAIL_TO, MAIL_SERVER, MAIL_USERNAME, MAIL_PASSWORD) are missing. Skipping notification."
           fi
 
+      - name: Download APK Artifact
+        if: steps.check_secret.outputs.has_mail == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug
+          path: artifacts
+
       - name: Send Email Notification
         uses: dawidd6/action-send-mail@v3
         if: steps.check_secret.outputs.has_mail == 'true'
@@ -157,9 +164,10 @@ jobs:
             Branch: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
 
-            You can download the APK artifact from the workflow run page:
-            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            The APK file is attached to this email.
 
-            (Check the 'Artifacts' section at the bottom)
+            You can also download the APK artifact from the workflow run page:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions <${{ secrets.MAIL_USERNAME }}>
+          attachments: artifacts/app-debug.apk
