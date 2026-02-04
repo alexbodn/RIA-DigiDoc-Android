@@ -543,21 +543,26 @@ class NFCViewModel
             checkNFCStatus(
                 nfcSmartCardReaderManager.startDiscovery(activity) { nfcReader, exc ->
                     if ((nfcReader != null) && (exc == null)) {
+                        debugLog(logTag, "NFC Reader detected: ${nfcReader.javaClass.name}")
                         viewModelScope.launch {
                             _message.postValue(R.string.signature_update_nfc_detected)
                         }
                         try {
                             val isoDep = getIsoDep(nfcReader)
                             if (isoDep != null) {
+                                debugLog(logTag, "IsoDep extracted via reflection. Starting Romanian discovery.")
                                 // Romanian / Direct IsoDep Path
                                 // "Run only yours for the moment" - Exclusive execution
                                 val romanianData = tryRomanianDiscovery(isoDep, canNumber)
+                                debugLog(logTag, "Romanian discovery success. Data: ${romanianData.personalData.givenNames()} ${romanianData.personalData.surname()}")
                                 _userData.postValue(romanianData)
                             } else {
+                                debugLog(logTag, "IsoDep extraction FAILED. Legacy path disabled.")
                                 // Legacy Path disabled as per user request to debug IsoDep extraction
                                 throw SmartCardReaderException("IsoDep extraction failed (Reflection). Legacy path disabled.")
                             }
                         } catch (e: Exception) {
+                            errorLog(logTag, "Discovery failed", e)
                             resetIdCardUserData()
 
                             if (e.message?.contains("TagLostException") == true) {
@@ -666,16 +671,19 @@ class NFCViewModel
     private fun getIsoDep(nfcReader: Any): IsoDep? {
             // Strategy 1: Public getTag() method
             try {
+                debugLog(logTag, "Reflection: Trying getTag() method on ${nfcReader.javaClass.name}")
                 val getTagMethod = nfcReader.javaClass.getMethod("getTag")
                 val tag = getTagMethod.invoke(nfcReader) as? android.nfc.Tag
                 if (tag != null) {
+                    debugLog(logTag, "Reflection: Found Tag via getTag()")
                     return IsoDep.get(tag)
                 }
-            } catch (e: Exception) { /* Ignore */ }
+            } catch (e: Exception) { debugLog(logTag, "Reflection: getTag() failed: ${e.message}") }
 
             // Strategy 2: Reflective search for fields (Tag or IsoDep)
             var currentClass: Class<*>? = nfcReader.javaClass
             while (currentClass != null) {
+                debugLog(logTag, "Reflection: Searching fields in ${currentClass.name}")
                 for (field in currentClass.declaredFields) {
                     try {
                         field.isAccessible = true
@@ -683,11 +691,13 @@ class NFCViewModel
                         if (android.nfc.Tag::class.java.isAssignableFrom(field.type)) {
                             val tag = field.get(nfcReader) as? android.nfc.Tag
                             if (tag != null) {
+                                debugLog(logTag, "Reflection: Found Tag field '${field.name}'")
                                 return IsoDep.get(tag)
                             }
                         }
 
                         if (IsoDep::class.java.isAssignableFrom(field.type)) {
+                            debugLog(logTag, "Reflection: Found IsoDep field '${field.name}'")
                             return field.get(nfcReader) as? IsoDep
                         }
                     } catch (e: Exception) { /* Continue */ }
@@ -695,15 +705,18 @@ class NFCViewModel
                 currentClass = currentClass.superclass
             }
 
+            debugLog(logTag, "Reflection: IsoDep not found")
             return null
         }
 
         private fun tryRomanianDiscovery(isoDep: IsoDep, canNumber: String): IdCardData {
+             debugLog(logTag, "Connecting to IsoDep...")
              // Try to connect. Ignore if already connected.
              try {
                  isoDep.connect()
+                 debugLog(logTag, "IsoDep connected.")
              } catch (e: Exception) {
-                 // Might be already connected
+                 debugLog(logTag, "IsoDep connect warning: ${e.message}")
              }
 
              if (Security.getProvider("BC") == null) {
@@ -711,17 +724,21 @@ class NFCViewModel
              }
 
              isoDep.timeout = 5000
+             debugLog(logTag, "Sending Discovery APDU (SFI 1C)...")
 
              // Phase 1: Discovery via SFI 1C (EF.CardAccess)
              // Command: 00 B0 9C 00 00
              val cmd = byteArrayOf(0x00.toByte(), 0xB0.toByte(), 0x9C.toByte(), 0x00.toByte(), 0x00.toByte())
              val resp = isoDep.transceive(cmd)
 
+             debugLog(logTag, "APDU Response: ${if (resp == null) "null" else Hex.toHexString(resp)}")
+
              // Check if success (90 00) and data present
              if (resp != null && resp.size >= 2 &&
                  resp[resp.size - 2] == 0x90.toByte() &&
                  resp[resp.size - 1] == 0x00.toByte()) {
 
+                 debugLog(logTag, "Romanian card detected (90 00).")
                  // Romanian card detected!
                  // TODO: Implement PACE and DG reading using JMRTD.
 
