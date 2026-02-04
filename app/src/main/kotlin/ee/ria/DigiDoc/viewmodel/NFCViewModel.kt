@@ -554,18 +554,8 @@ class NFCViewModel
                                 val romanianData = tryRomanianDiscovery(isoDep, canNumber)
                                 _userData.postValue(romanianData)
                             } else {
-                                // Legacy Path
-                                val card = TokenWithPace.create(nfcReader)
-                                card.tunnel(canNumber)
-
-                                // NFC operations must run on the same thread as the startDiscovery callback.
-                                // Only "runBlocking" works here — coroutines or new threads break the NFC session.
-                                val data =
-                                    runBlocking {
-                                        idCardService.data(card)
-                                    }
-
-                                _userData.postValue(data)
+                                // Legacy Path disabled as per user request to debug IsoDep extraction
+                                throw SmartCardReaderException("IsoDep extraction failed (Reflection). Legacy path disabled.")
                             }
                         } catch (e: Exception) {
                             resetIdCardUserData()
