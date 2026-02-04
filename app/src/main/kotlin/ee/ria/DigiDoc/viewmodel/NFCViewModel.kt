@@ -573,8 +573,9 @@ class NFCViewModel
                                     Triple(R.string.signature_update_nfc_wrong_can, null, null),
                                 )
                             } else {
+                                // DEBUG: Using version title to display dynamic exception message
                                 _errorState.postValue(
-                                    Triple(R.string.signature_update_nfc_technical_error, null, null),
+                                    Triple(R.string.main_about_version_title, e.message ?: "Unknown error", null),
                                 )
                             }
 
@@ -663,8 +664,8 @@ class NFCViewModel
         }
 
     private fun getIsoDep(nfcReader: Any): IsoDep? {
+            // Strategy 1: Public getTag() method
             try {
-                // Try getTag() method
                 val getTagMethod = nfcReader.javaClass.getMethod("getTag")
                 val tag = getTagMethod.invoke(nfcReader) as? android.nfc.Tag
                 if (tag != null) {
@@ -672,22 +673,27 @@ class NFCViewModel
                 }
             } catch (e: Exception) { /* Ignore */ }
 
-            try {
-                // Try tag field
-                val tagField = nfcReader.javaClass.getDeclaredField("tag")
-                tagField.isAccessible = true
-                val tag = tagField.get(nfcReader) as? android.nfc.Tag
-                if (tag != null) {
-                    return IsoDep.get(tag)
-                }
-            } catch (e: Exception) { /* Ignore */ }
+            // Strategy 2: Reflective search for fields (Tag or IsoDep)
+            var currentClass: Class<*>? = nfcReader.javaClass
+            while (currentClass != null) {
+                for (field in currentClass.declaredFields) {
+                    try {
+                        field.isAccessible = true
 
-             try {
-                // Try isoDep field
-                val isoDepField = nfcReader.javaClass.getDeclaredField("isoDep")
-                isoDepField.isAccessible = true
-                return isoDepField.get(nfcReader) as? IsoDep
-            } catch (e: Exception) { /* Ignore */ }
+                        if (android.nfc.Tag::class.java.isAssignableFrom(field.type)) {
+                            val tag = field.get(nfcReader) as? android.nfc.Tag
+                            if (tag != null) {
+                                return IsoDep.get(tag)
+                            }
+                        }
+
+                        if (IsoDep::class.java.isAssignableFrom(field.type)) {
+                            return field.get(nfcReader) as? IsoDep
+                        }
+                    } catch (e: Exception) { /* Continue */ }
+                }
+                currentClass = currentClass.superclass
+            }
 
             return null
         }
