@@ -547,17 +547,14 @@ class NFCViewModel
                             _message.postValue(R.string.signature_update_nfc_detected)
                         }
                         try {
-                            var handled = false
                             val isoDep = getIsoDep(nfcReader)
                             if (isoDep != null) {
+                                // Romanian / Direct IsoDep Path
+                                // "Run only yours for the moment" - Exclusive execution
                                 val romanianData = tryRomanianDiscovery(isoDep, canNumber)
-                                if (romanianData != null) {
-                                    _userData.postValue(romanianData)
-                                    handled = true
-                                }
-                            }
-
-                            if (!handled) {
+                                _userData.postValue(romanianData)
+                            } else {
+                                // Legacy Path
                                 val card = TokenWithPace.create(nfcReader)
                                 card.tunnel(canNumber)
 
@@ -705,52 +702,55 @@ class NFCViewModel
             return null
         }
 
-        private fun tryRomanianDiscovery(isoDep: IsoDep, canNumber: String): IdCardData? {
+        private fun tryRomanianDiscovery(isoDep: IsoDep, canNumber: String): IdCardData {
+             // Try to connect. Ignore if already connected.
              try {
-                if (Security.getProvider("BC") == null) {
-                    Security.addProvider(BouncyCastleProvider())
-                }
-
-                isoDep.timeout = 5000
-
-                // Phase 1: Discovery via SFI 1C (EF.CardAccess)
-                // Command: 00 B0 9C 00 00
-                val cmd = byteArrayOf(0x00.toByte(), 0xB0.toByte(), 0x9C.toByte(), 0x00.toByte(), 0x00.toByte())
-                val resp = isoDep.transceive(cmd)
-
-                // Check if success (90 00) and data present
-                if (resp != null && resp.size >= 2 &&
-                    resp[resp.size - 2] == 0x90.toByte() &&
-                    resp[resp.size - 1] == 0x00.toByte()) {
-
-                    // Romanian card detected!
-                    // TODO: Implement PACE and DG reading using JMRTD.
-                    // Currently JMRTD integration requires fixing dependencies/API usage.
-
-                    // Returning placeholder data to confirm discovery works.
-                     val personalData = RomanianPersonalData(
-                         givenNames = "Romanian",
-                         surname = "Card Detected",
-                         citizenship = "ROU",
-                         personalCode = "00000000000",
-                         documentNumber = "000000",
-                         expiryDate = null
-                     )
-
-                     return IdCardData(
-                         type = EIDType.ID_CARD,
-                         personalData = personalData,
-                         authCertificate = null,
-                         signCertificate = null,
-                         pin1RetryCount = null,
-                         pin2RetryCount = null,
-                         pukRetryCount = null,
-                         pin2CodeChanged = false
-                     )
-                }
+                 isoDep.connect()
              } catch (e: Exception) {
-                 errorLog(logTag, "Romanian discovery failed: ${e.message}", e)
+                 // Might be already connected
              }
-             return null
+
+             if (Security.getProvider("BC") == null) {
+                 Security.addProvider(BouncyCastleProvider())
+             }
+
+             isoDep.timeout = 5000
+
+             // Phase 1: Discovery via SFI 1C (EF.CardAccess)
+             // Command: 00 B0 9C 00 00
+             val cmd = byteArrayOf(0x00.toByte(), 0xB0.toByte(), 0x9C.toByte(), 0x00.toByte(), 0x00.toByte())
+             val resp = isoDep.transceive(cmd)
+
+             // Check if success (90 00) and data present
+             if (resp != null && resp.size >= 2 &&
+                 resp[resp.size - 2] == 0x90.toByte() &&
+                 resp[resp.size - 1] == 0x00.toByte()) {
+
+                 // Romanian card detected!
+                 // TODO: Implement PACE and DG reading using JMRTD.
+
+                 // Returning placeholder data to confirm discovery works.
+                 val personalData = RomanianPersonalData(
+                     givenNames = "Romanian",
+                     surname = "Card Detected",
+                     citizenship = "ROU",
+                     personalCode = "00000000000",
+                     documentNumber = "000000",
+                     expiryDate = null
+                 )
+
+                 return IdCardData(
+                     type = EIDType.ID_CARD,
+                     personalData = personalData,
+                     authCertificate = null,
+                     signCertificate = null,
+                     pin1RetryCount = null,
+                     pin2RetryCount = null,
+                     pukRetryCount = null,
+                     pin2CodeChanged = false
+                 )
+             } else {
+                 throw SmartCardReaderException("APDU failed or card not recognized (Response: ${if (resp == null) "null" else Hex.toHexString(resp)})")
+             }
         }
     }
