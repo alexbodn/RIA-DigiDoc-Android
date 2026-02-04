@@ -120,7 +120,7 @@ class IdCardServiceImpl
             roleData: RoleData?,
         ): SignedContainer {
             val idCardData = data(token)
-            val signCertificateData = idCardData.signCertificate.data
+            val signCertificateData = idCardData.signCertificate!!.data
 
             val dataToSign: ByteArray?
 
@@ -140,7 +140,7 @@ class IdCardServiceImpl
                 token.calculateSignature(
                     pin2,
                     dataToSign,
-                    idCardData.signCertificate.ellipticCurve,
+                    idCardData.signCertificate!!.ellipticCurve,
                 )
 
             containerWrapper.finalizeSignature(

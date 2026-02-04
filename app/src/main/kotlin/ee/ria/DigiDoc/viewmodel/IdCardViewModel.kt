@@ -173,7 +173,7 @@ class IdCardViewModel
                             Token.create(smartCardReaderManager.connectedReader())
                         }
 
-                    val authCert = idCardService.data(token).authCertificate.data
+                    val authCert = idCardService.data(token).authCertificate!!.data
 
                     debugLog(
                         logTag,

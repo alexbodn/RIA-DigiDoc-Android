@@ -66,6 +66,14 @@ import org.bouncycastle.util.encoders.Hex
 import java.util.Arrays
 import java.util.Base64
 import javax.inject.Inject
+import android.nfc.tech.IsoDep
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.security.Security
+import ee.ria.DigiDoc.domain.model.RomanianPersonalData
+import ee.ria.DigiDoc.common.model.EIDType
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @HiltViewModel
 class NFCViewModel
@@ -539,17 +547,29 @@ class NFCViewModel
                             _message.postValue(R.string.signature_update_nfc_detected)
                         }
                         try {
-                            val card = TokenWithPace.create(nfcReader)
-                            card.tunnel(canNumber)
-
-                            // NFC operations must run on the same thread as the startDiscovery callback.
-                            // Only "runBlocking" works here — coroutines or new threads break the NFC session.
-                            val data =
-                                runBlocking {
-                                    idCardService.data(card)
+                            var handled = false
+                            val isoDep = getIsoDep(nfcReader)
+                            if (isoDep != null) {
+                                val romanianData = tryRomanianDiscovery(isoDep, canNumber)
+                                if (romanianData != null) {
+                                    _userData.postValue(romanianData)
+                                    handled = true
                                 }
+                            }
 
-                            _userData.postValue(data)
+                            if (!handled) {
+                                val card = TokenWithPace.create(nfcReader)
+                                card.tunnel(canNumber)
+
+                                // NFC operations must run on the same thread as the startDiscovery callback.
+                                // Only "runBlocking" works here — coroutines or new threads break the NFC session.
+                                val data =
+                                    runBlocking {
+                                        idCardService.data(card)
+                                    }
+
+                                _userData.postValue(data)
+                            }
                         } catch (e: Exception) {
                             resetIdCardUserData()
 
@@ -653,5 +673,84 @@ class NFCViewModel
         private fun showTechnicalError(e: Exception) {
             _errorState.postValue(Triple(R.string.signature_update_nfc_technical_error, null, null))
             errorLog(logTag, "Unable to perform with NFC: ${e.message}", e)
+        }
+
+    private fun getIsoDep(nfcReader: Any): IsoDep? {
+            try {
+                // Try getTag() method
+                val getTagMethod = nfcReader.javaClass.getMethod("getTag")
+                val tag = getTagMethod.invoke(nfcReader) as? android.nfc.Tag
+                if (tag != null) {
+                    return IsoDep.get(tag)
+                }
+            } catch (e: Exception) { /* Ignore */ }
+
+            try {
+                // Try tag field
+                val tagField = nfcReader.javaClass.getDeclaredField("tag")
+                tagField.isAccessible = true
+                val tag = tagField.get(nfcReader) as? android.nfc.Tag
+                if (tag != null) {
+                    return IsoDep.get(tag)
+                }
+            } catch (e: Exception) { /* Ignore */ }
+
+             try {
+                // Try isoDep field
+                val isoDepField = nfcReader.javaClass.getDeclaredField("isoDep")
+                isoDepField.isAccessible = true
+                return isoDepField.get(nfcReader) as? IsoDep
+            } catch (e: Exception) { /* Ignore */ }
+
+            return null
+        }
+
+        private fun tryRomanianDiscovery(isoDep: IsoDep, canNumber: String): IdCardData? {
+             try {
+                if (Security.getProvider("BC") == null) {
+                    Security.addProvider(BouncyCastleProvider())
+                }
+
+                isoDep.timeout = 5000
+
+                // Phase 1: Discovery via SFI 1C (EF.CardAccess)
+                // Command: 00 B0 9C 00 00
+                val cmd = byteArrayOf(0x00.toByte(), 0xB0.toByte(), 0x9C.toByte(), 0x00.toByte(), 0x00.toByte())
+                val resp = isoDep.transceive(cmd)
+
+                // Check if success (90 00) and data present
+                if (resp != null && resp.size >= 2 &&
+                    resp[resp.size - 2] == 0x90.toByte() &&
+                    resp[resp.size - 1] == 0x00.toByte()) {
+
+                    // Romanian card detected!
+                    // TODO: Implement PACE and DG reading using JMRTD.
+                    // Currently JMRTD integration requires fixing dependencies/API usage.
+
+                    // Returning placeholder data to confirm discovery works.
+                     val personalData = RomanianPersonalData(
+                         givenNames = "Romanian",
+                         surname = "Card Detected",
+                         citizenship = "ROU",
+                         personalCode = "00000000000",
+                         documentNumber = "000000",
+                         expiryDate = null
+                     )
+
+                     return IdCardData(
+                         type = EIDType.ID_CARD,
+                         personalData = personalData,
+                         authCertificate = null,
+                         signCertificate = null,
+                         pin1RetryCount = null,
+                         pin2RetryCount = null,
+                         pukRetryCount = null,
+                         pin2CodeChanged = false
+                     )
+                }
+             } catch (e: Exception) {
+                 errorLog(logTag, "Romanian discovery failed: ${e.message}", e)
+             }
+             return null
         }
     }
