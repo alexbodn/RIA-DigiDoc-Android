@@ -91,9 +91,10 @@ class LoggingUtil
                 } catch (se: SecurityException) {
                     Log.e(LOG_TAG, "Unable to close logging FileHandler", se)
                 }
-                if (logDirectory.exists()) {
-                    logDirectory.deleteRecursively()
-                }
+                // Do not delete logs recursively to preserve them across crashes/restarts
+                // if (logDirectory.exists()) {
+                //    logDirectory.deleteRecursively()
+                // }
 
                 if (!logDirectory.exists()) {
                     logDirectory.mkdirs()
