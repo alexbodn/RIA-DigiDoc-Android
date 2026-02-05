@@ -44,9 +44,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -98,6 +100,7 @@ import ee.ria.DigiDoc.viewmodel.shared.SharedMenuViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedMyEidViewModel
 import ee.ria.DigiDoc.viewmodel.shared.SharedSettingsViewModel
 import kotlinx.coroutines.launch
+import ee.ria.DigiDoc.domain.model.RomanianPersonalData
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -134,6 +137,8 @@ fun MyEidIdentificationScreen(
     val identificationMethodText = stringResource(R.string.myeid_identification_method)
     val rememberMeText = stringResource(R.string.signature_update_remember_me)
     var nfcSupported by remember { mutableStateOf(false) }
+
+    val romanianDataDialogState = remember { mutableStateOf<RomanianPersonalData?>(null) }
 
     LaunchedEffect(messages) {
         messages.forEach { message ->
@@ -313,11 +318,15 @@ fun MyEidIdentificationScreen(
                         isAddingRoleAndAddress = false,
                         isAuthenticated = { authenticated, personalData ->
                             if (authenticated) {
-                                sharedMyEidViewModel.setIdCardData(personalData)
+                                if (personalData.personalData is RomanianPersonalData) {
+                                    romanianDataDialogState.value = personalData.personalData as RomanianPersonalData
+                                } else {
+                                    sharedMyEidViewModel.setIdCardData(personalData)
 
-                                navController.navigate(
-                                    Route.MyEidScreen.route,
-                                )
+                                    navController.navigate(
+                                        Route.MyEidScreen.route,
+                                    )
+                                }
                             }
                         },
                         identityAction = IdentityAction.AUTH,
@@ -352,11 +361,15 @@ fun MyEidIdentificationScreen(
                         isAddingRoleAndAddress = false,
                         isAuthenticated = { authenticated, idCardData ->
                             if (authenticated) {
-                                sharedMyEidViewModel.setIdCardData(idCardData)
+                                if (idCardData.personalData is RomanianPersonalData) {
+                                    romanianDataDialogState.value = idCardData.personalData as RomanianPersonalData
+                                } else {
+                                    sharedMyEidViewModel.setIdCardData(idCardData)
 
-                                navController.navigate(
-                                    Route.MyEidScreen.route,
-                                )
+                                    navController.navigate(
+                                        Route.MyEidScreen.route,
+                                    )
+                                }
                             }
                         },
                         isValidToAuthenticate = { isValid ->
@@ -409,6 +422,28 @@ fun MyEidIdentificationScreen(
 
             InvisibleElement(modifier = modifier)
         }
+    }
+
+    if (romanianDataDialogState.value != null) {
+        val data = romanianDataDialogState.value!!
+        AlertDialog(
+            onDismissRequest = { romanianDataDialogState.value = null },
+            title = { Text(text = "Romanian eID Detected") },
+            text = {
+                Column {
+                    Text("Surname: ${data.surname()}")
+                    Text("Given Names: ${data.givenNames()}")
+                    Text("Citizenship: ${data.citizenship()}")
+                    Text("Doc Number: ${data.documentNumber()}")
+                    Text("Personal Code: ${data.personalCode()}")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { romanianDataDialogState.value = null }) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
 
