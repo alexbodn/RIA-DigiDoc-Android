@@ -82,6 +82,7 @@ import org.jmrtd.lds.icao.DG1File
 import org.jmrtd.lds.icao.DG2File
 import net.sf.scuba.smartcards.IsoDepCardService
 import net.sf.scuba.smartcards.CardService
+import net.sf.scuba.smartcards.CommandAPDU
 import org.jmrtd.lds.icao.MRZInfo
 import org.jmrtd.PACEKeySpec
 
@@ -678,12 +679,52 @@ class NFCViewModel
             errorLog(logTag, "Unable to perform with NFC: ${e.message}", e)
         }
 
-    private fun readDataGroupManual(wrapper: org.jmrtd.protocol.SecureMessagingWrapper, sfi: Byte): ByteArray {
-        // Not implemented fully as we lack access to the card service for transmission here easily.
-        // However, the real fix is likely enabling SFI which we did.
-        // This method is a placeholder if SFI fails again.
-        // Ideally we would send a Wrapped SELECT command here.
-        throw UnsupportedOperationException("Manual secure read not fully implemented - Check logs for SFI failure")
+    private fun readDataGroupManual(cardService: CardService, wrapper: org.jmrtd.protocol.SecureMessagingWrapper, sfi: Byte): ByteArray {
+        val buffer = java.io.ByteArrayOutputStream()
+        var offset = 0
+        val blockSize = 220
+        var hasMore = true
+
+        while (hasMore) {
+            // Implicit SFI Read: CLA=0x0C (Wrapper sets it), INS=0xB0
+            // P1 = 0x80 | SFI (e.g., 0x81 for DG1). This accesses the file directly without SELECT.
+            // P2 = Offset.
+
+            val p1: Int
+            val p2: Int
+
+            if (offset == 0) {
+                // First read: Use SFI in P1
+                p1 = 0x80 or sfi.toInt()
+                p2 = 0
+            } else {
+                // Subsequent reads: File is selected (implicitly), use standard P1/P2 offset
+                // P1 = High Offset, P2 = Low Offset
+                p1 = (offset shr 8) and 0xFF
+                p2 = offset and 0xFF
+            }
+
+            // Construct plain APDU, let wrapper secure it.
+            val readCmd = CommandAPDU(0x00, 0xB0, p1, p2, blockSize)
+            val wrappedRead = wrapper.wrap(readCmd)
+            val readResp = cardService.transmit(wrappedRead)
+            val unwrappedRead = wrapper.unwrap(readResp)
+
+            if (unwrappedRead.sw == 0x9000) {
+                val data = unwrappedRead.data
+                buffer.write(data)
+                offset += data.size
+                if (data.size < blockSize) {
+                    hasMore = false
+                }
+            } else if (unwrappedRead.sw == 0x6B00) {
+                // Offset outside -> EOF
+                hasMore = false
+            } else {
+                throw SmartCardReaderException("Manual SFI READ failed at offset $offset: SW=" + Integer.toHexString(unwrappedRead.sw))
+            }
+        }
+        return buffer.toByteArray()
     }
 
     private fun getIsoDep(nfcReader: Any): IsoDep? {
@@ -805,7 +846,7 @@ class NFCViewModel
                      if (wrapper == null) throw Exception("Secure Messaging Wrapper is null")
 
                      // Read DG1 (SFI 1 = 0x01)
-                     val dg1Bytes = readDataGroupManual(wrapper, 0x01.toByte())
+                     val dg1Bytes = readDataGroupManual(cardService, wrapper, 0x01.toByte())
                      dg1File = DG1File(java.io.ByteArrayInputStream(dg1Bytes))
                  }
 
@@ -824,7 +865,7 @@ class NFCViewModel
                          debugLog(logTag, "Standard DG2 read failed. Trying manual secure read...")
                          val wrapper = passportService.wrapper
                          // Read DG2 (SFI 2 = 0x02)
-                         val dg2Bytes = readDataGroupManual(wrapper, 0x02.toByte())
+                         val dg2Bytes = readDataGroupManual(cardService, wrapper, 0x02.toByte())
                          dg2File = DG2File(java.io.ByteArrayInputStream(dg2Bytes))
                      }
 
