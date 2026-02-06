@@ -83,6 +83,7 @@ import org.jmrtd.lds.icao.DG2File
 import net.sf.scuba.smartcards.IsoDepCardService
 import net.sf.scuba.smartcards.CardService
 import net.sf.scuba.smartcards.CommandAPDU
+import net.sf.scuba.smartcards.ResponseAPDU
 import org.jmrtd.lds.icao.MRZInfo
 import org.jmrtd.PACEKeySpec
 
@@ -679,8 +680,8 @@ class NFCViewModel
             errorLog(logTag, "Unable to perform with NFC: ${e.message}", e)
         }
 
-    private fun readDataGroupManual(cardService: CardService, wrapper: org.jmrtd.protocol.SecureMessagingWrapper, sfi: Byte): ByteArray {
-        // Explicit Secure SELECT then READ BINARY sequence
+    private fun readDataGroupManual(isoDep: IsoDep, wrapper: org.jmrtd.protocol.SecureMessagingWrapper, sfi: Byte): ByteArray {
+        // Explicit Secure SELECT then READ BINARY sequence using raw IsoDep transmission
         // 1. SELECT File
         val fid = when(sfi.toInt()) {
             1 -> shortArrayOf(0x01, 0x01)
@@ -688,14 +689,15 @@ class NFCViewModel
             else -> throw IllegalArgumentException("Unsupported SFI for manual read: $sfi")
         }
 
-        debugLog(logTag, "Manual Read: Selecting File ${Integer.toHexString(fid[0].toInt())}${Integer.toHexString(fid[1].toInt())}")
+        debugLog(logTag, "Manual Read (IsoDep): Selecting File ${Integer.toHexString(fid[0].toInt())}${Integer.toHexString(fid[1].toInt())}")
 
         // 00 A4 02 0C 02 FID
         val selectCmd = CommandAPDU(0x00, 0xA4, 0x02, 0x0C, byteArrayOf(fid[0].toByte(), fid[1].toByte()))
         val wrappedSelect = wrapper.wrap(selectCmd)
         debugLog(logTag, "Sending Wrapped SELECT: ${Hex.toHexString(wrappedSelect.bytes)}")
 
-        val selectResp = cardService.transmit(wrappedSelect)
+        val selectRespBytes = isoDep.transceive(wrappedSelect.bytes)
+        val selectResp = ResponseAPDU(selectRespBytes)
         val unwrappedSelect = wrapper.unwrap(selectResp)
 
         if (unwrappedSelect.sw != 0x9000) {
@@ -715,7 +717,8 @@ class NFCViewModel
             // 00 B0 P1 P2 Le
             val readCmd = CommandAPDU(0x00, 0xB0, p1, p2, blockSize)
             val wrappedRead = wrapper.wrap(readCmd)
-            val readResp = cardService.transmit(wrappedRead)
+            val readRespBytes = isoDep.transceive(wrappedRead.bytes)
+            val readResp = ResponseAPDU(readRespBytes)
             val unwrappedRead = wrapper.unwrap(readResp)
 
             if (unwrappedRead.sw == 0x9000) {
@@ -853,7 +856,7 @@ class NFCViewModel
                      if (wrapper == null) throw Exception("Secure Messaging Wrapper is null")
 
                      // Read DG1 (SFI 1 = 0x01)
-                     val dg1Bytes = readDataGroupManual(cardService, wrapper, 0x01.toByte())
+                     val dg1Bytes = readDataGroupManual(isoDep, wrapper, 0x01.toByte())
                      dg1File = DG1File(java.io.ByteArrayInputStream(dg1Bytes))
                  }
 
@@ -872,7 +875,7 @@ class NFCViewModel
                          debugLog(logTag, "Standard DG2 read failed. Trying manual secure read...")
                          val wrapper = passportService.wrapper
                          // Read DG2 (SFI 2 = 0x02)
-                         val dg2Bytes = readDataGroupManual(cardService, wrapper, 0x02.toByte())
+                         val dg2Bytes = readDataGroupManual(isoDep, wrapper, 0x02.toByte())
                          dg2File = DG2File(java.io.ByteArrayInputStream(dg2Bytes))
                      }
 
