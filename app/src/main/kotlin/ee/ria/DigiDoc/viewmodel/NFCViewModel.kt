@@ -738,7 +738,8 @@ class NFCViewModel
 
              try {
                  // Create PassportService wrapper to access files
-                 val passportService = PassportService(cardService, 256, 223, false, false)
+                 // Constructor: PassportService(CardService service, int maxBlockSize, int maxTranceiveLength, boolean shouldCheckMAC, boolean isSFIEnabled)
+                 val passportService = PassportService(cardService, 256, 223, false, true)
                  passportService.open()
 
                  // 2. Discovery: Read EF.CardAccess (SFI 1C)
