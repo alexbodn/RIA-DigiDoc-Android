@@ -74,6 +74,16 @@ import ee.ria.DigiDoc.common.model.EIDType
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import org.jmrtd.protocol.PACEProtocol
+import org.jmrtd.PassportService
+import org.jmrtd.lds.CardAccessFile
+import org.jmrtd.lds.PACEInfo
+import org.jmrtd.lds.icao.DG1File
+import org.jmrtd.lds.icao.DG2File
+import net.sf.scuba.smartcards.IsoDepCardService
+import net.sf.scuba.smartcards.CardService
+import org.jmrtd.lds.icao.MRZInfo
+import org.jmrtd.PACEKeySpec
 
 @HiltViewModel
 class NFCViewModel
@@ -710,46 +720,116 @@ class NFCViewModel
         }
 
         private fun tryRomanianDiscovery(isoDep: IsoDep, canNumber: String): IdCardData {
-             debugLog(logTag, "Connecting to IsoDep...")
-             // Try to connect. Ignore if already connected.
-             try {
-                 isoDep.connect()
-                 debugLog(logTag, "IsoDep connected.")
-             } catch (e: Exception) {
-                 debugLog(logTag, "IsoDep connect warning: ${e.message}")
-             }
+             debugLog(logTag, "Starting Romanian eID Discovery...")
 
              if (Security.getProvider("BC") == null) {
                  Security.addProvider(BouncyCastleProvider())
              }
 
-             isoDep.timeout = 5000
-             debugLog(logTag, "Sending Discovery APDU (SFI 1C)...")
+             // 1. Setup Card Service
+             isoDep.timeout = 10000 // Extended timeout for PACE
+             val cardService = IsoDepCardService(isoDep)
+             cardService.open()
 
-             // Phase 1: Discovery via SFI 1C (EF.CardAccess)
-             // Command: 00 B0 9C 00 00
-             val cmd = byteArrayOf(0x00.toByte(), 0xB0.toByte(), 0x9C.toByte(), 0x00.toByte(), 0x00.toByte())
-             val resp = isoDep.transceive(cmd)
+             try {
+                 // Create PassportService wrapper to access files
+                 val passportService = PassportService(cardService, 256, 223, false, false)
+                 passportService.open()
 
-             debugLog(logTag, "APDU Response: ${if (resp == null) "null" else Hex.toHexString(resp)}")
+                 // 2. Discovery: Read EF.CardAccess (SFI 1C)
+                 debugLog(logTag, "Reading EF.CardAccess...")
+                 // Use passportService to get the stream
+                 val cardAccessFile = CardAccessFile(passportService.getInputStream(PassportService.EF_CARD_ACCESS))
+                 debugLog(logTag, "EF.CardAccess read successfully.")
 
-             // Check if success (90 00) and data present
-             if (resp != null && resp.size >= 2 &&
-                 resp[resp.size - 2] == 0x90.toByte() &&
-                 resp[resp.size - 1] == 0x00.toByte()) {
+                 // JMRTD 0.7.18: getSecurityInfos() returns Collection<SecurityInfo>
+                 val securityInfos = cardAccessFile.getSecurityInfos()
+                 var paceInfo: PACEInfo? = null
+                 if (securityInfos != null) {
+                     for (info in securityInfos) {
+                         if (info is PACEInfo) {
+                             paceInfo = info
+                             break
+                         }
+                     }
+                 }
 
-                 debugLog(logTag, "Romanian card detected (90 00).")
-                 // Romanian card detected!
-                 // TODO: Implement PACE and DG reading using JMRTD.
+                 if (paceInfo == null) {
+                     throw SmartCardReaderException("No PACE Info found in EF.CardAccess")
+                 }
 
-                 // Returning placeholder data to confirm discovery works.
+                 val oid = paceInfo.protocolOIDString
+                 val paramId = paceInfo.parameterId
+                 debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
+
+                 // 3. Establish Secure Messaging (PACE-CAN)
+                 debugLog(logTag, "Performing PACE with CAN: $canNumber")
+                 val canKey = PACEKeySpec(canNumber.toByteArray(), PassportService.CAN_PACE_KEY_REFERENCE)
+
+                 // doPACE(AccessKeySpec key, String oid, AlgorithmParameterSpec params, BigInteger parameterId)
+                 passportService.doPACE(canKey, oid, PACEInfo.toParameterSpec(paramId), paramId)
+                 debugLog(logTag, "PACE Established. Secure Messaging Active.")
+
+                 // DG1: MRZ Data
+                 debugLog(logTag, "Reading DG1 (MRZ)...")
+                 val dg1File = DG1File(passportService.getInputStream(PassportService.EF_DG1))
+                 // JMRTD 0.7.18: getMRZInfo() instead of mrzInfo property
+                 val mrzInfo = dg1File.getMRZInfo()
+                 debugLog(logTag, "DG1 Read Success: ${mrzInfo.primaryIdentifier} ${mrzInfo.secondaryIdentifier}")
+
+                 // DG2: Face Image
+                 debugLog(logTag, "Reading DG2 (Face)...")
+                 var faceImageBytes: ByteArray? = null
+                 try {
+                     val dg2File = DG2File(passportService.getInputStream(PassportService.EF_DG2))
+                     // JMRTD 0.7.18: getFaceInfos() instead of faceInfos property
+                     val images = dg2File.getFaceInfos()
+                     if (images != null && !images.isEmpty()) {
+                        val imageInfo = images[0]
+                        // JMRTD 0.7.18: FaceInfo might have getFaceImageInfos()
+                        val imageInfos = imageInfo.getFaceImageInfos()
+                        if (imageInfos != null && !imageInfos.isEmpty()) {
+                            val faceImageInfo = imageInfos[0]
+                            val imageInputStream = faceImageInfo.getImageInputStream()
+                            faceImageBytes = imageInputStream.readBytes()
+                            debugLog(logTag, "DG2 Read Success. Image size: ${faceImageBytes?.size} bytes")
+                        }
+                     }
+                 } catch (e: Exception) {
+                     errorLog(logTag, "Failed to read DG2 (Face): ${e.message}", e)
+                 }
+
+                 // Map to Personal Data
+                 val givenNames = mrzInfo.secondaryIdentifier.replace("<", " ").trim()
+                 val surname = mrzInfo.primaryIdentifier.replace("<", " ").trim()
+                 val docNumber = mrzInfo.documentNumber
+                 val personalCode = mrzInfo.personalNumber
+                 val nationality = mrzInfo.nationality
+
+                 // Parse Expiry Date (YYMMDD)
+                 var expiryDate: LocalDate? = null
+                 try {
+                     val expiryStr = mrzInfo.dateOfExpiry
+                     // MRZ years are 2 digits. Pivot around 50? Assume 20xx for now.
+                     // A robust parser would need more context, but standard MRTD is roughly this.
+                     val formatter = DateTimeFormatter.ofPattern("yyMMdd")
+                     expiryDate = LocalDate.parse(expiryStr, formatter)
+                     // Adjust century if needed (simplified)
+                     if (expiryDate.year < 2000) {
+                        expiryDate = expiryDate.plusYears(100)
+                     }
+                 } catch (e: Exception) {
+                     debugLog(logTag, "Failed to parse expiry date: ${mrzInfo.dateOfExpiry}")
+                 }
+
                  val personalData = RomanianPersonalData(
-                     givenNames = "Romanian",
-                     surname = "Card Detected",
-                     citizenship = "ROU",
-                     personalCode = "00000000000",
-                     documentNumber = "000000",
-                     expiryDate = null
+                     givenNames = givenNames,
+                     surname = surname,
+                     citizenship = nationality,
+                     personalCode = personalCode,
+                     documentNumber = docNumber,
+                     expiryDate = expiryDate,
+                     faceImage = faceImageBytes
                  )
 
                  return IdCardData(
@@ -762,8 +842,11 @@ class NFCViewModel
                      pukRetryCount = null,
                      pin2CodeChanged = false
                  )
-             } else {
-                 throw SmartCardReaderException("APDU failed or card not recognized (Response: ${if (resp == null) "null" else Hex.toHexString(resp)})")
+
+             } catch (e: Exception) {
+                 throw SmartCardReaderException("Romanian Discovery Failed: ${e.message}")
+             } finally {
+                 try { cardService.close() } catch (e: Exception) {}
              }
         }
     }
