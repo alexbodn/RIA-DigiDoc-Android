@@ -722,8 +722,13 @@ class NFCViewModel
         private fun tryRomanianDiscovery(isoDep: IsoDep, canNumber: String): IdCardData {
              debugLog(logTag, "Starting Romanian eID Discovery...")
 
+             // Insert Bouncy Castle at position 1 to ensure it handles AES-256 correctly
+             // This prevents "Unknown OID" or algorithm support issues with standard Android providers
              if (Security.getProvider("BC") == null) {
-                 Security.addProvider(BouncyCastleProvider())
+                 Security.insertProviderAt(BouncyCastleProvider(), 1)
+             } else {
+                 Security.removeProvider("BC")
+                 Security.insertProviderAt(BouncyCastleProvider(), 1)
              }
 
              // 1. Setup Card Service
@@ -761,10 +766,11 @@ class NFCViewModel
                  // Use getObjectIdentifier() to get the numeric OID (e.g. 0.4.0...) required by doPACE
                  // getProtocolOIDString() returns the friendly name (e.g. id-PACE...) which might fail lookup
                  var oid = paceInfo.objectIdentifier
+                 // Fix OID mapping based on canonical JMRTD expectations (0.4.0.0.127...)
                  if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-256") {
-                     oid = "0.4.0.127.0.7.2.2.4.4.2"
+                     oid = "0.4.0.0.127.0.7.2.2.4.2.2"
                  } else if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-128") {
-                     oid = "0.4.0.127.0.7.2.2.4.2.4"
+                     oid = "0.4.0.0.127.0.7.2.2.4.2.4"
                  }
 
                  val paramId = paceInfo.parameterId
