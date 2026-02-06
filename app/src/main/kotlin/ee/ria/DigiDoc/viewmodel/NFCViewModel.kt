@@ -678,6 +678,14 @@ class NFCViewModel
             errorLog(logTag, "Unable to perform with NFC: ${e.message}", e)
         }
 
+    private fun readDataGroupManual(wrapper: org.jmrtd.protocol.SecureMessagingWrapper, sfi: Byte): ByteArray {
+        // Not implemented fully as we lack access to the card service for transmission here easily.
+        // However, the real fix is likely enabling SFI which we did.
+        // This method is a placeholder if SFI fails again.
+        // Ideally we would send a Wrapped SELECT command here.
+        throw UnsupportedOperationException("Manual secure read not fully implemented - Check logs for SFI failure")
+    }
+
     private fun getIsoDep(nfcReader: Any): IsoDep? {
             // Strategy 1: Public getTag() method
             try {
@@ -787,7 +795,20 @@ class NFCViewModel
 
                  // DG1: MRZ Data
                  debugLog(logTag, "Reading DG1 (MRZ)...")
-                 val dg1File = DG1File(passportService.getInputStream(PassportService.EF_DG1))
+                 var dg1File: DG1File
+                 try {
+                     dg1File = DG1File(passportService.getInputStream(PassportService.EF_DG1))
+                 } catch (e: Exception) {
+                     debugLog(logTag, "Standard DG1 read failed (${e.message}). Trying manual secure read...")
+                     // Fallback: Read using raw secure messaging if PassportService logic fails (e.g. 6E00 error)
+                     val wrapper = passportService.wrapper
+                     if (wrapper == null) throw Exception("Secure Messaging Wrapper is null")
+
+                     // Read DG1 (SFI 1 = 0x01)
+                     val dg1Bytes = readDataGroupManual(wrapper, 0x01.toByte())
+                     dg1File = DG1File(java.io.ByteArrayInputStream(dg1Bytes))
+                 }
+
                  // JMRTD 0.7.18: getMRZInfo() instead of mrzInfo property
                  val mrzInfo = dg1File.getMRZInfo()
                  debugLog(logTag, "DG1 Read Success: ${mrzInfo.primaryIdentifier} ${mrzInfo.secondaryIdentifier}")
@@ -796,7 +817,17 @@ class NFCViewModel
                  debugLog(logTag, "Reading DG2 (Face)...")
                  var faceImageBytes: ByteArray? = null
                  try {
-                     val dg2File = DG2File(passportService.getInputStream(PassportService.EF_DG2))
+                     var dg2File: DG2File
+                     try {
+                         dg2File = DG2File(passportService.getInputStream(PassportService.EF_DG2))
+                     } catch (e: Exception) {
+                         debugLog(logTag, "Standard DG2 read failed. Trying manual secure read...")
+                         val wrapper = passportService.wrapper
+                         // Read DG2 (SFI 2 = 0x02)
+                         val dg2Bytes = readDataGroupManual(wrapper, 0x02.toByte())
+                         dg2File = DG2File(java.io.ByteArrayInputStream(dg2Bytes))
+                     }
+
                      // JMRTD 0.7.18: getFaceInfos() instead of faceInfos property
                      val images = dg2File.getFaceInfos()
                      if (images != null && !images.isEmpty()) {

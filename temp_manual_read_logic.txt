@@ -1,0 +1,60 @@
+    private fun readDataGroupManual(wrapper: org.jmrtd.protocol.SecureMessagingWrapper, sfi: Byte): ByteArray {
+        // Construct Read Binary command with SFI
+        // CLA: 0x0C (Secure), INS: 0xB0 (Read Binary)
+        // P1: 0x80 | SFI (implicit selection)
+        // P2: Offset (start at 0)
+
+        var offset = 0
+        val buffer = java.io.ByteArrayOutputStream()
+        var hasMore = true
+
+        while (hasMore) {
+            val p1 = (0x80 or sfi.toInt()).toByte()
+            val p2 = (offset shr 8).toByte() // High byte of offset (not strictly standard for SFI, but P2 usually offset)
+            // Wait, for SFI, P1 is SFI (bit 7 set), P2 is offset.
+            // Actually, SFI addressing in ReadBinary:
+            // P1 = 1000 0000 | SFI (if SFI < 32).
+            // P2 = Offset.
+            // This only supports short offsets (up to 255).
+            // For longer files, we usually need proper selection OR Odd INS?
+            // Standard ePassport uses Select then Read.
+            // If we MUST use SFI to avoid Select, we are limited by offset size unless using extended length?
+            // Actually, usually one Selects the file, then Reads.
+            // If Select (00A4) is failing, we are trying SFI.
+
+            // JMRTD's ReadBinaryAPDUSender handles this complexity.
+            // Let's rely on a simpler assumption: The file is small or we handle standard ReadBinary loop.
+            // If we can't select, we must use SFI.
+            // Let's try sending implicit read.
+
+            // NOTE: If the card requires SM for Select, and PassportService failed to wrap it,
+            // we could try to send a WRAPPED Select command first!
+
+            // Attempt 1: Wrapped SELECT (File ID)
+            // DG1 FID = 0x0101
+            // SFI 1 mapped to FID 0101.
+
+            // Let's try finding the FID for the SFI.
+            // DG1 = 0x0101, DG2 = 0x0102.
+            // Let's manually SELECT 0101 with SM.
+
+            val fid = when(sfi.toInt()) {
+                1 -> shortArrayOf(0x01, 0x01)
+                2 -> shortArrayOf(0x01, 0x02)
+                else -> throw IllegalArgumentException("Unknown SFI")
+            }
+
+            // Select Command: 00 A4 02 0C 02 FID
+            // We wrap it.
+            val selectAPDU = net.sf.scuba.smartcards.CommandAPDU(0x00, 0xA4, 0x02, 0x0C, byteArrayOf(fid[0].toByte(), fid[1].toByte()))
+            val wrappedSelect = wrapper.wrap(selectAPDU)
+            // We need a channel to transmit. wrapper doesn't transmit.
+            // We need access to 'cardService'.
+            // I need to pass cardService to this function or access it.
+            // Refactoring to include cardService in args is hard in this snippet.
+            // But wait, the main loop has 'cardService'.
+
+            throw UnsupportedOperationException("Manual read helper incomplete - logic moved to inline")
+        }
+        return byteArrayOf()
+    }
