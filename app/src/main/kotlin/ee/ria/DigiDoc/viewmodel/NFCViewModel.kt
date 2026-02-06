@@ -738,8 +738,8 @@ class NFCViewModel
 
              try {
                  // Create PassportService wrapper to access files
-                 // Constructor: PassportService(CardService service, int maxBlockSize, int maxTranceiveLength, boolean shouldCheckMAC, boolean isSFIEnabled)
-                 val passportService = PassportService(cardService, 256, 223, false, true)
+                 // Enable SFI (last arg) and MAC checks (4th arg) to ensure Secure Messaging is enforced
+                 val passportService = PassportService(cardService, 256, 223, true, true)
                  passportService.open()
 
                  // 2. Discovery: Read EF.CardAccess (SFI 1C)
@@ -783,7 +783,7 @@ class NFCViewModel
 
                  // doPACE(AccessKeySpec key, String oid, AlgorithmParameterSpec params, BigInteger parameterId)
                  passportService.doPACE(canKey, oid, PACEInfo.toParameterSpec(paramId), paramId)
-                 debugLog(logTag, "PACE Established. Secure Messaging Active.")
+                 debugLog(logTag, "PACE Established. Secure Messaging Active. Wrapper set: ${passportService.wrapper != null}")
 
                  // DG1: MRZ Data
                  debugLog(logTag, "Reading DG1 (MRZ)...")
