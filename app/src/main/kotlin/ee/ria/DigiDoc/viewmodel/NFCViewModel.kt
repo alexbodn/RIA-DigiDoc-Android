@@ -680,31 +680,39 @@ class NFCViewModel
         }
 
     private fun readDataGroupManual(cardService: CardService, wrapper: org.jmrtd.protocol.SecureMessagingWrapper, sfi: Byte): ByteArray {
+        // Explicit Secure SELECT then READ BINARY sequence
+        // 1. SELECT File
+        val fid = when(sfi.toInt()) {
+            1 -> shortArrayOf(0x01, 0x01)
+            2 -> shortArrayOf(0x01, 0x02)
+            else -> throw IllegalArgumentException("Unsupported SFI for manual read: $sfi")
+        }
+
+        debugLog(logTag, "Manual Read: Selecting File ${Integer.toHexString(fid[0].toInt())}${Integer.toHexString(fid[1].toInt())}")
+
+        // 00 A4 02 0C 02 FID
+        val selectCmd = CommandAPDU(0x00, 0xA4, 0x02, 0x0C, byteArrayOf(fid[0].toByte(), fid[1].toByte()))
+        val wrappedSelect = wrapper.wrap(selectCmd)
+        debugLog(logTag, "Sending Wrapped SELECT: ${Hex.toHexString(wrappedSelect.bytes)}")
+
+        val selectResp = cardService.transmit(wrappedSelect)
+        val unwrappedSelect = wrapper.unwrap(selectResp)
+
+        if (unwrappedSelect.sw != 0x9000) {
+            throw SmartCardReaderException("Manual Wrapped SELECT failed: SW=" + Integer.toHexString(unwrappedSelect.sw))
+        }
+
+        // 2. READ BINARY Loop
         val buffer = java.io.ByteArrayOutputStream()
         var offset = 0
         val blockSize = 220
         var hasMore = true
 
         while (hasMore) {
-            // Implicit SFI Read: CLA=0x0C (Wrapper sets it), INS=0xB0
-            // P1 = 0x80 | SFI (e.g., 0x81 for DG1). This accesses the file directly without SELECT.
-            // P2 = Offset.
+            val p1 = (offset shr 8) and 0xFF
+            val p2 = offset and 0xFF
 
-            val p1: Int
-            val p2: Int
-
-            if (offset == 0) {
-                // First read: Use SFI in P1
-                p1 = 0x80 or sfi.toInt()
-                p2 = 0
-            } else {
-                // Subsequent reads: File is selected (implicitly), use standard P1/P2 offset
-                // P1 = High Offset, P2 = Low Offset
-                p1 = (offset shr 8) and 0xFF
-                p2 = offset and 0xFF
-            }
-
-            // Construct plain APDU, let wrapper secure it.
+            // 00 B0 P1 P2 Le
             val readCmd = CommandAPDU(0x00, 0xB0, p1, p2, blockSize)
             val wrappedRead = wrapper.wrap(readCmd)
             val readResp = cardService.transmit(wrappedRead)
@@ -718,10 +726,9 @@ class NFCViewModel
                     hasMore = false
                 }
             } else if (unwrappedRead.sw == 0x6B00) {
-                // Offset outside -> EOF
                 hasMore = false
             } else {
-                throw SmartCardReaderException("Manual SFI READ failed at offset $offset: SW=" + Integer.toHexString(unwrappedRead.sw))
+                throw SmartCardReaderException("Manual Wrapped READ failed at offset $offset: SW=" + Integer.toHexString(unwrappedRead.sw))
             }
         }
         return buffer.toByteArray()
