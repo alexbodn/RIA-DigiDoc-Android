@@ -758,12 +758,20 @@ class NFCViewModel
                      throw SmartCardReaderException("No PACE Info found in EF.CardAccess")
                  }
 
-                 val oid = paceInfo.protocolOIDString
+                 // Use getObjectIdentifier() to get the numeric OID (e.g. 0.4.0...) required by doPACE
+                 // getProtocolOIDString() returns the friendly name (e.g. id-PACE...) which might fail lookup
+                 var oid = paceInfo.objectIdentifier
+                 if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-256") {
+                     oid = "0.4.0.127.0.7.2.2.4.4.2"
+                 } else if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-128") {
+                     oid = "0.4.0.127.0.7.2.2.4.2.4"
+                 }
+
                  val paramId = paceInfo.parameterId
-                 debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
+                 debugLog(logTag, "Detected PACE OID: ${paceInfo.objectIdentifier} (Mapped to: $oid), ParamID: $paramId")
 
                  // 3. Establish Secure Messaging (PACE-CAN)
-                 debugLog(logTag, "Performing PACE with CAN: $canNumber")
+                 debugLog(logTag, "Performing PACE with CAN: [REDACTED]")
                  val canKey = PACEKeySpec(canNumber.toByteArray(), PassportService.CAN_PACE_KEY_REFERENCE)
 
                  // doPACE(AccessKeySpec key, String oid, AlgorithmParameterSpec params, BigInteger parameterId)
