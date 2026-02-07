@@ -730,6 +730,7 @@ class NFCViewModel
 
             if (unwrappedRead.sw == 0x9000) {
                 val data = unwrappedRead.data
+                debugLog(logTag, "Decrypted Data (Offset $offset): ${Hex.toHexString(data)}")
                 buffer.write(data)
                 offset += data.size
                 if (data.size < blockSize) {
@@ -853,7 +854,9 @@ class NFCViewModel
 
                  // DG1: MRZ Data
                  debugLog(logTag, "Reading DG1 (MRZ)...")
-                 var dg1File: DG1File
+                 var dg1File: DG1File? = null
+                 var mrzInfo: MRZInfo? = null
+
                  try {
                      // Standard DG1 read sends plaintext SELECT commands (00A4...) which fail with 6E00 after PACE.
                      // We skip directly to manual secure read using Implicit SFI.
@@ -864,14 +867,14 @@ class NFCViewModel
                      // Read DG1 (SFI 1 = 0x01)
                      val dg1Bytes = readDataGroupManual(isoDep, wrapper, 0x01.toByte())
                      dg1File = DG1File(java.io.ByteArrayInputStream(dg1Bytes))
+
+                     // JMRTD 0.7.18: getMRZInfo() instead of mrzInfo property
+                     mrzInfo = dg1File.getMRZInfo()
+                     debugLog(logTag, "DG1 Read Success: ${mrzInfo.primaryIdentifier} ${mrzInfo.secondaryIdentifier}")
                  } catch (e: Exception) {
                      debugLog(logTag, "DG1 Read Failed: ${e.message}")
-                     throw e
+                     // We continue to DG2 even if DG1 fails, to see if the tag error is specific to DG1
                  }
-
-                 // JMRTD 0.7.18: getMRZInfo() instead of mrzInfo property
-                 val mrzInfo = dg1File.getMRZInfo()
-                 debugLog(logTag, "DG1 Read Success: ${mrzInfo.primaryIdentifier} ${mrzInfo.secondaryIdentifier}")
 
                  // DG2: Face Image
                  debugLog(logTag, "Reading DG2 (Face)...")
@@ -902,26 +905,28 @@ class NFCViewModel
                  }
 
                  // Map to Personal Data
-                 val givenNames = mrzInfo.secondaryIdentifier.replace("<", " ").trim()
-                 val surname = mrzInfo.primaryIdentifier.replace("<", " ").trim()
-                 val docNumber = mrzInfo.documentNumber
-                 val personalCode = mrzInfo.personalNumber
-                 val nationality = mrzInfo.nationality
+                 val givenNames = mrzInfo?.secondaryIdentifier?.replace("<", " ")?.trim() ?: "Unknown"
+                 val surname = mrzInfo?.primaryIdentifier?.replace("<", " ")?.trim() ?: "Unknown"
+                 val docNumber = mrzInfo?.documentNumber ?: "Unknown"
+                 val personalCode = mrzInfo?.personalNumber ?: "Unknown"
+                 val nationality = mrzInfo?.nationality ?: "ROU"
 
                  // Parse Expiry Date (YYMMDD)
                  var expiryDate: LocalDate? = null
-                 try {
-                     val expiryStr = mrzInfo.dateOfExpiry
-                     // MRZ years are 2 digits. Pivot around 50? Assume 20xx for now.
-                     // A robust parser would need more context, but standard MRTD is roughly this.
-                     val formatter = DateTimeFormatter.ofPattern("yyMMdd")
-                     expiryDate = LocalDate.parse(expiryStr, formatter)
-                     // Adjust century if needed (simplified)
-                     if (expiryDate.year < 2000) {
-                        expiryDate = expiryDate.plusYears(100)
-                     }
-                 } catch (e: Exception) {
-                     debugLog(logTag, "Failed to parse expiry date: ${mrzInfo.dateOfExpiry}")
+                 if (mrzInfo != null) {
+                    try {
+                        val expiryStr = mrzInfo.dateOfExpiry
+                        // MRZ years are 2 digits. Pivot around 50? Assume 20xx for now.
+                        // A robust parser would need more context, but standard MRTD is roughly this.
+                        val formatter = DateTimeFormatter.ofPattern("yyMMdd")
+                        expiryDate = LocalDate.parse(expiryStr, formatter)
+                        // Adjust century if needed (simplified)
+                        if (expiryDate.year < 2000) {
+                           expiryDate = expiryDate.plusYears(100)
+                        }
+                    } catch (e: Exception) {
+                        debugLog(logTag, "Failed to parse expiry date: ${mrzInfo.dateOfExpiry}")
+                    }
                  }
 
                  val personalData = RomanianPersonalData(
