@@ -824,9 +824,19 @@ class NFCViewModel
 
                  // 2. Discovery: Read EF.CardAccess (SFI 1C)
                  debugLog(logTag, "Reading EF.CardAccess...")
-                 // Use passportService to get the stream
-                 val cardAccessFile = CardAccessFile(passportService.getInputStream(PassportService.EF_CARD_ACCESS))
-                 debugLog(logTag, "EF.CardAccess read successfully.")
+
+                 // Standard PassportService.getInputStream sends SELECT (00A4020C02011C) which fails with 6982 (Security Status Not Satisfied)
+                 // We bypass SELECT and use SFI Read Binary (00 B0 9C 00 Le) directly.
+                 // SFI 1C (28) -> P1 = 0x80 | 0x1C = 0x9C
+                 val readCardAccessCmd = CommandAPDU(0x00, 0xB0, 0x9C, 0x00, 256)
+                 val cardAccessResp = cardService.transmit(readCardAccessCmd)
+
+                 if (cardAccessResp.sw != 0x9000) {
+                     throw SmartCardReaderException("Failed to read EF.CardAccess (SFI 1C): SW=" + Integer.toHexString(cardAccessResp.sw))
+                 }
+
+                 val cardAccessFile = CardAccessFile(java.io.ByteArrayInputStream(cardAccessResp.data))
+                 debugLog(logTag, "EF.CardAccess read successfully. Size: ${cardAccessResp.data.size}")
 
                  // JMRTD 0.7.18: getSecurityInfos() returns Collection<SecurityInfo>
                  val securityInfos = cardAccessFile.getSecurityInfos()
