@@ -802,16 +802,6 @@ class NFCViewModel
              // 1. Setup Card Service
              isoDep.timeout = 10000 // Extended timeout for PACE
 
-             // 0. Explicit Applet Selection (Required before PACE on some cards)
-             // SELECT by DF Name (A0 00 00 02 47 10 01)
-             debugLog(logTag, "Sending Explicit Applet Selection...")
-             val selectAppletCmd = byteArrayOf(
-                 0x00.toByte(), 0xA4.toByte(), 0x04.toByte(), 0x00.toByte(), 0x07.toByte(),
-                 0xA0.toByte(), 0x00.toByte(), 0x00.toByte(), 0x02.toByte(), 0x47.toByte(), 0x10.toByte(), 0x01.toByte()
-             )
-             val selectResp = isoDep.transceive(selectAppletCmd)
-             debugLog(logTag, "Applet Selection Response: ${Hex.toHexString(selectResp)}")
-
              // Initialize Custom Romanian Card Service
              val cardService = RomanianCardService(isoDep)
              cardService.open()
@@ -823,8 +813,7 @@ class NFCViewModel
                  passportService.open()
 
                  // 2. Discovery: Read EF.CardAccess (SFI 1C)
-                 // SKIPPED: EF.CardAccess is protected (6982) after Applet Selection on this card.
-                 // We rely on the previously discovered OID/ParamID.
+                 // SKIPPED: We skip this to avoid triggering security errors before PACE.
 
                  // Detected OID from previous runs: 0.4.0.127.0.7.2.2.4.2.4
                  val oid = "0.4.0.127.0.7.2.2.4.2.4"
@@ -843,6 +832,27 @@ class NFCViewModel
                  // Explicit doPACE call with hardcoded params
                  passportService.doPACE(paceKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
                  debugLog(logTag, "PACE Established. Secure Messaging Active. Wrapper set: ${passportService.wrapper != null}")
+
+                 // 4. Secure Applet Selection (After PACE)
+                 // Now that we have a secure channel (MF), we select the ICAO Applet using Wrapped APDU.
+                 val wrapper = passportService.wrapper
+                 if (wrapper != null) {
+                     debugLog(logTag, "Selecting ICAO Applet (Securely)...")
+                     val aid = byteArrayOf(0xA0.toByte(), 0x00.toByte(), 0x00.toByte(), 0x02.toByte(), 0x47.toByte(), 0x10.toByte(), 0x01.toByte())
+                     // ISO7816-4 SELECT: CLA=00, INS=A4, P1=04 (By Name), P2=00 (First Occurrence), Data=AID
+                     val selectCmdStandard = CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid)
+
+                     val wrappedSelect = wrapper.wrap(selectCmdStandard)
+                     val selectResp = cardService.transmit(wrappedSelect)
+                     // Unwrap to check status? wrapper.unwrap() needs ResponseAPDU
+                     // cardService.transmit returns ResponseAPDU
+                     val unwrappedSelect = wrapper.unwrap(selectResp)
+
+                     debugLog(logTag, "Secure Applet Selection SW: ${Integer.toHexString(unwrappedSelect.sw)}")
+                     if (unwrappedSelect.sw != 0x9000) {
+                         debugLog(logTag, "Warning: Secure Applet Selection failed. Proceeding anyway...")
+                     }
+                 }
 
                  // DG1: MRZ Data
                  debugLog(logTag, "Reading DG1 (MRZ)...")
