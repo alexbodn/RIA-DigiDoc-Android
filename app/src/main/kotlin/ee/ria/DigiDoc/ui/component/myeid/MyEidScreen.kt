@@ -72,6 +72,7 @@ import ee.ria.DigiDoc.domain.model.pin.PinChangeVariant
 import ee.ria.DigiDoc.idcard.CardType
 import ee.ria.DigiDoc.idcard.CodeType
 import ee.ria.DigiDoc.idcard.DateOfBirthUtil
+import ee.ria.DigiDoc.domain.model.RomanianPersonalData
 import ee.ria.DigiDoc.smartcardreader.SmartCardReaderStatus
 import ee.ria.DigiDoc.ui.component.menu.SettingsMenuBottomSheet
 import ee.ria.DigiDoc.ui.component.myeid.mydata.MyEidMyDataView
@@ -311,6 +312,7 @@ fun MyEidScreen(
                             stringResource(R.string.myeid_my_data),
                         ) {
                             val personalData = idCardData?.personalData
+                            val faceImage = if (personalData is RomanianPersonalData) personalData.faceImage() else null
 
                             MyEidMyDataView(
                                 modifier,
@@ -340,6 +342,7 @@ fun MyEidScreen(
                                     } else {
                                         ""
                                     },
+                                faceImage = faceImage,
                             )
                         },
                         Pair(

@@ -581,10 +581,7 @@ fun NFCView(
                 val canNumberErrorText =
                     if (canNumberTextEdited.value && canNumber.text.isNotEmpty()) {
                         if (nfcViewModel.shouldShowCANNumberError(canNumber.text)) {
-                            String.format(
-                                stringResource(id = R.string.nfc_sign_can_invalid_length),
-                                CAN_LENGTH,
-                            )
+                            stringResource(id = R.string.nfc_sign_can_invalid_length)
                         } else {
                             ""
                         }
