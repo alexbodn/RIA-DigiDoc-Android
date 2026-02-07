@@ -165,7 +165,7 @@ class NFCViewModel
                     !isCANLengthValid(canNumber)
             )
 
-        fun isCANLengthValid(canNumber: String): Boolean = canNumber.length == CAN_LENGTH
+        fun isCANLengthValid(canNumber: String): Boolean = canNumber.length == 4 || canNumber.length == 6
 
         fun positiveButtonEnabled(
             canNumber: String?,
@@ -823,32 +823,8 @@ class NFCViewModel
                  passportService.open()
 
                  // 2. Discovery: Read EF.CardAccess (SFI 1C)
-                 debugLog(logTag, "Reading EF.CardAccess...")
-
-                 // Standard PassportService.getInputStream sends SELECT (00A4020C02011C) which fails with 6982 (Security Status Not Satisfied)
-                 // We bypass SELECT and use SFI Read Binary (00 B0 9C 00 Le) directly.
-                 // SFI 1C (28) -> P1 = 0x80 | 0x1C = 0x9C
-                 val readCardAccessCmd = CommandAPDU(0x00, 0xB0, 0x9C, 0x00, 256)
-                 val cardAccessResp = cardService.transmit(readCardAccessCmd)
-
-                 if (cardAccessResp.sw != 0x9000) {
-                     throw SmartCardReaderException("Failed to read EF.CardAccess (SFI 1C): SW=" + Integer.toHexString(cardAccessResp.sw))
-                 }
-
-                 val cardAccessFile = CardAccessFile(java.io.ByteArrayInputStream(cardAccessResp.data))
-                 debugLog(logTag, "EF.CardAccess read successfully. Size: ${cardAccessResp.data.size}")
-
-                 // JMRTD 0.7.18: getSecurityInfos() returns Collection<SecurityInfo>
-                 val securityInfos = cardAccessFile.getSecurityInfos()
-                 var paceInfo: PACEInfo? = null
-                 if (securityInfos != null) {
-                     for (info in securityInfos) {
-                         if (info is PACEInfo) {
-                             paceInfo = info
-                             break
-                         }
-                     }
-                 }
+                 // SKIPPED: EF.CardAccess is protected (6982) after Applet Selection on this card.
+                 // We rely on the previously discovered OID/ParamID.
 
                  // Detected OID from previous runs: 0.4.0.127.0.7.2.2.4.2.4
                  val oid = "0.4.0.127.0.7.2.2.4.2.4"
@@ -856,14 +832,16 @@ class NFCViewModel
 
                  debugLog(logTag, "Using Hardcoded PACE OID: $oid, ParamID: $paramId")
 
-                 // 3. Establish Secure Messaging (PACE-CAN)
-                 debugLog(logTag, "Performing PACE with CAN: [REDACTED]")
-                 val canKey = PACEKeySpec(canNumber.toByteArray(), PassportService.CAN_PACE_KEY_REFERENCE)
+                 // 3. Establish Secure Messaging (PACE-CAN/PIN)
+                 val isPin = canNumber.length == 4
+                 val keyRef = if (isPin) 3.toByte() else 2.toByte() // 3=PIN, 2=CAN
+
+                 debugLog(logTag, "Performing PACE with ${if(isPin) "PIN" else "CAN"}")
+
+                 val paceKey = PACEKeySpec(canNumber.toByteArray(), keyRef)
 
                  // Explicit doPACE call with hardcoded params
-                 // P_CAN is equivalent to 2.toByte() or PassportService.CAN_PACE_KEY_REFERENCE
-                 // paramId needs to be BigInteger
-                 passportService.doPACE(canKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
+                 passportService.doPACE(paceKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
                  debugLog(logTag, "PACE Established. Secure Messaging Active. Wrapper set: ${passportService.wrapper != null}")
 
                  // DG1: MRZ Data
