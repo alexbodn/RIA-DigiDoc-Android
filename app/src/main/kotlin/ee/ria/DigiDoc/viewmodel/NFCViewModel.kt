@@ -804,6 +804,16 @@ class NFCViewModel
              cardService.open()
 
              try {
+                 // 0. Explicit Applet Selection (Required before PACE on some cards)
+                 // SELECT by DF Name (A0 00 00 02 47 10 01)
+                 debugLog(logTag, "Sending Explicit Applet Selection...")
+                 val selectAppletCmd = byteArrayOf(
+                     0x00.toByte(), 0xA4.toByte(), 0x04.toByte(), 0x00.toByte(), 0x07.toByte(),
+                     0xA0.toByte(), 0x00.toByte(), 0x00.toByte(), 0x02.toByte(), 0x47.toByte(), 0x10.toByte(), 0x01.toByte()
+                 )
+                 val selectResp = isoDep.transceive(selectAppletCmd)
+                 debugLog(logTag, "Applet Selection Response: ${Hex.toHexString(selectResp)}")
+
                  // Create PassportService wrapper to access files
                  // Enable SFI (last arg) and MAC checks (4th arg) to ensure Secure Messaging is enforced
                  val passportService = PassportService(cardService, 256, 223, true, true)
