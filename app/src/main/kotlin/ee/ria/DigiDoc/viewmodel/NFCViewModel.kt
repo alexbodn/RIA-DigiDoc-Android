@@ -80,12 +80,13 @@ import org.jmrtd.lds.CardAccessFile
 import org.jmrtd.lds.PACEInfo
 import org.jmrtd.lds.icao.DG1File
 import org.jmrtd.lds.icao.DG2File
-import net.sf.scuba.smartcards.IsoDepCardService
+import ee.ria.DigiDoc.smartcardreader.RomanianCardService
 import net.sf.scuba.smartcards.CardService
 import net.sf.scuba.smartcards.CommandAPDU
 import net.sf.scuba.smartcards.ResponseAPDU
 import org.jmrtd.lds.icao.MRZInfo
 import org.jmrtd.PACEKeySpec
+import java.math.BigInteger
 
 @HiltViewModel
 class NFCViewModel
@@ -800,23 +801,25 @@ class NFCViewModel
 
              // 1. Setup Card Service
              isoDep.timeout = 10000 // Extended timeout for PACE
-             val cardService = IsoDepCardService(isoDep)
+
+             // 0. Explicit Applet Selection (Required before PACE on some cards)
+             // SELECT by DF Name (A0 00 00 02 47 10 01)
+             debugLog(logTag, "Sending Explicit Applet Selection...")
+             val selectAppletCmd = byteArrayOf(
+                 0x00.toByte(), 0xA4.toByte(), 0x04.toByte(), 0x00.toByte(), 0x07.toByte(),
+                 0xA0.toByte(), 0x00.toByte(), 0x00.toByte(), 0x02.toByte(), 0x47.toByte(), 0x10.toByte(), 0x01.toByte()
+             )
+             val selectResp = isoDep.transceive(selectAppletCmd)
+             debugLog(logTag, "Applet Selection Response: ${Hex.toHexString(selectResp)}")
+
+             // Initialize Custom Romanian Card Service
+             val cardService = RomanianCardService(isoDep)
              cardService.open()
 
              try {
-                 // 0. Explicit Applet Selection (Required before PACE on some cards)
-                 // SELECT by DF Name (A0 00 00 02 47 10 01)
-                 debugLog(logTag, "Sending Explicit Applet Selection...")
-                 val selectAppletCmd = byteArrayOf(
-                     0x00.toByte(), 0xA4.toByte(), 0x04.toByte(), 0x00.toByte(), 0x07.toByte(),
-                     0xA0.toByte(), 0x00.toByte(), 0x00.toByte(), 0x02.toByte(), 0x47.toByte(), 0x10.toByte(), 0x01.toByte()
-                 )
-                 val selectResp = isoDep.transceive(selectAppletCmd)
-                 debugLog(logTag, "Applet Selection Response: ${Hex.toHexString(selectResp)}")
-
                  // Create PassportService wrapper to access files
-                 // Enable SFI (last arg) and MAC checks (4th arg) to ensure Secure Messaging is enforced
-                 val passportService = PassportService(cardService, 256, 223, true, true)
+                 // Configuration: maxTranceiveLength = 256, maxBlockSize = 256, checkForExtraService = false, checkSFI = false
+                 val passportService = PassportService(cardService, 256, 256, false, false)
                  passportService.open()
 
                  // 2. Discovery: Read EF.CardAccess (SFI 1C)
@@ -837,29 +840,20 @@ class NFCViewModel
                      }
                  }
 
-                 if (paceInfo == null) {
-                     throw SmartCardReaderException("No PACE Info found in EF.CardAccess")
-                 }
+                 // Detected OID from previous runs: 0.4.0.127.0.7.2.2.4.2.4
+                 val oid = "0.4.0.127.0.7.2.2.4.2.4"
+                 val paramId = 13 // 0x0D BrainpoolP256r1
 
-                 // Use getObjectIdentifier() to get the numeric OID (e.g. 0.4.0...) required by doPACE
-                 // getProtocolOIDString() returns the friendly name (e.g. id-PACE...) which might fail lookup
-                 var oid = paceInfo.objectIdentifier
-                 // Fix OID mapping based on canonical JMRTD expectations (0.4.0.0.127...)
-                 if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-256") {
-                     oid = "0.4.0.0.127.0.7.2.2.4.2.2"
-                 } else if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-128") {
-                     oid = "0.4.0.0.127.0.7.2.2.4.2.4"
-                 }
-
-                 val paramId = paceInfo.parameterId
-                 debugLog(logTag, "Detected PACE OID: ${paceInfo.objectIdentifier} (Mapped to: $oid), ParamID: $paramId")
+                 debugLog(logTag, "Using Hardcoded PACE OID: $oid, ParamID: $paramId")
 
                  // 3. Establish Secure Messaging (PACE-CAN)
                  debugLog(logTag, "Performing PACE with CAN: [REDACTED]")
                  val canKey = PACEKeySpec(canNumber.toByteArray(), PassportService.CAN_PACE_KEY_REFERENCE)
 
-                 // doPACE(AccessKeySpec key, String oid, AlgorithmParameterSpec params, BigInteger parameterId)
-                 passportService.doPACE(canKey, oid, PACEInfo.toParameterSpec(paramId), paramId)
+                 // Explicit doPACE call with hardcoded params
+                 // P_CAN is equivalent to 2.toByte() or PassportService.CAN_PACE_KEY_REFERENCE
+                 // paramId needs to be BigInteger
+                 passportService.doPACE(canKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
                  debugLog(logTag, "PACE Established. Secure Messaging Active. Wrapper set: ${passportService.wrapper != null}")
 
                  // DG1: MRZ Data
@@ -868,15 +862,9 @@ class NFCViewModel
                  var mrzInfo: MRZInfo? = null
 
                  try {
-                     // Standard DG1 read sends plaintext SELECT commands (00A4...) which fail with 6E00 after PACE.
-                     // We skip directly to manual secure read using Implicit SFI.
-
-                     val wrapper = passportService.wrapper
-                     if (wrapper == null) throw Exception("Secure Messaging Wrapper is null")
-
-                     // Read DG1 (SFI 1 = 0x01)
-                     val dg1Bytes = readDataGroupManual(isoDep, wrapper, 0x01.toByte())
-                     dg1File = DG1File(java.io.ByteArrayInputStream(dg1Bytes))
+                     // Standard DG1 read using high-level getInputStream (SM automatically applied)
+                     val dg1Stream = passportService.getInputStream(PassportService.EF_DG1)
+                     dg1File = DG1File(dg1Stream)
 
                      // JMRTD 0.7.18: getMRZInfo() instead of mrzInfo property
                      mrzInfo = dg1File.getMRZInfo()
@@ -891,11 +879,9 @@ class NFCViewModel
                  var faceImageBytes: ByteArray? = null
                  try {
                      var dg2File: DG2File
-                     // Standard DG2 read skipped. Using manual secure read.
-                     val wrapper = passportService.wrapper
-                     // Read DG2 (SFI 2 = 0x02)
-                     val dg2Bytes = readDataGroupManual(isoDep, wrapper, 0x02.toByte())
-                     dg2File = DG2File(java.io.ByteArrayInputStream(dg2Bytes))
+                     // Standard DG2 read using high-level getInputStream
+                     val dg2Stream = passportService.getInputStream(PassportService.EF_DG2)
+                     dg2File = DG2File(dg2Stream)
 
                      // JMRTD 0.7.18: getFaceInfos() instead of faceInfos property
                      val images = dg2File.getFaceInfos()

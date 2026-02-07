@@ -70,7 +70,7 @@ class LoggingUtil
 
             private lateinit var logger: Logger
             private var fileHandler: FileHandler? = null
-            private var isLoggingEnabled: Boolean = false
+            private var isLoggingEnabled: Boolean = true
 
             fun initialize(
                 context: Context,
