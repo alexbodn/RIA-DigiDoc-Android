@@ -822,12 +822,14 @@ class NFCViewModel
                  debugLog(logTag, "Using Hardcoded PACE OID: $oid, ParamID: $paramId")
 
                  // 3. Establish Secure Messaging (PACE-CAN/PIN)
-                 val isPin = canNumber.length == 4
+                 val cleanInput = canNumber.trim().replace(" ", "")
+                 val isPin = cleanInput.length == 4
                  val keyRef = if (isPin) 3.toByte() else 2.toByte() // 3=PIN, 2=CAN
 
-                 debugLog(logTag, "Performing PACE with ${if(isPin) "PIN" else "CAN"}")
+                 debugLog(logTag, "Performing PACE with ${if(isPin) "PIN" else "CAN"} (Input Length: ${cleanInput.length})")
 
-                 val paceKey = PACEKeySpec(canNumber.toByteArray(), keyRef)
+                 // Use the cleaned input for the key
+                 val paceKey = PACEKeySpec(cleanInput.toByteArray(), keyRef)
 
                  // Explicit doPACE call with hardcoded params
                  passportService.doPACE(paceKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
