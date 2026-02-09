@@ -746,6 +746,58 @@ class NFCViewModel
         return buffer.toByteArray()
     }
 
+    private fun readDataGroupSecure(isoDep: IsoDep, wrapper: org.jmrtd.protocol.SecureMessagingWrapper, sfi: Byte): ByteArray {
+        val buffer = java.io.ByteArrayOutputStream()
+        var offset = 0
+        val blockSize = 220
+        var hasMore = true
+
+        while (hasMore) {
+            // Implicit SFI addressing for READ BINARY:
+            // If offset == 0: P1 = 0x80 | SFI. P2 = 0.
+            // If offset > 0: The file is implicitly selected. Use standard P1/P2 for offset.
+
+            val p1: Int
+            val p2: Int
+
+            if (offset == 0) {
+                p1 = 0x80 or sfi.toInt()
+                p2 = 0
+            } else {
+                p1 = (offset shr 8) and 0xFF
+                p2 = offset and 0xFF
+            }
+
+            // 00 B0 P1 P2 Le
+            // We use CLA 0x00 initially. The wrapper should transform it to 0x0C (secure).
+            val readCmd = CommandAPDU(0x00, 0xB0, p1, p2, blockSize)
+            val wrappedRead = wrapper.wrap(readCmd)
+
+            val readRespBytes = isoDep.transceive(wrappedRead.bytes)
+            val readResp = ResponseAPDU(readRespBytes)
+
+            if (readResp.sw == 0x6E00) {
+                 throw SmartCardReaderException("Secure Read Failed: Card rejected APDU Class (SW=6E00). Wrapper failed to mask Class?")
+            }
+
+            val unwrappedRead = wrapper.unwrap(readResp)
+
+            if (unwrappedRead.sw == 0x9000) {
+                val data = unwrappedRead.data
+                buffer.write(data)
+                offset += data.size
+                if (data.size < blockSize) {
+                    hasMore = false
+                }
+            } else if (unwrappedRead.sw == 0x6B00) {
+                hasMore = false
+            } else {
+                throw SmartCardReaderException("Secure Read (SFI) failed at offset $offset: Unwrapped SW=" + Integer.toHexString(unwrappedRead.sw))
+            }
+        }
+        return buffer.toByteArray()
+    }
+
     private fun getIsoDep(nfcReader: Any): IsoDep? {
             // Strategy 1: Public getTag() method
             try {
@@ -862,9 +914,11 @@ class NFCViewModel
                  var mrzInfo: MRZInfo? = null
 
                  try {
-                     // Standard DG1 read using high-level getInputStream (SM automatically applied)
-                     val dg1Stream = passportService.getInputStream(PassportService.EF_DG1)
-                     dg1File = DG1File(dg1Stream)
+                     // Force Manual Secure Read because standard getInputStream sends plaintext SELECT (00A4...) which fails with 6E00
+                     if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
+
+                     val dg1Bytes = readDataGroupSecure(isoDep, wrapper, 0x01.toByte())
+                     dg1File = DG1File(java.io.ByteArrayInputStream(dg1Bytes))
 
                      // JMRTD 0.7.18: getMRZInfo() instead of mrzInfo property
                      mrzInfo = dg1File.getMRZInfo()
@@ -878,10 +932,11 @@ class NFCViewModel
                  debugLog(logTag, "Reading DG2 (Face)...")
                  var faceImageBytes: ByteArray? = null
                  try {
-                     var dg2File: DG2File
-                     // Standard DG2 read using high-level getInputStream
-                     val dg2Stream = passportService.getInputStream(PassportService.EF_DG2)
-                     dg2File = DG2File(dg2Stream)
+                     if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
+
+                     // Force Manual Secure Read for DG2 (SFI 0x02)
+                     val dg2Bytes = readDataGroupSecure(isoDep, wrapper, 0x02.toByte())
+                     val dg2File = DG2File(java.io.ByteArrayInputStream(dg2Bytes))
 
                      // JMRTD 0.7.18: getFaceInfos() instead of faceInfos property
                      val images = dg2File.getFaceInfos()
