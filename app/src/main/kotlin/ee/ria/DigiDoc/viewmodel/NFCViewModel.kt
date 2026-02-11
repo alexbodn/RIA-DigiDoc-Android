@@ -165,7 +165,7 @@ class NFCViewModel
                     !isCANLengthValid(canNumber)
             )
 
-        fun isCANLengthValid(canNumber: String): Boolean = canNumber.length == 4 || canNumber.length == 6
+        fun isCANLengthValid(canNumber: String): Boolean = canNumber.length == CAN_LENGTH
 
         fun positiveButtonEnabled(
             canNumber: String?,
@@ -873,12 +873,11 @@ class NFCViewModel
 
                  debugLog(logTag, "Using Hardcoded PACE OID: $oid, ParamID: $paramId")
 
-                 // 3. Establish Secure Messaging (PACE-CAN/PIN)
+                 // 3. Establish Secure Messaging (PACE-CAN)
                  val cleanInput = canNumber.trim().replace(" ", "")
-                 val isPin = cleanInput.length == 4
-                 val keyRef = if (isPin) 3.toByte() else 2.toByte() // 3=PIN, 2=CAN
+                 val keyRef = 2.toByte() // 2=CAN
 
-                 debugLog(logTag, "Performing PACE with ${if(isPin) "PIN" else "CAN"} (Input Length: ${cleanInput.length})")
+                 debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInput.length})")
 
                  // Use the cleaned input for the key
                  val paceKey = PACEKeySpec(cleanInput.toByteArray(), keyRef)

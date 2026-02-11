@@ -28,10 +28,10 @@ import ee.ria.DigiDoc.idcard.PersonalData
 data class IdCardData(
     val type: EIDType,
     val personalData: PersonalData,
-    val authCertificate: ExtendedCertificate?,
-    val signCertificate: ExtendedCertificate?,
-    val pin1RetryCount: Int?,
-    val pin2RetryCount: Int?,
-    val pukRetryCount: Int?,
+    val authCertificate: ExtendedCertificate,
+    val signCertificate: ExtendedCertificate,
+    val pin1RetryCount: Int,
+    val pin2RetryCount: Int,
+    val pukRetryCount: Int,
     val pin2CodeChanged: Boolean,
 )
