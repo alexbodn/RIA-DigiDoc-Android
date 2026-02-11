@@ -70,7 +70,7 @@ class LoggingUtil
 
             private lateinit var logger: Logger
             private var fileHandler: FileHandler? = null
-            private var isLoggingEnabled: Boolean = true
+            private var isLoggingEnabled: Boolean = false
 
             fun initialize(
                 context: Context,
@@ -91,10 +91,9 @@ class LoggingUtil
                 } catch (se: SecurityException) {
                     Log.e(LOG_TAG, "Unable to close logging FileHandler", se)
                 }
-                // Do not delete logs recursively to preserve them across crashes/restarts
-                // if (logDirectory.exists()) {
-                //    logDirectory.deleteRecursively()
-                // }
+                if (logDirectory.exists()) {
+                    logDirectory.deleteRecursively()
+                }
 
                 if (!logDirectory.exists()) {
                     logDirectory.mkdirs()

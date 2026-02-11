@@ -3,7 +3,7 @@ compileSdkVersion = "36"
 minSdkVersion = "33"
 targetSdkVersion = "36"
 versionCode = "74" # Updated via CodeMagic pipeline.
-versionName = "3.0.5.65"
+versionName = "3.0.5"
 
 agp = "8.13.0"
 algp = "8.13.0"
@@ -49,15 +49,12 @@ kotlinxCoroutinesRx3 = "1.10.2"
 cdoc4j = "1.5"
 stax-api = "1.0-2"
 unboundid-ldapsdk = "7.0.3"
-jmrtd = "0.7.31"
-scuba = "0.0.23"
 
 # Override Byte Buddy version to avoid issues with Android builds
 #noinspection NewerVersionAvailable
 byte-buddy = "1.14.6"
 
 [libraries]
-auto-value-annotations = { group = "com.google.auto.value", name = "auto-value-annotations", version = "1.10.4" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
@@ -96,8 +93,6 @@ commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons
 bouncy-castle = { group = "org.bouncycastle", name = "bcpkix-jdk18on", version.ref = "bouncy-castle" }
 cdoc4j = { group = "org.open-eid.cdoc4j", name = "cdoc4j", version.ref = "cdoc4j" }
 unboundid-ldapsdk = { group = "com.unboundid", name = "unboundid-ldapsdk", version.ref = "unboundid-ldapsdk" }
-jmrtd = { group = "org.jmrtd", name = "jmrtd", version.ref = "jmrtd" }
-scuba = { group = "net.sf.scuba", name = "scuba-sc-android", version.ref = "scuba" }
 stax-api = { group = "javax.xml.stream", name = "stax-api", version.ref = "stax-api" }
 okhttp3 = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp3-tls= { group = "com.squareup.okhttp3", name = "okhttp-tls", version.ref = "okhttp" }

@@ -121,8 +121,7 @@ class IdCardServiceImpl
         ): SignedContainer {
             val idCardData = data(token)
             val signCertificate = idCardData.signCertificate
-                ?: throw SmartCardReaderException("Signing certificate not found on the card.")
-
+                ?: throw IllegalStateException("Signing certificate missing")
             val signCertificateData = signCertificate.data
 
             val dataToSign: ByteArray?

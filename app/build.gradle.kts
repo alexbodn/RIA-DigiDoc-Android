@@ -183,13 +183,6 @@ dependencies {
     implementation(libs.androidx.hilt)
     implementation(libs.kotlinx.coroutines.rx3)
 
-    implementation(libs.jmrtd) {
-        exclude(group = "org.bouncycastle")
-    }
-    implementation(libs.scuba) {
-        exclude(group = "org.bouncycastle")
-    }
-
     testImplementation(libs.junit)
     testImplementation(libs.mockito.kotlin)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -211,6 +204,10 @@ dependencies {
     androidTestImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.lifecycle.runtime.ktx)
     androidTestImplementation(libs.androidx.arch.core.testing)
+
+    implementation("org.jmrtd:jmrtd:0.7.31")
+    implementation("org.jmrtd:scuba-smartcards-j2se:0.0.23")
+    implementation("org.bouncycastle:bcprov-jdk15to18:1.70")
 
     implementation(project(":libdigidoc-lib"))
     implementation(project(":mobile-id-lib"))
