@@ -865,13 +865,38 @@ class NFCViewModel
                  passportService.open()
 
                  // 2. Discovery: Read EF.CardAccess (SFI 1C)
-                 // SKIPPED: We skip this to avoid triggering security errors before PACE.
+//                 // SKIPPED: We skip this to avoid triggering security errors before PACE.
+                 debugLog(logTag, "Reading EF.CardAccess...")
+                 // Use passportService to get the stream
+                 val cardAccessFile = CardAccessFile(passportService.getInputStream(PassportService.EF_CARD_ACCESS))
+                 debugLog(logTag, "EF.CardAccess read successfully.")
+
+                 // JMRTD 0.7.18: getSecurityInfos() returns Collection<SecurityInfo>
+                 val securityInfos = cardAccessFile.getSecurityInfos()
+                 var paceInfo: PACEInfo? = null
+                 if (securityInfos != null) {
+                     for (info in securityInfos) {
+                         if (info is PACEInfo) {
+                             paceInfo = info
+                             break
+                         }
+                     }
+                 }
+
+                 if (paceInfo == null) {
+                     throw SmartCardReaderException("No PACE Info found in EF.CardAccess")
+                 }
+
+                 val oid = paceInfo.protocolOIDString
+                 val paramId = paceInfo.parameterId
+                 debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
+
 
                  // Detected OID from previous runs: 0.4.0.127.0.7.2.2.4.2.4
-                 val oid = "0.4.0.127.0.7.2.2.4.2.4"
-                 val paramId = 13 // 0x0D BrainpoolP256r1
-
-                 debugLog(logTag, "Using Hardcoded PACE OID: $oid, ParamID: $paramId")
+//                 val oid = "0.4.0.127.0.7.2.2.4.2.4"
+//                 val paramId = 13 // 0x0D BrainpoolP256r1
+//
+//                 debugLog(logTag, "Using Hardcoded PACE OID: $oid, ParamID: $paramId")
 
                  // 3. Establish Secure Messaging (PACE-CAN)
                  val cleanInput = canNumber.trim().replace(" ", "")
