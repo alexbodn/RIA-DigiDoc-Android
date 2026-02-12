@@ -887,7 +887,16 @@ class NFCViewModel
                      throw SmartCardReaderException("No PACE Info found in EF.CardAccess")
                  }
 
-                 val oid = paceInfo.protocolOIDString
+//                 val oid = paceInfo.protocolOIDString
+                 // Use getObjectIdentifier() to get the numeric OID (e.g. 0.4.0...) required by doPACE
+                 // getProtocolOIDString() returns the friendly name (e.g. id-PACE...) which might fail lookup
+                 var oid = paceInfo.objectIdentifier
+                 debugLog(logTag, "Numeric object identifier: ${oid}")
+                 if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-256") {
+                     oid = "0.4.0.127.0.7.2.2.4.4.2"
+                 } else if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-128") {
+                     oid = "0.4.0.127.0.7.2.2.4.2.4"
+                 }
                  val paramId = paceInfo.parameterId
                  debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
 
