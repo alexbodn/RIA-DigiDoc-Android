@@ -206,7 +206,7 @@ dependencies {
     androidTestImplementation(libs.androidx.arch.core.testing)
 
     implementation("org.jmrtd:jmrtd:0.7.31")
-    implementation("org.jmrtd:scuba-smartcards-j2se:0.0.23")
+    implementation("net.sf.scuba:scuba-sc-android:0.0.23")
     implementation("org.bouncycastle:bcprov-jdk15to18:1.70")
 
     implementation(project(":libdigidoc-lib"))
