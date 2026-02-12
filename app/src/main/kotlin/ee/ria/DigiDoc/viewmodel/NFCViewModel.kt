@@ -396,6 +396,7 @@ class NFCViewModel
 
                                 val authCert =
                                     card.certificate(CertificateType.AUTHENTICATION)
+                                        ?: throw IllegalStateException("Authentication certificate missing")
                                 debugLog(
                                     logTag,
                                     "Auth certificate: " + Base64.getEncoder().encodeToString(authCert),

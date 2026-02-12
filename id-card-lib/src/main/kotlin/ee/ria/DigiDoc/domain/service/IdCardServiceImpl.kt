@@ -120,7 +120,9 @@ class IdCardServiceImpl
             roleData: RoleData?,
         ): SignedContainer {
             val idCardData = data(token)
-            val signCertificateData = idCardData.signCertificate.data
+            val signCertificate = idCardData.signCertificate
+                ?: throw IllegalStateException("Signing certificate missing")
+            val signCertificateData = signCertificate.data
 
             val dataToSign: ByteArray?
 
@@ -140,7 +142,7 @@ class IdCardServiceImpl
                 token.calculateSignature(
                     pin2,
                     dataToSign,
-                    idCardData.signCertificate.ellipticCurve,
+                    signCertificate.ellipticCurve,
                 )
 
             containerWrapper.finalizeSignature(

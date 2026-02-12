@@ -173,7 +173,9 @@ class IdCardViewModel
                             Token.create(smartCardReaderManager.connectedReader())
                         }
 
-                    val authCert = idCardService.data(token).authCertificate.data
+                    val idCardData = idCardService.data(token)
+                    val authCert = idCardData.authCertificate?.data
+                        ?: throw IllegalStateException("Authentication certificate missing")
 
                     debugLog(
                         logTag,
