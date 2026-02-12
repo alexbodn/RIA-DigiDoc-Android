@@ -61,13 +61,32 @@ object FetchAndPackageDefaultConfigurationTask {
     private val logTag = javaClass.simpleName
     private var properties = Properties()
     private var buildVariant: String? = null
-    private val defaultTimeout = 5L
+    private val defaultTimeout = 30L
 
     @JvmStatic
     fun main(args: Array<String>) {
         runBlocking {
-            loadResourcesProperties()
-            loadAndStoreDefaultConfiguration(args)
+            try {
+                loadResourcesProperties()
+                loadAndStoreDefaultConfiguration(args)
+            } catch (e: Exception) {
+                buildVariant = "main"
+                val requiredFiles =
+                    listOf(
+                        DEFAULT_CONFIG_JSON,
+                        DEFAULT_CONFIG_RSA,
+                        DEFAULT_CONFIG_PUB,
+                        PROPERTIES_FILE_NAME,
+                    )
+                if (requiredFiles.all { File(configFileDir(it)).exists() }) {
+                    println(
+                        "WARNING: Failed to fetch configuration from remote. " +
+                            "Using existing local configuration files. Error: ${e.message}",
+                    )
+                } else {
+                    throw e
+                }
+            }
         }
     }
 
