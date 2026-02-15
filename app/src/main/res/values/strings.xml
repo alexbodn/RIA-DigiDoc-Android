@@ -599,6 +599,8 @@
     <string name="myeid_identification_method">Identification method</string>
     <string name="myeid_identify_button">Identify</string>
     <string name="myeid_my_data">My data</string>
+    <string name="myeid_place_of_birth">Place of birth</string>
+    <string name="myeid_permanent_address">Permanent address</string>
     <string name="myeid_pins_and_certificates">PIN\'s and certificates</string>
     <string name="myeid_givennames">Given names</string>
     <string name="myeid_surname">Surname</string>

@@ -66,6 +66,28 @@ import org.bouncycastle.util.encoders.Hex
 import java.util.Arrays
 import java.util.Base64
 import javax.inject.Inject
+import android.nfc.tech.IsoDep
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.security.Security
+import ee.ria.DigiDoc.domain.model.RomanianPersonalData
+import ee.ria.DigiDoc.common.model.EIDType
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import org.jmrtd.protocol.PACEProtocol
+import org.jmrtd.PassportService
+import org.jmrtd.lds.CardAccessFile
+import org.jmrtd.lds.PACEInfo
+import org.jmrtd.lds.icao.DG1File
+import org.jmrtd.lds.icao.DG2File
+import org.jmrtd.lds.icao.DG11File
+import ee.ria.DigiDoc.smartcardreader.RomanianCardService
+import net.sf.scuba.smartcards.CardService
+import net.sf.scuba.smartcards.CommandAPDU
+import net.sf.scuba.smartcards.ResponseAPDU
+import org.jmrtd.lds.icao.MRZInfo
+import org.jmrtd.PACEKeySpec
+import java.math.BigInteger
 
 @HiltViewModel
 class NFCViewModel
@@ -529,28 +551,33 @@ class NFCViewModel
         suspend fun loadPersonalData(
             activity: Activity,
             canNumber: String,
+            pin1: ByteArray? = null
         ) {
             activity.requestedOrientation = activity.resources.configuration.orientation
 
             checkNFCStatus(
                 nfcSmartCardReaderManager.startDiscovery(activity) { nfcReader, exc ->
                     if ((nfcReader != null) && (exc == null)) {
+                        debugLog(logTag, "NFC Reader detected: ${nfcReader.javaClass.name}")
                         viewModelScope.launch {
                             _message.postValue(R.string.signature_update_nfc_detected)
                         }
                         try {
-                            val card = TokenWithPace.create(nfcReader)
-                            card.tunnel(canNumber)
-
-                            // NFC operations must run on the same thread as the startDiscovery callback.
-                            // Only "runBlocking" works here — coroutines or new threads break the NFC session.
-                            val data =
-                                runBlocking {
-                                    idCardService.data(card)
-                                }
-
-                            _userData.postValue(data)
+                            val isoDep = getIsoDep(nfcReader)
+                            if (isoDep != null) {
+                                debugLog(logTag, "IsoDep extracted via reflection. Starting Romanian discovery.")
+                                // Romanian / Direct IsoDep Path
+                                // "Run only yours for the moment" - Exclusive execution
+                                val romanianData = tryRomanianDiscovery(isoDep, canNumber, pin1)
+                                debugLog(logTag, "Romanian discovery success. Data: ${romanianData.personalData.givenNames()} ${romanianData.personalData.surname()}")
+                                _userData.postValue(romanianData)
+                            } else {
+                                debugLog(logTag, "IsoDep extraction FAILED. Legacy path disabled.")
+                                // Legacy Path disabled as per user request to debug IsoDep extraction
+                                throw SmartCardReaderException("IsoDep extraction failed (Reflection). Legacy path disabled.")
+                            }
                         } catch (e: Exception) {
+                            errorLog(logTag, "Discovery failed", e)
                             resetIdCardUserData()
 
                             if (e.message?.contains("TagLostException") == true) {
@@ -566,8 +593,9 @@ class NFCViewModel
                                     Triple(R.string.signature_update_nfc_wrong_can, null, null),
                                 )
                             } else {
+                                // DEBUG: Using version title to display dynamic exception message
                                 _errorState.postValue(
-                                    Triple(R.string.signature_update_nfc_technical_error, null, null),
+                                    Triple(R.string.main_about_version_title, e.message ?: "Unknown error", null),
                                 )
                             }
 
@@ -653,5 +681,425 @@ class NFCViewModel
         private fun showTechnicalError(e: Exception) {
             _errorState.postValue(Triple(R.string.signature_update_nfc_technical_error, null, null))
             errorLog(logTag, "Unable to perform with NFC: ${e.message}", e)
+        }
+
+    private fun readDataGroupManual(isoDep: IsoDep, wrapper: org.jmrtd.protocol.SecureMessagingWrapper, sfi: Byte): ByteArray {
+        // Manual Secure Read using Implicit SFI Addressing (skips SELECT)
+        // Required for cards that return 6E00 on SELECT commands during Secure Messaging
+
+        val buffer = java.io.ByteArrayOutputStream()
+        var offset = 0
+        val blockSize = 220
+        var hasMore = true
+
+        debugLog(logTag, "Manual Read (SFI): Starting implicit read for SFI $sfi using wrapper: ${wrapper.javaClass.simpleName}")
+
+        while (hasMore) {
+            // Implicit SFI addressing for READ BINARY:
+            // If offset == 0: P1 = 0x80 | SFI. P2 = 0.
+            // If offset > 0: The file is implicitly selected. Use standard P1/P2 for offset.
+
+            val p1: Int
+            val p2: Int
+
+            if (offset == 0) {
+                p1 = 0x80 or sfi.toInt()
+                p2 = 0
+            } else {
+                p1 = (offset shr 8) and 0xFF
+                p2 = offset and 0xFF
+            }
+
+            // 00 B0 P1 P2 Le
+            // We use CLA 0x00 initially. The wrapper should transform it to 0x8C or 0x0C.
+            val readCmd = CommandAPDU(0x00, 0xB0, p1, p2, blockSize)
+            val wrappedRead = wrapper.wrap(readCmd)
+
+            val wrappedBytes = wrappedRead.bytes
+            debugLog(logTag, "Sending Read (Offset $offset): ${Hex.toHexString(wrappedBytes)}")
+
+            val readRespBytes = isoDep.transceive(wrappedBytes)
+            debugLog(logTag, "Received Response (Raw): ${Hex.toHexString(readRespBytes)}")
+
+            val readResp = ResponseAPDU(readRespBytes)
+
+            // If the card returns 6E00, it means Class Not Supported.
+            // This suggests the CLA set by wrapper.wrap() is rejected.
+            if (readResp.sw == 0x6E00) {
+                 throw SmartCardReaderException("Manual Read Failed: Card rejected APDU Class (SW=6E00). Sent CLA: " + String.format("%02X", wrappedBytes[0]))
+            }
+
+            val unwrappedRead = wrapper.unwrap(readResp)
+
+            if (unwrappedRead.sw == 0x9000) {
+                val data = unwrappedRead.data
+                // debugLog(logTag, "Decrypted Data (Offset $offset): ${Hex.toHexString(data)}") // REDACTED PII
+                buffer.write(data)
+                offset += data.size
+                if (data.size < blockSize) {
+                    hasMore = false
+                }
+            } else if (unwrappedRead.sw == 0x6B00) {
+                hasMore = false
+            } else {
+                throw SmartCardReaderException("Manual Wrapped READ (SFI) failed at offset $offset: Unwrapped SW=" + Integer.toHexString(unwrappedRead.sw))
+            }
+        }
+        return buffer.toByteArray()
+    }
+
+    private fun readDataGroupSecure(isoDep: IsoDep, wrapper: org.jmrtd.protocol.SecureMessagingWrapper, sfi: Byte): ByteArray {
+        val buffer = java.io.ByteArrayOutputStream()
+        var offset = 0
+        val blockSize = 220
+        var hasMore = true
+
+        while (hasMore) {
+            // Implicit SFI addressing for READ BINARY:
+            // If offset == 0: P1 = 0x80 | SFI. P2 = 0.
+            // If offset > 0: The file is implicitly selected. Use standard P1/P2 for offset.
+
+            val p1: Int
+            val p2: Int
+
+            if (offset == 0) {
+                p1 = 0x80 or sfi.toInt()
+                p2 = 0
+            } else {
+                p1 = (offset shr 8) and 0xFF
+                p2 = offset and 0xFF
+            }
+
+            // 00 B0 P1 P2 Le
+            // We use CLA 0x00 initially. The wrapper should transform it to 0x0C (secure).
+            val readCmd = CommandAPDU(0x00, 0xB0, p1, p2, blockSize)
+            val wrappedRead = wrapper.wrap(readCmd)
+
+            val readRespBytes = isoDep.transceive(wrappedRead.bytes)
+            val readResp = ResponseAPDU(readRespBytes)
+
+            if (readResp.sw == 0x6E00) {
+                 throw SmartCardReaderException("Secure Read Failed: Card rejected APDU Class (SW=6E00). Wrapper failed to mask Class?")
+            }
+
+            val unwrappedRead = wrapper.unwrap(readResp)
+
+            if (unwrappedRead.sw == 0x9000) {
+                val data = unwrappedRead.data
+                buffer.write(data)
+                offset += data.size
+                if (data.size < blockSize) {
+                    hasMore = false
+                }
+            } else if (unwrappedRead.sw == 0x6B00) {
+                hasMore = false
+            } else {
+                throw SmartCardReaderException("Secure Read (SFI) failed at offset $offset: Unwrapped SW=" + Integer.toHexString(unwrappedRead.sw))
+            }
+        }
+        return buffer.toByteArray()
+    }
+
+    private fun getIsoDep(nfcReader: Any): IsoDep? {
+            // Strategy 1: Public getTag() method
+            try {
+                debugLog(logTag, "Reflection: Trying getTag() method on ${nfcReader.javaClass.name}")
+                val getTagMethod = nfcReader.javaClass.getMethod("getTag")
+                val tag = getTagMethod.invoke(nfcReader) as? android.nfc.Tag
+                if (tag != null) {
+                    debugLog(logTag, "Reflection: Found Tag via getTag()")
+                    return IsoDep.get(tag)
+                }
+            } catch (e: Exception) { debugLog(logTag, "Reflection: getTag() failed: ${e.message}") }
+
+            // Strategy 2: Reflective search for fields (Tag or IsoDep)
+            var currentClass: Class<*>? = nfcReader.javaClass
+            while (currentClass != null) {
+                debugLog(logTag, "Reflection: Searching fields in ${currentClass.name}")
+                for (field in currentClass.declaredFields) {
+                    try {
+                        field.isAccessible = true
+
+                        if (android.nfc.Tag::class.java.isAssignableFrom(field.type)) {
+                            val tag = field.get(nfcReader) as? android.nfc.Tag
+                            if (tag != null) {
+                                debugLog(logTag, "Reflection: Found Tag field '${field.name}'")
+                                return IsoDep.get(tag)
+                            }
+                        }
+
+                        if (IsoDep::class.java.isAssignableFrom(field.type)) {
+                            debugLog(logTag, "Reflection: Found IsoDep field '${field.name}'")
+                            return field.get(nfcReader) as? IsoDep
+                        }
+                    } catch (e: Exception) { /* Continue */ }
+                }
+                currentClass = currentClass.superclass
+            }
+
+            debugLog(logTag, "Reflection: IsoDep not found")
+            return null
+        }
+
+        private fun tryRomanianDiscovery(isoDep: IsoDep, canNumber: String, pin1: ByteArray?): IdCardData {
+             debugLog(logTag, "Starting Romanian eID Discovery...")
+
+             // Insert Bouncy Castle at position 1 to ensure it handles AES-256 correctly
+             // This prevents "Unknown OID" or algorithm support issues with standard Android providers
+             if (Security.getProvider("BC") == null) {
+                 Security.insertProviderAt(BouncyCastleProvider(), 1)
+             } else {
+                 Security.removeProvider("BC")
+                 Security.insertProviderAt(BouncyCastleProvider(), 1)
+             }
+
+             // 1. Setup Card Service
+             isoDep.timeout = 10000 // Extended timeout for PACE
+
+             // Initialize Custom Romanian Card Service
+             val cardService = RomanianCardService(isoDep)
+             cardService.open()
+
+             try {
+                 // Create PassportService wrapper to access files
+                 // Configuration: maxTranceiveLength = 256, maxBlockSize = 256, checkForExtraService = false, checkSFI = false
+                 val passportService = PassportService(cardService, 256, 256, false, false)
+                 passportService.open()
+
+                 // 2. Discovery: Read EF.CardAccess (SFI 1C)
+//                 // SKIPPED: We skip this to avoid triggering security errors before PACE.
+                 debugLog(logTag, "Reading EF.CardAccess...")
+                 // Use passportService to get the stream
+                 val cardAccessFile = CardAccessFile(passportService.getInputStream(PassportService.EF_CARD_ACCESS))
+                 debugLog(logTag, "EF.CardAccess read successfully.")
+
+                 // JMRTD 0.7.18: getSecurityInfos() returns Collection<SecurityInfo>
+                 val securityInfos = cardAccessFile.getSecurityInfos()
+                 var paceInfo: PACEInfo? = null
+                 if (securityInfos != null) {
+                     for (info in securityInfos) {
+                         if (info is PACEInfo) {
+                             paceInfo = info
+                             break
+                         }
+                     }
+                 }
+
+                 if (paceInfo == null) {
+                     throw SmartCardReaderException("No PACE Info found in EF.CardAccess")
+                 }
+
+//                 val oid = paceInfo.protocolOIDString
+                 // Use getObjectIdentifier() to get the numeric OID (e.g. 0.4.0...) required by doPACE
+                 // getProtocolOIDString() returns the friendly name (e.g. id-PACE...) which might fail lookup
+                 var oid = paceInfo.objectIdentifier
+                 debugLog(logTag, "Numeric object identifier: ${oid}")
+                 if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-256") {
+                     oid = "0.4.0.127.0.7.2.2.4.4.2"
+                 } else if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-128") {
+                     oid = "0.4.0.127.0.7.2.2.4.2.4"
+                 }
+                 val paramId = paceInfo.parameterId
+                 debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
+
+
+                 // Detected OID from previous runs: 0.4.0.127.0.7.2.2.4.2.4
+//                 val oid = "0.4.0.127.0.7.2.2.4.2.4"
+//                 val paramId = 13 // 0x0D BrainpoolP256r1
+//
+//                 debugLog(logTag, "Using Hardcoded PACE OID: $oid, ParamID: $paramId")
+
+                 // 3. Establish Secure Messaging (PACE-CAN)
+                 val cleanInput = canNumber.trim().replace(" ", "")
+                 val keyRef = 2.toByte() // 2=CAN
+
+                 debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInput.length})")
+
+                 // Use the cleaned input for the key
+                 val paceKey = PACEKeySpec(cleanInput.toByteArray(), keyRef)
+
+                 // Explicit doPACE call with hardcoded params
+                 passportService.doPACE(paceKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
+                 debugLog(logTag, "PACE Established. Secure Messaging Active. Wrapper set: ${passportService.wrapper != null}")
+
+                 // 4. Secure Applet Selection (After PACE)
+                 // Now that we have a secure channel (MF), we select the ICAO Applet using Wrapped APDU.
+                 val wrapper = passportService.wrapper
+                 if (wrapper != null) {
+                     debugLog(logTag, "Selecting ICAO Applet (Securely)...")
+                     val aid = byteArrayOf(0xA0.toByte(), 0x00.toByte(), 0x00.toByte(), 0x02.toByte(), 0x47.toByte(), 0x10.toByte(), 0x01.toByte())
+                     // ISO7816-4 SELECT: CLA=00, INS=A4, P1=04 (By Name), P2=00 (First Occurrence), Data=AID
+                     val selectCmdStandard = CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid)
+
+                     val wrappedSelect = wrapper.wrap(selectCmdStandard)
+                     val selectResp = cardService.transmit(wrappedSelect)
+                     // Unwrap to check status? wrapper.unwrap() needs ResponseAPDU
+                     // cardService.transmit returns ResponseAPDU
+                     val unwrappedSelect = wrapper.unwrap(selectResp)
+
+                     debugLog(logTag, "Secure Applet Selection SW: ${Integer.toHexString(unwrappedSelect.sw)}")
+                     if (unwrappedSelect.sw != 0x9000) {
+                         debugLog(logTag, "Warning: Secure Applet Selection failed. Proceeding anyway...")
+                     }
+                 }
+
+                 // DG1: MRZ Data
+                 debugLog(logTag, "Reading DG1 (MRZ)...")
+                 var dg1File: DG1File? = null
+                 var mrzInfo: MRZInfo? = null
+
+                 try {
+                     // Force Manual Secure Read because standard getInputStream sends plaintext SELECT (00A4...) which fails with 6E00
+                     if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
+
+                     val dg1Bytes = readDataGroupSecure(isoDep, wrapper, 0x01.toByte())
+                     dg1File = DG1File(java.io.ByteArrayInputStream(dg1Bytes))
+
+                     // JMRTD 0.7.18: getMRZInfo() instead of mrzInfo property
+                     mrzInfo = dg1File.getMRZInfo()
+                     debugLog(logTag, "DG1 Read Success: ${mrzInfo.primaryIdentifier} ${mrzInfo.secondaryIdentifier}")
+                 } catch (e: Exception) {
+                     debugLog(logTag, "DG1 Read Failed: ${e.message}")
+                     // We continue to DG2 even if DG1 fails, to see if the tag error is specific to DG1
+                 }
+
+                 // DG2: Face Image
+                 debugLog(logTag, "Reading DG2 (Face)...")
+                 var faceImageBytes: ByteArray? = null
+                 try {
+                     if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
+
+                     // Force Manual Secure Read for DG2 (SFI 0x02)
+                     val dg2Bytes = readDataGroupSecure(isoDep, wrapper, 0x02.toByte())
+                     val dg2File = DG2File(java.io.ByteArrayInputStream(dg2Bytes))
+
+                     // JMRTD 0.7.18: getFaceInfos() instead of faceInfos property
+                     val images = dg2File.getFaceInfos()
+                     if (images != null && !images.isEmpty()) {
+                        val imageInfo = images[0]
+                        // JMRTD 0.7.18: FaceInfo might have getFaceImageInfos()
+                        val imageInfos = imageInfo.getFaceImageInfos()
+                        if (imageInfos != null && !imageInfos.isEmpty()) {
+                            val faceImageInfo = imageInfos[0]
+                            val imageInputStream = faceImageInfo.getImageInputStream()
+                            faceImageBytes = imageInputStream.readBytes()
+                            debugLog(logTag, "DG2 Read Success. Image size: ${faceImageBytes?.size} bytes")
+                        }
+                     }
+                 } catch (e: Exception) {
+                     errorLog(logTag, "Failed to read DG2 (Face): ${e.message}", e)
+                 }
+
+                 // DG11: Additional Personal Detail(s)
+                 var placeOfBirth: String? = null
+                 var permanentAddress: String? = null
+
+                 if (pin1 != null && pin1.isNotEmpty()) {
+                    debugLog(logTag, "PIN1 provided. Attempting to verify PIN and read DG11...")
+                    try {
+                        if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
+
+                        // 1. Verify PIN1
+                        // APDU: 00 20 00 01 Lc PIN
+                        // P2 = 0x01 (Key Reference for PIN1)
+                        // Note: Depending on the card, we might need to convert ByteArray PIN to ASCII string bytes or BCD.
+                        // Assuming ASCII for now as per standard usage.
+                        // Also, some cards might require padding to 8 bytes (0xFF or 0x00).
+                        // Let's try raw bytes first.
+                        val pinBytes = pin1
+                        debugLog(logTag, "Verifying PIN1... Length: ${pinBytes.size}")
+
+                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, pinBytes)
+                        val wrappedVerify = wrapper.wrap(verifyCmd)
+                        val verifyResp = cardService.transmit(wrappedVerify)
+                        val unwrappedVerify = wrapper.unwrap(verifyResp)
+
+                        if (unwrappedVerify.sw == 0x9000) {
+                            debugLog(logTag, "PIN1 Verification Successful!")
+
+                            // 2. Read DG11 (SFI 0x0B)
+                            debugLog(logTag, "Reading DG11...")
+                            // SFI for DG11 is 0x0B
+                            val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
+                            val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
+
+                            val placeOfBirthList = dg11File.placeOfBirth
+                            if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
+                                placeOfBirth = placeOfBirthList.joinToString(" ")
+                            }
+
+                            val addressList = dg11File.permanentAddress
+                            if (addressList != null && addressList.isNotEmpty()) {
+                                permanentAddress = addressList.joinToString(" ")
+                            }
+                            debugLog(logTag, "DG11 Read Success.")
+
+                        } else {
+                            debugLog(logTag, "PIN1 Verification Failed. SW: ${Integer.toHexString(unwrappedVerify.sw)}")
+                            // Don't throw exception to allow showing basic data (DG1/DG2) even if PIN fails?
+                            // Or should we fail hard?
+                            // User requirement: "result of correct input ... should show us dg1, 2, and 11"
+                            // Implies partial success is acceptable or maybe not.
+                            // For now, we log and continue, but fields will be null.
+                        }
+
+                    } catch (e: Exception) {
+                        errorLog(logTag, "Failed to read DG11: ${e.message}", e)
+                    }
+                 }
+
+                 // Map to Personal Data
+                 val givenNames = mrzInfo?.secondaryIdentifier?.replace("<", " ")?.trim() ?: "Unknown"
+                 val surname = mrzInfo?.primaryIdentifier?.replace("<", " ")?.trim() ?: "Unknown"
+                 val docNumber = mrzInfo?.documentNumber ?: "Unknown"
+                 val personalCode = mrzInfo?.personalNumber ?: "Unknown"
+                 val nationality = mrzInfo?.nationality ?: "ROU"
+
+                 // Parse Expiry Date (YYMMDD)
+                 var expiryDate: LocalDate? = null
+                 if (mrzInfo != null) {
+                    try {
+                        val expiryStr = mrzInfo.dateOfExpiry
+                        // MRZ years are 2 digits. Pivot around 50? Assume 20xx for now.
+                        // A robust parser would need more context, but standard MRTD is roughly this.
+                        val formatter = DateTimeFormatter.ofPattern("yyMMdd")
+                        expiryDate = LocalDate.parse(expiryStr, formatter)
+                        // Adjust century if needed (simplified)
+                        if (expiryDate.year < 2000) {
+                           expiryDate = expiryDate.plusYears(100)
+                        }
+                    } catch (e: Exception) {
+                        debugLog(logTag, "Failed to parse expiry date: ${mrzInfo.dateOfExpiry}")
+                    }
+                 }
+
+                 val personalData = RomanianPersonalData(
+                     givenNames = givenNames,
+                     surname = surname,
+                     citizenship = nationality,
+                     personalCode = personalCode,
+                     documentNumber = docNumber,
+                     expiryDate = expiryDate,
+                     faceImage = faceImageBytes,
+                     placeOfBirth = placeOfBirth,
+                     permanentAddress = permanentAddress
+                 )
+
+                 return IdCardData(
+                     type = EIDType.ID_CARD,
+                     personalData = personalData,
+                     authCertificate = null,
+                     signCertificate = null,
+                     pin1RetryCount = null,
+                     pin2RetryCount = null,
+                     pukRetryCount = null,
+                     pin2CodeChanged = false
+                 )
+
+             } catch (e: Exception) {
+                 throw SmartCardReaderException("Romanian Discovery Failed: ${e.message}")
+             } finally {
+                 try { cardService.close() } catch (e: Exception) {}
+             }
         }
     }
