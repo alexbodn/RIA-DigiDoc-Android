@@ -339,6 +339,7 @@ fun NFCView(
             nfcViewModel.loadPersonalData(
                 activity,
                 canNumber.text,
+                pinCode.value
             )
         }
     }

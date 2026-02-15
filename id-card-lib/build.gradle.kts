@@ -47,6 +47,7 @@ dependencies {
     api(project(":id-card-lib:id-lib"))
     api(project(":id-card-lib:smart-lib"))
 
+    compileOnly(libs.auto.value.annotations)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

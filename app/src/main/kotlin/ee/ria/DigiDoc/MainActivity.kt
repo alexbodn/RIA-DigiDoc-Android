@@ -90,6 +90,23 @@ class MainActivity :
 
         val isDebug = BuildConfig.BUILD_TYPE.contentEquals("debug")
 
+        // Setup uncaught exception handler to capture crashes in debug builds
+        if (isDebug) {
+            val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+                try {
+                    val logsDir = getLogsDirectory(this)
+                    val crashFile = java.io.File(logsDir, "crash_report.txt")
+                    val writer = java.io.PrintWriter(crashFile)
+                    throwable.printStackTrace(writer)
+                    writer.close()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                defaultHandler?.uncaughtException(thread, throwable)
+            }
+        }
+
         if (!isDebug) {
             secureUtil.markAsSecure(this)
         }
