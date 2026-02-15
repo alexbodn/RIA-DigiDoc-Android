@@ -957,7 +957,7 @@ class NFCViewModel
 
                      // JMRTD 0.7.18: getMRZInfo() instead of mrzInfo property
                      mrzInfo = dg1File.getMRZInfo()
-                     debugLog(logTag, "DG1 Read Success: ${mrzInfo.primaryIdentifier} ${mrzInfo.secondaryIdentifier}")
+                     debugLog(logTag, "DG1 Read Success")
                  } catch (e: Exception) {
                      debugLog(logTag, "DG1 Read Failed: ${e.message}")
                      // We continue to DG2 even if DG1 fails, to see if the tag error is specific to DG1
@@ -1008,8 +1008,8 @@ class NFCViewModel
 
                         debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded)")
 
-                        // Using P2=0x03 (Key Reference)
-                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x03, paddedPin)
+                        // Using P2=0x01 (Key Reference)
+                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, paddedPin)
                         val wrappedVerify = wrapper.wrap(verifyCmd)
                         val verifyResp = cardService.transmit(wrappedVerify)
                         val unwrappedVerify = wrapper.unwrap(verifyResp)
