@@ -971,26 +971,45 @@ class NFCViewModel
                     try {
                         if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
 
-                        // 1. Verify PIN1 via APDU (User Requested Specific Logic)
+                        // 1. Verify PIN1 via APDU with Discovery Loop
                         // Construct Data: PIN bytes padded to 8 bytes with 0xFF
                         val paddedPin = ByteArray(8) { 0xFF.toByte() }
                         System.arraycopy(pin1, 0, paddedPin, 0, minOf(pin1.size, 8))
 
                         debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded)")
 
-                        // Form APDU: 00 20 00 01 (P2=0x01 Key Reference)
-                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, paddedPin)
+                        // Try likely P2 values (Key References) to resolve 6A86/6A88 errors
+                        val candidateP2s = listOf<Byte>(0x01, 0x02, 0x03, 0x00, 0x81.toByte(), 0x83.toByte())
+                        var verificationSuccess = false
 
-                        // Wrap it (Turn CLA into 0C and add MAC)
-                        val wrappedVerify = wrapper.wrap(verifyCmd)
+                        for (p2 in candidateP2s) {
+                            val p2Hex = String.format("%02X", p2)
+                            debugLog(logTag, "Attempting VERIFY with P2=$p2Hex...")
 
-                        // Transmit
-                        val verifyResp = cardService.transmit(wrappedVerify)
-                        val unwrappedVerify = wrapper.unwrap(verifyResp)
+                            // Form APDU: 00 20 00 P2
+                            val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, p2.toInt(), paddedPin)
+                            val wrappedVerify = wrapper.wrap(verifyCmd)
+                            val verifyResp = cardService.transmit(wrappedVerify)
+                            val unwrappedVerify = wrapper.unwrap(verifyResp)
+                            val sw = unwrappedVerify.sw
 
-                        if (unwrappedVerify.sw == 0x9000) {
-                            debugLog(logTag, "PIN1 Verification Successful!")
+                            if (sw == 0x9000) {
+                                debugLog(logTag, "PIN1 Verification Successful with P2=$p2Hex!")
+                                verificationSuccess = true
+                                break
+                            } else {
+                                debugLog(logTag, "PIN1 Verification Failed for P2=$p2Hex. SW: ${Integer.toHexString(sw)}")
 
+                                // Check for Wrong PIN (63Cx) - Stop immediately to avoid locking
+                                if ((sw and 0xFFF0) == 0x63C0) {
+                                    debugLog(logTag, "Wrong PIN! Stopping verification loop.")
+                                    break
+                                }
+                                // If 6A86 (Incorrect Params) or 6A88 (Not Found), continue to next P2
+                            }
+                        }
+
+                        if (verificationSuccess) {
                             // 2. Read DG11 (SFI 0x0B)
                             debugLog(logTag, "Reading DG11...")
                             val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
@@ -1006,9 +1025,6 @@ class NFCViewModel
                                 permanentAddress = addressList.joinToString(" ")
                             }
                             debugLog(logTag, "DG11 Read Success.")
-
-                        } else {
-                            debugLog(logTag, "PIN1 Verification Failed. SW: ${Integer.toHexString(unwrappedVerify.sw)}")
                         }
 
                     } catch (e: Exception) {
