@@ -61,7 +61,7 @@ object FetchAndPackageDefaultConfigurationTask {
     private val logTag = javaClass.simpleName
     private var properties = Properties()
     private var buildVariant: String? = null
-    private val defaultTimeout = 30L
+    private val defaultTimeout = 120L
 
     @JvmStatic
     fun main(args: Array<String>) {

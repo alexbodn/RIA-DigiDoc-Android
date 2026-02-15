@@ -902,26 +902,18 @@ class NFCViewModel
                  val paramId = paceInfo.parameterId
                  debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
 
-                 // 3. Establish Secure Messaging (PACE)
-                 // If PIN1 is provided, we perform PACE with PIN (KeyRef 3) directly.
-                 // If PIN1 is NOT provided, we perform PACE with CAN (KeyRef 2).
-                 // Doing PACE-PIN directly avoids nested PACE sessions which can cause 6985 errors.
+                 // 3. Establish Secure Messaging (PACE-CAN)
+                 // We always establish PACE with CAN first to access the card.
+                 // PIN verification is done later via VERIFY command or PACE-PIN if supported.
+                 // User requested specific logic: VERIFY command.
 
-                 debugLog(logTag, "PIN1 provided? ${pin1 != null}, Length: ${pin1?.size ?: 0}")
-                 val usePin = pin1 != null && pin1.isNotEmpty()
+                 val cleanInput = canNumber.trim().replace(" ", "")
+                 val keyRef = 2.toByte() // 2=CAN
 
-                 val paceKey: PACEKeySpec
-                 if (usePin && pin1 != null) {
-                     val cleanInputPin = String(pin1).trim()
-                     val keyRefPin = 3.toByte() // 3=PIN
-                     debugLog(logTag, "Performing PACE with PIN (Input Length: ${cleanInputPin.length})")
-                     paceKey = PACEKeySpec(cleanInputPin.toByteArray(), keyRefPin)
-                 } else {
-                     val cleanInputCan = canNumber.trim().replace(" ", "")
-                     val keyRefCan = 2.toByte() // 2=CAN
-                     debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInputCan.length})")
-                     paceKey = PACEKeySpec(cleanInputCan.toByteArray(), keyRefCan)
-                 }
+                 debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInput.length})")
+
+                 // Use the cleaned input for the key
+                 val paceKey = PACEKeySpec(cleanInput.toByteArray(), keyRef)
 
                  // Explicit doPACE call with hardcoded params (oid/paramId from CardAccess)
                  passportService.doPACE(paceKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
@@ -972,26 +964,52 @@ class NFCViewModel
                  var placeOfBirth: String? = null
                  var permanentAddress: String? = null
 
-                 // Only read DG11 if we authenticated with PIN
-                 if (usePin) {
-                    debugLog(logTag, "Attempting to read DG11 (Authenticated with PIN)...")
+                 debugLog(logTag, "PIN1 provided? ${pin1 != null}, Length: ${pin1?.size ?: 0}")
+
+                 if (pin1 != null && pin1.isNotEmpty()) {
+                    debugLog(logTag, "PIN1 provided. Attempting to verify PIN and read DG11...")
                     try {
                         if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
 
-                        // Read DG11 (SFI 0x0B) using current channel
-                        val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
-                        val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
+                        // 1. Verify PIN1 via APDU (User Requested Specific Logic)
+                        // Construct Data: PIN bytes padded to 8 bytes with 0xFF
+                        val paddedPin = ByteArray(8) { 0xFF.toByte() }
+                        System.arraycopy(pin1, 0, paddedPin, 0, minOf(pin1.size, 8))
 
-                        val placeOfBirthList = dg11File.placeOfBirth
-                        if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
-                            placeOfBirth = placeOfBirthList.joinToString(" ")
-                        }
+                        debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded)")
 
-                        val addressList = dg11File.permanentAddress
-                        if (addressList != null && addressList.isNotEmpty()) {
-                            permanentAddress = addressList.joinToString(" ")
+                        // Form APDU: 00 20 00 01 (P2=0x01 Key Reference)
+                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, paddedPin)
+
+                        // Wrap it (Turn CLA into 0C and add MAC)
+                        val wrappedVerify = wrapper.wrap(verifyCmd)
+
+                        // Transmit
+                        val verifyResp = cardService.transmit(wrappedVerify)
+                        val unwrappedVerify = wrapper.unwrap(verifyResp)
+
+                        if (unwrappedVerify.sw == 0x9000) {
+                            debugLog(logTag, "PIN1 Verification Successful!")
+
+                            // 2. Read DG11 (SFI 0x0B)
+                            debugLog(logTag, "Reading DG11...")
+                            val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
+                            val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
+
+                            val placeOfBirthList = dg11File.placeOfBirth
+                            if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
+                                placeOfBirth = placeOfBirthList.joinToString(" ")
+                            }
+
+                            val addressList = dg11File.permanentAddress
+                            if (addressList != null && addressList.isNotEmpty()) {
+                                permanentAddress = addressList.joinToString(" ")
+                            }
+                            debugLog(logTag, "DG11 Read Success.")
+
+                        } else {
+                            debugLog(logTag, "PIN1 Verification Failed. SW: ${Integer.toHexString(unwrappedVerify.sw)}")
                         }
-                        debugLog(logTag, "DG11 Read Success.")
 
                     } catch (e: Exception) {
                         errorLog(logTag, "Failed to read DG11: ${e.message}", e)
