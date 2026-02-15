@@ -1008,8 +1008,8 @@ class NFCViewModel
 
                         debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded)")
 
-                        // Using P2=0x81 (Key Reference)
-                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x81, paddedPin)
+                        // Using P2=0x01 (Key Reference)
+                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, paddedPin)
                         val wrappedVerify = wrapper.wrap(verifyCmd)
                         val verifyResp = cardService.transmit(wrappedVerify)
                         val unwrappedVerify = wrapper.unwrap(verifyResp)
