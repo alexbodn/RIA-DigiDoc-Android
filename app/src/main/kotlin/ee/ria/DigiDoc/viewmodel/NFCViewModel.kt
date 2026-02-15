@@ -970,32 +970,25 @@ class NFCViewModel
                  debugLog(logTag, "PIN1 provided? ${pin1 != null}, Length: ${pin1?.size ?: 0}")
 
                  if (pin1 != null && pin1.isNotEmpty()) {
-                    debugLog(logTag, "PIN1 provided. Attempting to verify PIN and read DG11...")
+                    debugLog(logTag, "PIN1 provided. Attempting PACE with PIN and reading DG11...")
                     try {
-                        if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
+                        // Establish PACE with PIN1 (KeyRef 3)
+                        val cleanInputPin = String(pin1).trim()
+                        val keyRefPin = 3.toByte() // 3=PIN
 
-                        // 1. Verify PIN1
-                        // APDU: 00 20 00 03 Lc PIN
-                        // P2 = 0x01 (Key Reference for PIN1)
-                        // Padding to 8 bytes with 0xFF is standard for ASCII PINs on some cards.
-                        val paddedPin = ByteArray(8) { 0xFF.toByte() }
-                        System.arraycopy(pin1, 0, paddedPin, 0, minOf(pin1.size, 8))
+                        debugLog(logTag, "Performing PACE with PIN (Input Length: ${cleanInputPin.length})")
+                        val paceKeyPin = PACEKeySpec(cleanInputPin.toByteArray(), keyRefPin)
 
-                        debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded)")
+                        // We reuse the existing passportService instance. JMRTD handles re-authentication (hopefully)
+                        passportService.doPACE(paceKeyPin, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
+                        debugLog(logTag, "PACE with PIN Established.")
 
-                        // Using P2=0x01 (Key Reference)
-                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, paddedPin)
-                        val wrappedVerify = wrapper.wrap(verifyCmd)
-                        val verifyResp = cardService.transmit(wrappedVerify)
-                        val unwrappedVerify = wrapper.unwrap(verifyResp)
-
-                        if (unwrappedVerify.sw == 0x9000) {
-                            debugLog(logTag, "PIN1 Verification Successful!")
-
-                            // 2. Read DG11 (SFI 0x0B)
+                        // Update wrapper reference if changed (it should be updated in passportService)
+                        val pinWrapper = passportService.wrapper
+                        if (pinWrapper != null) {
+                            // Read DG11 (SFI 0x0B) using new channel
                             debugLog(logTag, "Reading DG11...")
-                            // SFI for DG11 is 0x0B
-                            val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
+                            val dg11Bytes = readDataGroupSecure(isoDep, pinWrapper, 0x0B.toByte())
                             val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
 
                             val placeOfBirthList = dg11File.placeOfBirth
@@ -1008,13 +1001,10 @@ class NFCViewModel
                                 permanentAddress = addressList.joinToString(" ")
                             }
                             debugLog(logTag, "DG11 Read Success.")
-
-                        } else {
-                            debugLog(logTag, "PIN1 Verification Failed. SW: ${Integer.toHexString(unwrappedVerify.sw)}")
                         }
 
                     } catch (e: Exception) {
-                        errorLog(logTag, "Failed to read DG11: ${e.message}", e)
+                        errorLog(logTag, "Failed to perform PACE with PIN or read DG11: ${e.message}", e)
                     }
                  }
 
