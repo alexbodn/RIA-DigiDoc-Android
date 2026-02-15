@@ -902,13 +902,6 @@ class NFCViewModel
                  val paramId = paceInfo.parameterId
                  debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
 
-
-                 // Detected OID from previous runs: 0.4.0.127.0.7.2.2.4.2.4
-//                 val oid = "0.4.0.127.0.7.2.2.4.2.4"
-//                 val paramId = 13 // 0x0D BrainpoolP256r1
-//
-//                 debugLog(logTag, "Using Hardcoded PACE OID: $oid, ParamID: $paramId")
-
                  // 3. Establish Secure Messaging (PACE-CAN)
                  val cleanInput = canNumber.trim().replace(" ", "")
                  val keyRef = 2.toByte() // 2=CAN
