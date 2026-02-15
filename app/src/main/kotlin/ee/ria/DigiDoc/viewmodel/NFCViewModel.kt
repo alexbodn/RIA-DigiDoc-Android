@@ -569,7 +569,7 @@ class NFCViewModel
                                 // Romanian / Direct IsoDep Path
                                 // "Run only yours for the moment" - Exclusive execution
                                 val romanianData = tryRomanianDiscovery(isoDep, canNumber, pin1)
-                                debugLog(logTag, "Romanian discovery success. Data: ${romanianData.personalData.givenNames()} ${romanianData.personalData.surname()}")
+                                debugLog(logTag, "Romanian discovery success.")
                                 _userData.postValue(romanianData)
                             } else {
                                 debugLog(logTag, "IsoDep extraction FAILED. Legacy path disabled.")
