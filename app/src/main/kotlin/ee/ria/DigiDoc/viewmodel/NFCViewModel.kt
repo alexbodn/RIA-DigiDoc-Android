@@ -854,7 +854,7 @@ class NFCViewModel
              }
 
              // 1. Setup Card Service
-             isoDep.timeout = 10000 // Extended timeout for PACE
+             isoDep.timeout = 20000 // Extended timeout for PACE (increased from 10s to 20s)
 
              // Initialize Custom Romanian Card Service
              val cardService = RomanianCardService(isoDep)
@@ -963,33 +963,6 @@ class NFCViewModel
                      // We continue to DG2 even if DG1 fails, to see if the tag error is specific to DG1
                  }
 
-                 // DG2: Face Image
-                 debugLog(logTag, "Reading DG2 (Face)...")
-                 var faceImageBytes: ByteArray? = null
-                 try {
-                     if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
-
-                     // Force Manual Secure Read for DG2 (SFI 0x02)
-                     val dg2Bytes = readDataGroupSecure(isoDep, wrapper, 0x02.toByte())
-                     val dg2File = DG2File(java.io.ByteArrayInputStream(dg2Bytes))
-
-                     // JMRTD 0.7.18: getFaceInfos() instead of faceInfos property
-                     val images = dg2File.getFaceInfos()
-                     if (images != null && !images.isEmpty()) {
-                        val imageInfo = images[0]
-                        // JMRTD 0.7.18: FaceInfo might have getFaceImageInfos()
-                        val imageInfos = imageInfo.getFaceImageInfos()
-                        if (imageInfos != null && !imageInfos.isEmpty()) {
-                            val faceImageInfo = imageInfos[0]
-                            val imageInputStream = faceImageInfo.getImageInputStream()
-                            faceImageBytes = imageInputStream.readBytes()
-                            debugLog(logTag, "DG2 Read Success. Image size: ${faceImageBytes?.size} bytes")
-                        }
-                     }
-                 } catch (e: Exception) {
-                     errorLog(logTag, "Failed to read DG2 (Face): ${e.message}", e)
-                 }
-
                  // DG11: Additional Personal Detail(s)
                  var placeOfBirth: String? = null
                  var permanentAddress: String? = null
@@ -1003,7 +976,7 @@ class NFCViewModel
 
                         // 1. Verify PIN1
                         // APDU: 00 20 00 03 Lc PIN
-                        // P2 = 0x03 (Key Reference for PIN1 - typically 0x01 or 0x03, trying 0x03 based on user input/specs)
+                        // P2 = 0x01 (Key Reference for PIN1)
                         // Padding to 8 bytes with 0xFF is standard for ASCII PINs on some cards.
                         val paddedPin = ByteArray(8) { 0xFF.toByte() }
                         System.arraycopy(pin1, 0, paddedPin, 0, minOf(pin1.size, 8))
@@ -1038,16 +1011,38 @@ class NFCViewModel
 
                         } else {
                             debugLog(logTag, "PIN1 Verification Failed. SW: ${Integer.toHexString(unwrappedVerify.sw)}")
-                            // Don't throw exception to allow showing basic data (DG1/DG2) even if PIN fails?
-                            // Or should we fail hard?
-                            // User requirement: "result of correct input ... should show us dg1, 2, and 11"
-                            // Implies partial success is acceptable or maybe not.
-                            // For now, we log and continue, but fields will be null.
                         }
 
                     } catch (e: Exception) {
                         errorLog(logTag, "Failed to read DG11: ${e.message}", e)
                     }
+                 }
+
+                 // DG2: Face Image
+                 debugLog(logTag, "Reading DG2 (Face)...")
+                 var faceImageBytes: ByteArray? = null
+                 try {
+                     if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
+
+                     // Force Manual Secure Read for DG2 (SFI 0x02)
+                     val dg2Bytes = readDataGroupSecure(isoDep, wrapper, 0x02.toByte())
+                     val dg2File = DG2File(java.io.ByteArrayInputStream(dg2Bytes))
+
+                     // JMRTD 0.7.18: getFaceInfos() instead of faceInfos property
+                     val images = dg2File.getFaceInfos()
+                     if (images != null && !images.isEmpty()) {
+                        val imageInfo = images[0]
+                        // JMRTD 0.7.18: FaceInfo might have getFaceImageInfos()
+                        val imageInfos = imageInfo.getFaceImageInfos()
+                        if (imageInfos != null && !imageInfos.isEmpty()) {
+                            val faceImageInfo = imageInfos[0]
+                            val imageInputStream = faceImageInfo.getImageInputStream()
+                            faceImageBytes = imageInputStream.readBytes()
+                            debugLog(logTag, "DG2 Read Success. Image size: ${faceImageBytes?.size} bytes")
+                        }
+                     }
+                 } catch (e: Exception) {
+                     errorLog(logTag, "Failed to read DG2 (Face): ${e.message}", e)
                  }
 
                  // Map to Personal Data
