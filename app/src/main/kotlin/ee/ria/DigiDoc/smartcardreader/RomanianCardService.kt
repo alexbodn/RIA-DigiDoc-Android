@@ -39,7 +39,13 @@ class RomanianCardService(private val isoDep: IsoDep) : CardService() {
         try {
             val cmdBytes = command.bytes
             // Redact log to prevent leaking PINs (e.g. in VERIFY commands)
-            debugLog(logTag, "TX: [Redacted for Security]")
+            // Log Header (CLA INS P1 P2) to allow debugging parameters like P2
+            val header = if (cmdBytes.size >= 4) {
+                 String.format("%02X%02X%02X%02X", cmdBytes[0], cmdBytes[1], cmdBytes[2], cmdBytes[3])
+            } else {
+                 "Invalid"
+            }
+            debugLog(logTag, "TX: Header=$header [Redacted for Security]")
 
             val respBytes = isoDep.transceive(cmdBytes)
             val sw1 = respBytes[respBytes.size - 2]

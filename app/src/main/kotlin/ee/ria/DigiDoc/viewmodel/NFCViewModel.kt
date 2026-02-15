@@ -994,6 +994,8 @@ class NFCViewModel
                  var placeOfBirth: String? = null
                  var permanentAddress: String? = null
 
+                 debugLog(logTag, "PIN1 provided? ${pin1 != null}, Length: ${pin1?.size ?: 0}")
+
                  if (pin1 != null && pin1.isNotEmpty()) {
                     debugLog(logTag, "PIN1 provided. Attempting to verify PIN and read DG11...")
                     try {
