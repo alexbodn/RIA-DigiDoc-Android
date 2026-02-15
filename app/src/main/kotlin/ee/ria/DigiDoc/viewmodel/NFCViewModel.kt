@@ -902,16 +902,28 @@ class NFCViewModel
                  val paramId = paceInfo.parameterId
                  debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
 
-                 // 3. Establish Secure Messaging (PACE-CAN)
-                 val cleanInput = canNumber.trim().replace(" ", "")
-                 val keyRef = 2.toByte() // 2=CAN
+                 // 3. Establish Secure Messaging (PACE)
+                 // If PIN1 is provided, we perform PACE with PIN (KeyRef 3) directly.
+                 // If PIN1 is NOT provided, we perform PACE with CAN (KeyRef 2).
+                 // Doing PACE-PIN directly avoids nested PACE sessions which can cause 6985 errors.
 
-                 debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInput.length})")
+                 debugLog(logTag, "PIN1 provided? ${pin1 != null}, Length: ${pin1?.size ?: 0}")
+                 val usePin = pin1 != null && pin1.isNotEmpty()
 
-                 // Use the cleaned input for the key
-                 val paceKey = PACEKeySpec(cleanInput.toByteArray(), keyRef)
+                 val paceKey: PACEKeySpec
+                 if (usePin && pin1 != null) {
+                     val cleanInputPin = String(pin1).trim()
+                     val keyRefPin = 3.toByte() // 3=PIN
+                     debugLog(logTag, "Performing PACE with PIN (Input Length: ${cleanInputPin.length})")
+                     paceKey = PACEKeySpec(cleanInputPin.toByteArray(), keyRefPin)
+                 } else {
+                     val cleanInputCan = canNumber.trim().replace(" ", "")
+                     val keyRefCan = 2.toByte() // 2=CAN
+                     debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInputCan.length})")
+                     paceKey = PACEKeySpec(cleanInputCan.toByteArray(), keyRefCan)
+                 }
 
-                 // Explicit doPACE call with hardcoded params
+                 // Explicit doPACE call with hardcoded params (oid/paramId from CardAccess)
                  passportService.doPACE(paceKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
                  debugLog(logTag, "PACE Established. Secure Messaging Active. Wrapper set: ${passportService.wrapper != null}")
 
@@ -960,44 +972,29 @@ class NFCViewModel
                  var placeOfBirth: String? = null
                  var permanentAddress: String? = null
 
-                 debugLog(logTag, "PIN1 provided? ${pin1 != null}, Length: ${pin1?.size ?: 0}")
-
-                 if (pin1 != null && pin1.isNotEmpty()) {
-                    debugLog(logTag, "PIN1 provided. Attempting PACE with PIN and reading DG11...")
+                 // Only read DG11 if we authenticated with PIN
+                 if (usePin) {
+                    debugLog(logTag, "Attempting to read DG11 (Authenticated with PIN)...")
                     try {
-                        // Establish PACE with PIN1 (KeyRef 3)
-                        val cleanInputPin = String(pin1).trim()
-                        val keyRefPin = 3.toByte() // 3=PIN
+                        if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
 
-                        debugLog(logTag, "Performing PACE with PIN (Input Length: ${cleanInputPin.length})")
-                        val paceKeyPin = PACEKeySpec(cleanInputPin.toByteArray(), keyRefPin)
+                        // Read DG11 (SFI 0x0B) using current channel
+                        val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
+                        val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
 
-                        // We reuse the existing passportService instance. JMRTD handles re-authentication (hopefully)
-                        passportService.doPACE(paceKeyPin, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
-                        debugLog(logTag, "PACE with PIN Established.")
-
-                        // Update wrapper reference if changed (it should be updated in passportService)
-                        val pinWrapper = passportService.wrapper
-                        if (pinWrapper != null) {
-                            // Read DG11 (SFI 0x0B) using new channel
-                            debugLog(logTag, "Reading DG11...")
-                            val dg11Bytes = readDataGroupSecure(isoDep, pinWrapper, 0x0B.toByte())
-                            val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
-
-                            val placeOfBirthList = dg11File.placeOfBirth
-                            if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
-                                placeOfBirth = placeOfBirthList.joinToString(" ")
-                            }
-
-                            val addressList = dg11File.permanentAddress
-                            if (addressList != null && addressList.isNotEmpty()) {
-                                permanentAddress = addressList.joinToString(" ")
-                            }
-                            debugLog(logTag, "DG11 Read Success.")
+                        val placeOfBirthList = dg11File.placeOfBirth
+                        if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
+                            placeOfBirth = placeOfBirthList.joinToString(" ")
                         }
 
+                        val addressList = dg11File.permanentAddress
+                        if (addressList != null && addressList.isNotEmpty()) {
+                            permanentAddress = addressList.joinToString(" ")
+                        }
+                        debugLog(logTag, "DG11 Read Success.")
+
                     } catch (e: Exception) {
-                        errorLog(logTag, "Failed to perform PACE with PIN or read DG11: ${e.message}", e)
+                        errorLog(logTag, "Failed to read DG11: ${e.message}", e)
                     }
                  }
 
