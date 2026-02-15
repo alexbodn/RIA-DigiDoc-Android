@@ -101,7 +101,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun MyEidIdentificationScreen(
+fun AuthenticationIdentificationScreen(
     modifier: Modifier = Modifier,
     navController: NavHostController,
     sharedMenuViewModel: SharedMenuViewModel,
@@ -316,7 +316,7 @@ fun MyEidIdentificationScreen(
                                 sharedMyEidViewModel.setIdCardData(personalData)
 
                                 navController.navigate(
-                                    Route.MyEidScreen.route,
+                                    Route.AuthenticationScreen.route,
                                 )
                             }
                         },
@@ -340,7 +340,7 @@ fun MyEidIdentificationScreen(
                         rememberMe = rememberMe,
                         sharedSettingsViewModel = sharedSettingsViewModel,
                         sharedContainerViewModel = sharedContainerViewModel,
-                        showPinField = false,
+                        showPinField = true,
                         isSupported = { supported ->
                             nfcSupported = supported
                         },
@@ -355,7 +355,7 @@ fun MyEidIdentificationScreen(
                                 sharedMyEidViewModel.setIdCardData(idCardData)
 
                                 navController.navigate(
-                                    Route.MyEidScreen.route,
+                                    Route.AuthenticationScreen.route,
                                 )
                             }
                         },
@@ -415,9 +415,9 @@ fun MyEidIdentificationScreen(
 @Preview(showBackground = true)
 @Preview(showBackground = true, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
-fun MyEidIdentificationScreenPreview() {
+fun AuthenticationIdentificationScreenPreview() {
     RIADigiDocTheme {
-        MyEidIdentificationScreen(
+        AuthenticationIdentificationScreen(
             navController = rememberNavController(),
             sharedMenuViewModel = hiltViewModel(),
             sharedSettingsViewModel = hiltViewModel(),

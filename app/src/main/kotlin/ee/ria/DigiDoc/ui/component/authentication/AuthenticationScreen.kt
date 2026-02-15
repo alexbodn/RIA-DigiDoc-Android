@@ -19,7 +19,7 @@
 
 @file:Suppress("PackageName", "FunctionName")
 
-package ee.ria.DigiDoc.ui.component.myeid
+package ee.ria.DigiDoc.ui.component.authentication
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -76,6 +76,7 @@ import ee.ria.DigiDoc.smartcardreader.SmartCardReaderStatus
 import ee.ria.DigiDoc.ui.component.menu.SettingsMenuBottomSheet
 import ee.ria.DigiDoc.ui.component.myeid.mydata.MyEidMyDataView
 import ee.ria.DigiDoc.ui.component.myeid.pinandcertificate.MyEidPinAndCertificateView
+import ee.ria.DigiDoc.domain.model.RomanianPersonalData
 import ee.ria.DigiDoc.ui.component.shared.HrefDynamicText
 import ee.ria.DigiDoc.ui.component.shared.TabView
 import ee.ria.DigiDoc.ui.component.shared.TopBar
@@ -94,7 +95,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun MyEidScreen(
+fun AuthenticationScreen(
     navController: NavHostController,
     modifier: Modifier = Modifier,
     sharedMenuViewModel: SharedMenuViewModel,
@@ -157,7 +158,7 @@ fun MyEidScreen(
             """
             ${stringResource(R.string.myeid_puk_info)}
             ${stringResource(R.string.myeid_puk_info_2)}
-            
+
             """.trimIndent()
         changePukLinkText = additionalInfo
         changePukLinkUrl = stringResource(R.string.myeid_puk_info_3)
@@ -255,12 +256,12 @@ fun MyEidScreen(
             modifier
                 .semantics {
                     testTagsAsResourceId = true
-                }.testTag("myEidScreen"),
+                }.testTag("authenticationScreen"),
         topBar = {
             TopBar(
                 modifier = modifier,
                 sharedMenuViewModel = sharedMenuViewModel,
-                title = R.string.main_home_my_eid_title,
+                title = R.string.main_home_authentication_title,
                 leftIcon = R.drawable.ic_m3_close_48dp_wght400,
                 leftIconContentDescription = R.string.close_button,
                 onLeftButtonClick = {
@@ -291,7 +292,7 @@ fun MyEidScreen(
                     .focusGroup()
                     .semantics {
                         testTagsAsResourceId = true
-                    }.testTag("myEidContainer"),
+                    }.testTag("authenticationContainer"),
         ) {
             Column(
                 modifier =
@@ -303,7 +304,7 @@ fun MyEidScreen(
             ) {
                 TabView(
                     modifier = modifier,
-                    testTag = "myEidTabView",
+                    testTag = "authenticationTabView",
                     selectedTabIndex = selectedMyEidTabIndex.intValue,
                     onTabSelected = { index -> selectedMyEidTabIndex.intValue = index },
                     listOf(
@@ -311,6 +312,9 @@ fun MyEidScreen(
                             stringResource(R.string.myeid_my_data),
                         ) {
                             val personalData = idCardData?.personalData
+                            val faceImage = if (personalData is RomanianPersonalData) personalData.faceImage() else null
+                            val placeOfBirth = if (personalData is RomanianPersonalData) personalData.placeOfBirth() else null
+                            val permanentAddress = if (personalData is RomanianPersonalData) personalData.permanentAddress() else null
 
                             MyEidMyDataView(
                                 modifier,
@@ -340,6 +344,9 @@ fun MyEidScreen(
                                     } else {
                                         ""
                                     },
+                                faceImage = faceImage,
+                                placeOfBirth = placeOfBirth,
+                                permanentAddress = permanentAddress
                             )
                         },
                         Pair(

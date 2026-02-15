@@ -1000,16 +1000,16 @@ class NFCViewModel
                         if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
 
                         // 1. Verify PIN1
-                        // APDU: 00 20 00 01 Lc PIN
-                        // P2 = 0x01 (Key Reference for PIN1)
-                        // Note: Depending on the card, we might need to convert ByteArray PIN to ASCII string bytes or BCD.
-                        // Assuming ASCII for now as per standard usage.
-                        // Also, some cards might require padding to 8 bytes (0xFF or 0x00).
-                        // Let's try raw bytes first.
-                        val pinBytes = pin1
-                        debugLog(logTag, "Verifying PIN1... Length: ${pinBytes.size}")
+                        // APDU: 00 20 00 03 Lc PIN
+                        // P2 = 0x03 (Key Reference for PIN1 - typically 0x01 or 0x03, trying 0x03 based on user input/specs)
+                        // Padding to 8 bytes with 0xFF is standard for ASCII PINs on some cards.
+                        val paddedPin = ByteArray(8) { 0xFF.toByte() }
+                        System.arraycopy(pin1, 0, paddedPin, 0, minOf(pin1.size, 8))
 
-                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, pinBytes)
+                        debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded)")
+
+                        // Using P2=0x03 (Key Reference)
+                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x03, paddedPin)
                         val wrappedVerify = wrapper.wrap(verifyCmd)
                         val verifyResp = cardService.transmit(wrappedVerify)
                         val unwrappedVerify = wrapper.unwrap(verifyResp)
