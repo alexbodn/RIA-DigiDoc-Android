@@ -70,7 +70,11 @@ object FetchAndPackageDefaultConfigurationTask {
                 loadResourcesProperties()
                 loadAndStoreDefaultConfiguration(args)
             } catch (e: Exception) {
-                errorLog(logTag, "Failed to fetch and package default configuration. Using local fallback if available.", e)
+                errorLog(
+                    logTag,
+                    "Failed to fetch and package default configuration. Using local fallback if available.",
+                    e,
+                )
                 // Proceed without failing the build, assuming local assets exist and will be packaged.
             }
         }
