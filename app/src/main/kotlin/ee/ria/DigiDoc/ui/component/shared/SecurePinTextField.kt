@@ -47,7 +47,6 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.zIndex
 import ee.ria.DigiDoc.R
 import ee.ria.DigiDoc.ui.theme.Dimensions.iconSizeXXS
@@ -73,8 +72,7 @@ fun SecurePinTextField(
         label = {
             Text(text = pinCodeLabel)
         },
-        value = pin.value.joinToString("") { it.toInt().toChar().toString() },
-        visualTransformation = PasswordVisualTransformation(),
+        value = "*".repeat(pin.value.size),
         singleLine = true,
         modifier =
             modifier
@@ -89,7 +87,13 @@ fun SecurePinTextField(
                 }.testTag("pinTextField"),
         onValueChange = { newValue ->
             val digitsOnly = newValue.filter { it.isDigit() }
-            pin.value = digitsOnly.map { it.code.toByte() }.toByteArray()
+            if (digitsOnly.isEmpty()) {
+                if (pin.value.isNotEmpty()) {
+                    pin.value = pin.value.dropLast(1).toByteArray()
+                }
+            } else {
+                pin.value = pin.value + digitsOnly.last().code.toByte()
+            }
             pinCodeTextEdited?.value = true
         },
         trailingIcon = {
