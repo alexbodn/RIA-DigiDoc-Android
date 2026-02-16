@@ -902,20 +902,30 @@ class NFCViewModel
                  val paramId = paceInfo.parameterId
                  debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
 
-                 // 3. Establish Secure Messaging (PACE-CAN)
-                 // We always establish PACE with CAN first to access the card.
-                 // PIN verification is done later via VERIFY command or PACE-PIN if supported.
-                 // User requested specific logic: VERIFY command.
+                 // 3. Establish Secure Messaging (PACE)
+                 // If PIN1 is provided, we perform PACE with PIN (KeyRef 1) directly.
+                 // If PIN1 is NOT provided, we perform PACE with CAN (KeyRef 2).
+                 // Doing PACE-PIN directly avoids nested PACE sessions which can cause 6985 errors.
+                 // Note: User manual MSE used KeyRef 01, so we try KeyRef 1 for PIN.
 
-                 val cleanInput = canNumber.trim().replace(" ", "")
-                 val keyRef = 2.toByte() // 2=CAN
+                 debugLog(logTag, "PIN1 provided? ${pin1 != null}, Length: ${pin1?.size ?: 0}")
+                 val usePin = pin1 != null && pin1.isNotEmpty()
 
-                 debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInput.length})")
+                 val paceKey: PACEKeySpec
+                 if (usePin && pin1 != null) {
+                     val cleanInputPin = String(pin1).trim()
+                     // Using KeyRef 1 based on user's manual MSE payload "83 01 01"
+                     val keyRefPin = 1.toByte()
+                     debugLog(logTag, "Performing PACE with PIN (Input Length: ${cleanInputPin.length}, KeyRef: 1)")
+                     paceKey = PACEKeySpec(cleanInputPin.toByteArray(), keyRefPin)
+                 } else {
+                     val cleanInputCan = canNumber.trim().replace(" ", "")
+                     val keyRefCan = 2.toByte() // 2=CAN
+                     debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInputCan.length}, KeyRef: 2)")
+                     paceKey = PACEKeySpec(cleanInputCan.toByteArray(), keyRefCan)
+                 }
 
-                 // Use the cleaned input for the key
-                 val paceKey = PACEKeySpec(cleanInput.toByteArray(), keyRef)
-
-                 // Explicit doPACE call with hardcoded params (oid/paramId from CardAccess)
+                 // Explicit doPACE call with detected params
                  passportService.doPACE(paceKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
                  debugLog(logTag, "PACE Established. Secure Messaging Active. Wrapper set: ${passportService.wrapper != null}")
 
