@@ -57,10 +57,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -201,7 +203,10 @@ fun NFCView(
     val pinNumberFocusRequester = remember { FocusRequester() }
     val canNumberWithInvisibleSpaces = TextFieldValue(addInvisibleElement(canNumber.text))
 
-    val pinCode = remember { mutableStateOf(byteArrayOf()) }
+    val pinCode = rememberSaveable(saver = listSaver<MutableState<ByteArray>, Byte>(
+        save = { it.value.toList() },
+        restore = { mutableStateOf(it.toByteArray()) }
+    )) { mutableStateOf(byteArrayOf()) }
 
     val pinType =
         if (identityAction == IdentityAction.SIGN) {
@@ -329,7 +334,6 @@ fun NFCView(
     }
 
     LaunchedEffect(Unit) {
-        pinCode.value = byteArrayOf()
         nfcViewModel.checkNFCStatus(nfcViewModel.getNFCStatus(activity))
     }
 
