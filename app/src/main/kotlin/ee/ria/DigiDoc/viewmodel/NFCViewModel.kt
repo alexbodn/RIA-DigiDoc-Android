@@ -971,45 +971,38 @@ class NFCViewModel
                     try {
                         if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
 
-                        // 1. Verify PIN1 via APDU with Discovery Loop
-                        // Construct Data: PIN bytes padded to 8 bytes with 0xFF
-                        val paddedPin = ByteArray(8) { 0xFF.toByte() }
-                        System.arraycopy(pin1, 0, paddedPin, 0, minOf(pin1.size, 8))
+                        // 1. Send MSE:SET AT to select PIN1 (KeyRef 01)
+                        // Data: 80 0A 04 00 7F 00 07 02 02 04 02 04 83 01 01
+                        // OID: 0.4.0.127.0.7.2.2.4.2.4 (id-PACE-ECDH-GM-AES-CBC-CMAC-128)
+                        // KeyRef: 01
+                        val mseData = byteArrayOf(
+                            0x80.toByte(), 0x0A.toByte(), 0x04.toByte(), 0x00.toByte(), 0x7F.toByte(), 0x00.toByte(), 0x07.toByte(), 0x02.toByte(), 0x02.toByte(), 0x04.toByte(), 0x02.toByte(), 0x04.toByte(),
+                            0x83.toByte(), 0x01.toByte(), 0x01.toByte()
+                        )
+                        val mseCmd = CommandAPDU(0x00, 0x22, 0xC1, 0xA4, mseData)
+                        val wrappedMse = wrapper.wrap(mseCmd)
+                        debugLog(logTag, "Sending MSE:SET AT for PIN1...")
+                        val mseResp = cardService.transmit(wrappedMse)
+                        val unwrappedMse = wrapper.unwrap(mseResp)
 
-                        debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded)")
+                        if (unwrappedMse.sw == 0x9000) {
+                            debugLog(logTag, "MSE:SET AT Successful.")
 
-                        // Try likely P2 values (Key References) to resolve 6A86/6A88 errors
-                        val candidateP2s = listOf<Byte>(0x01, 0x02, 0x03, 0x00, 0x81.toByte(), 0x83.toByte())
-                        var verificationSuccess = false
+                            // 2. Verify PIN1 via APDU (P2=0x01)
+                            // Construct Data: PIN bytes padded to 8 bytes with 0xFF
+                            val paddedPin = ByteArray(8) { 0xFF.toByte() }
+                            System.arraycopy(pin1, 0, paddedPin, 0, minOf(pin1.size, 8))
 
-                        for (p2 in candidateP2s) {
-                            val p2Hex = String.format("%02X", p2)
-                            debugLog(logTag, "Attempting VERIFY with P2=$p2Hex...")
+                            debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded)")
 
-                            // Form APDU: 00 20 00 P2
-                            val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, p2.toInt(), paddedPin)
+                            // Form APDU: 00 20 00 01 (P2=0x01 Key Reference)
+                            val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, paddedPin)
                             val wrappedVerify = wrapper.wrap(verifyCmd)
                             val verifyResp = cardService.transmit(wrappedVerify)
                             val unwrappedVerify = wrapper.unwrap(verifyResp)
-                            val sw = unwrappedVerify.sw
 
-                            if (sw == 0x9000) {
-                                debugLog(logTag, "PIN1 Verification Successful with P2=$p2Hex!")
-                                verificationSuccess = true
-                                break
-                            } else {
-                                debugLog(logTag, "PIN1 Verification Failed for P2=$p2Hex. SW: ${Integer.toHexString(sw)}")
-
-                                // Check for Wrong PIN (63Cx) - Stop immediately to avoid locking
-                                if ((sw and 0xFFF0) == 0x63C0) {
-                                    debugLog(logTag, "Wrong PIN! Stopping verification loop.")
-                                    break
-                                }
-                                // If 6A86 (Incorrect Params) or 6A88 (Not Found), continue to next P2
-                            }
-                        }
-
-                        if (verificationSuccess) {
+                            if (unwrappedVerify.sw == 0x9000) {
+                                debugLog(logTag, "PIN1 Verification Successful!")
                             // 2. Read DG11 (SFI 0x0B)
                             debugLog(logTag, "Reading DG11...")
                             val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
@@ -1025,6 +1018,12 @@ class NFCViewModel
                                 permanentAddress = addressList.joinToString(" ")
                             }
                             debugLog(logTag, "DG11 Read Success.")
+
+                            } else {
+                                debugLog(logTag, "PIN1 Verification Failed. SW: ${Integer.toHexString(unwrappedVerify.sw)}")
+                            }
+                        } else {
+                            debugLog(logTag, "MSE:SET AT Failed. SW: ${Integer.toHexString(unwrappedMse.sw)}")
                         }
 
                     } catch (e: Exception) {
