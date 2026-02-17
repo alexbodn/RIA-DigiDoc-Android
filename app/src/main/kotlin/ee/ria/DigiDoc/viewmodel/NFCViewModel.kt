@@ -914,9 +914,9 @@ class NFCViewModel
                  val paceKey: PACEKeySpec
                  if (usePin && pin1 != null) {
                      val cleanInputPin = String(pin1).trim()
-                     // Using KeyRef 1 based on user's manual MSE payload "83 01 01"
-                     val keyRefPin = 1.toByte()
-                     debugLog(logTag, "Performing PACE with PIN (Input Length: ${cleanInputPin.length}, KeyRef: 1)")
+                     // Using KeyRef 3 (Standard PIN) as KeyRef 1 (MRZ) failed with 6300
+                     val keyRefPin = 3.toByte()
+                     debugLog(logTag, "Performing PACE with PIN (Input Length: ${cleanInputPin.length}, KeyRef: 3)")
                      paceKey = PACEKeySpec(cleanInputPin.toByteArray(), keyRefPin)
                  } else {
                      val cleanInputCan = canNumber.trim().replace(" ", "")
