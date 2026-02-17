@@ -203,9 +203,10 @@ fun NFCView(
     val pinNumberFocusRequester = remember { FocusRequester() }
     val canNumberWithInvisibleSpaces = TextFieldValue(addInvisibleElement(canNumber.text))
 
-    val pinCode = rememberSaveable(saver = listSaver<MutableState<ByteArray>, Byte>(
-        save = { it.value.toList() },
-        restore = { mutableStateOf(it.toByteArray()) }
+    // Using List<Int> for saving to be more robust with Bundle serialization than Byte
+    val pinCode = rememberSaveable(saver = listSaver<MutableState<ByteArray>, Int>(
+        save = { it.value.map { byte -> byte.toInt() } },
+        restore = { saved -> mutableStateOf(saved.map { int -> int.toByte() }.toByteArray()) }
     )) { mutableStateOf(byteArrayOf()) }
 
     val pinType =
