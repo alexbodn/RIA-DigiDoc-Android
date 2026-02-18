@@ -915,11 +915,18 @@ class NFCViewModel
                  if (usePin && pin1 != null) {
                      val cleanInputPin = String(pin1).trim()
                      // Using KeyRef 1 based on user's manual MSE payload "83 01 01" (KeyRef 3 failed with 6A88)
-                     // Using raw PIN bytes for PACE (removing 0xFF padding which caused Auth Failed)
+                     // PADDING FIX: 0x00 padding to 8 bytes.
+                     // 0xFF failed with 6300 (Wrong Password). Raw failed with Timeout.
                      val keyRefPin = 1.toByte()
-                     val pinBytes = cleanInputPin.toByteArray()
+                     val rawPin = cleanInputPin.toByteArray()
+                     val pinBytes = ByteArray(8)
+                     System.arraycopy(rawPin, 0, pinBytes, 0, minOf(rawPin.size, 8))
 
-                     debugLog(logTag, "Performing PACE with PIN (Input Length: ${cleanInputPin.length}, KeyRef: 1)")
+                     debugLog(logTag, "Performing PACE with PIN (Padded Length: ${pinBytes.size}, KeyRef: 1)")
+                     // Log masked PIN bytes for debugging (first byte only)
+                     if (pinBytes.isNotEmpty()) {
+                        debugLog(logTag, "PIN Bytes (Masked): [${String.format("%02X", pinBytes[0])}, ...]")
+                     }
                      paceKey = PACEKeySpec(pinBytes, keyRefPin)
                  } else {
                      val cleanInputCan = canNumber.trim().replace(" ", "")
@@ -980,64 +987,27 @@ class NFCViewModel
                  debugLog(logTag, "PIN1 provided? ${pin1 != null}, Length: ${pin1?.size ?: 0}")
 
                  if (pin1 != null && pin1.isNotEmpty()) {
-                    debugLog(logTag, "PIN1 provided. Attempting to verify PIN and read DG11...")
+                    debugLog(logTag, "PIN1 provided. Attempting to read DG11 (Assuming PACE-PIN success)...")
                     try {
                         if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
 
-                        // 1. Send MSE:SET AT to select PIN1 (KeyRef 01)
-                        // Data: 80 0A 04 00 7F 00 07 02 02 04 02 04 83 01 01
-                        // OID: 0.4.0.127.0.7.2.2.4.2.4 (id-PACE-ECDH-GM-AES-CBC-CMAC-128)
-                        // KeyRef: 01
-                        val mseData = byteArrayOf(
-                            0x80.toByte(), 0x0A.toByte(), 0x04.toByte(), 0x00.toByte(), 0x7F.toByte(), 0x00.toByte(), 0x07.toByte(), 0x02.toByte(), 0x02.toByte(), 0x04.toByte(), 0x02.toByte(), 0x04.toByte(),
-                            0x83.toByte(), 0x01.toByte(), 0x01.toByte()
-                        )
-                        val mseCmd = CommandAPDU(0x00, 0x22, 0xC1, 0xA4, mseData)
-                        val wrappedMse = wrapper.wrap(mseCmd)
-                        debugLog(logTag, "Sending MSE:SET AT for PIN1...")
-                        val mseResp = cardService.transmit(wrappedMse)
-                        val unwrappedMse = wrapper.unwrap(mseResp)
+                        // NOTE: Manual MSE/VERIFY removed. Relying on PACE-PIN (Step 3) to authenticate.
 
-                        if (unwrappedMse.sw == 0x9000) {
-                            debugLog(logTag, "MSE:SET AT Successful.")
+                        // Read DG11 (SFI 0x0B)
+                        debugLog(logTag, "Reading DG11...")
+                        val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
+                        val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
 
-                            // 2. Verify PIN1 via APDU (P2=0x01)
-                            // Construct Data: PIN bytes padded to 8 bytes with 0xFF
-                            val paddedPin = ByteArray(8) { 0xFF.toByte() }
-                            System.arraycopy(pin1, 0, paddedPin, 0, minOf(pin1.size, 8))
-
-                            debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded)")
-
-                            // Form APDU: 00 20 00 01 (P2=0x01 Key Reference)
-                            val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, paddedPin)
-                            val wrappedVerify = wrapper.wrap(verifyCmd)
-                            val verifyResp = cardService.transmit(wrappedVerify)
-                            val unwrappedVerify = wrapper.unwrap(verifyResp)
-
-                            if (unwrappedVerify.sw == 0x9000) {
-                                debugLog(logTag, "PIN1 Verification Successful!")
-                            // 2. Read DG11 (SFI 0x0B)
-                            debugLog(logTag, "Reading DG11...")
-                            val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
-                            val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
-
-                            val placeOfBirthList = dg11File.placeOfBirth
-                            if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
-                                placeOfBirth = placeOfBirthList.joinToString(" ")
-                            }
-
-                            val addressList = dg11File.permanentAddress
-                            if (addressList != null && addressList.isNotEmpty()) {
-                                permanentAddress = addressList.joinToString(" ")
-                            }
-                            debugLog(logTag, "DG11 Read Success.")
-
-                            } else {
-                                debugLog(logTag, "PIN1 Verification Failed. SW: ${Integer.toHexString(unwrappedVerify.sw)}")
-                            }
-                        } else {
-                            debugLog(logTag, "MSE:SET AT Failed. SW: ${Integer.toHexString(unwrappedMse.sw)}")
+                        val placeOfBirthList = dg11File.placeOfBirth
+                        if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
+                            placeOfBirth = placeOfBirthList.joinToString(" ")
                         }
+
+                        val addressList = dg11File.permanentAddress
+                        if (addressList != null && addressList.isNotEmpty()) {
+                            permanentAddress = addressList.joinToString(" ")
+                        }
+                        debugLog(logTag, "DG11 Read Success.")
 
                     } catch (e: Exception) {
                         errorLog(logTag, "Failed to read DG11: ${e.message}", e)
