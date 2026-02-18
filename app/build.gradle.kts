@@ -183,6 +183,13 @@ dependencies {
     implementation(libs.androidx.hilt)
     implementation(libs.kotlinx.coroutines.rx3)
 
+    implementation(libs.jmrtd) {
+        exclude(group = "org.bouncycastle")
+    }
+    implementation(libs.scuba) {
+        exclude(group = "org.bouncycastle")
+    }
+
     testImplementation(libs.junit)
     testImplementation(libs.mockito.kotlin)
     testImplementation(libs.kotlinx.coroutines.test)

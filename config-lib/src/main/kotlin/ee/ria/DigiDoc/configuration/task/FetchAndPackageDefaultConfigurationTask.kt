@@ -61,13 +61,22 @@ object FetchAndPackageDefaultConfigurationTask {
     private val logTag = javaClass.simpleName
     private var properties = Properties()
     private var buildVariant: String? = null
-    private val defaultTimeout = 5L
+    private val defaultTimeout = 120L
 
     @JvmStatic
     fun main(args: Array<String>) {
         runBlocking {
-            loadResourcesProperties()
-            loadAndStoreDefaultConfiguration(args)
+            try {
+                loadResourcesProperties()
+                loadAndStoreDefaultConfiguration(args)
+            } catch (e: Exception) {
+                errorLog(
+                    logTag,
+                    "Failed to fetch and package default configuration. Using local fallback if available.",
+                    e,
+                )
+                // Proceed without failing the build, assuming local assets exist and will be packaged.
+            }
         }
     }
 

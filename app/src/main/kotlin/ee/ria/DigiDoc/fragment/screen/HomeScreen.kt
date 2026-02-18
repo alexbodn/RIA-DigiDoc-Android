@@ -371,6 +371,21 @@ fun HomeScreen(
                             },
                             testTag = "homeMyEIDButton",
                         )
+                        ActionButton(
+                            modifier = modifier,
+                            icon = R.drawable.ic_m3_co_present_48dp_wght400,
+                            title = R.string.main_home_authentication_title,
+                            description = stringResource(R.string.main_home_authentication_description),
+                            contentDescription =
+                            stringResource(id = R.string.main_home_authentication_title) + " " +
+                                    stringResource(id = R.string.main_home_authentication_description),
+                            onClickItem = {
+                                navController.navigate(
+                                    Route.AuthenticationIdentificationScreen.route,
+                                )
+                            },
+                            testTag = "homeAuthenticationButton",
+                        )
                     }
                 }
             }

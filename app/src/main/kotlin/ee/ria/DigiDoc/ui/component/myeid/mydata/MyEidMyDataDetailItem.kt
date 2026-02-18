@@ -43,6 +43,8 @@ data class MyEidMyDataDetailItem(
         dateOfBirth: String?,
         documentNumber: String?,
         validTo: String?,
+        placeOfBirth: String? = null,
+        permanentAddress: String? = null
     ): List<MyEidMyDataDetailItem> =
         listOf(
             MyEidMyDataDetailItem(
@@ -122,6 +124,28 @@ data class MyEidMyDataDetailItem(
                         ""
                     },
                 testTag = "myEidMyDataValidTo",
+            ),
+            MyEidMyDataDetailItem(
+                label = R.string.myeid_place_of_birth,
+                value = placeOfBirth,
+                contentDescription =
+                if (placeOfBirth != null) {
+                    "${stringResource(id = R.string.myeid_place_of_birth)}, $placeOfBirth"
+                } else {
+                    ""
+                },
+                testTag = "myEidMyDataPlaceOfBirth",
+            ),
+            MyEidMyDataDetailItem(
+                label = R.string.myeid_permanent_address,
+                value = permanentAddress,
+                contentDescription =
+                if (permanentAddress != null) {
+                    "${stringResource(id = R.string.myeid_permanent_address)}, $permanentAddress"
+                } else {
+                    ""
+                },
+                testTag = "myEidMyDataPermanentAddress",
             ),
         )
 }
