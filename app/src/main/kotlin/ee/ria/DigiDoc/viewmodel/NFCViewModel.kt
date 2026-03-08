@@ -967,59 +967,40 @@ class NFCViewModel
                     try {
                         if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
 
-                        // 1. Send MSE:SET AT to select PIN1 (KeyRef 01)
-                        // Data: 80 0A 04 00 7F 00 07 02 02 04 02 04 83 01 01
-                        // OID: 0.4.0.127.0.7.2.2.4.2.4 (id-PACE-ECDH-GM-AES-CBC-CMAC-128)
-                        // KeyRef: 01
-                        val mseData = byteArrayOf(
-                            0x80.toByte(), 0x0A.toByte(), 0x04.toByte(), 0x00.toByte(), 0x7F.toByte(), 0x00.toByte(), 0x07.toByte(), 0x02.toByte(), 0x02.toByte(), 0x04.toByte(), 0x02.toByte(), 0x04.toByte(),
-                            0x83.toByte(), 0x01.toByte(), 0x01.toByte()
-                        )
-                        val mseCmd = CommandAPDU(0x00, 0x22, 0xC1, 0xA4, mseData)
-                        val wrappedMse = wrapper.wrap(mseCmd)
-                        debugLog(logTag, "Sending MSE:SET AT for PIN1...")
-                        val mseResp = cardService.transmit(wrappedMse)
-                        val unwrappedMse = wrapper.unwrap(mseResp)
+                        // 1. Verify PIN1 via APDU (P2=0x01) over the existing CAN secure channel.
+                        // Based on Gemini's advice, we skip MSE:SET AT (which returns 6985 here) and send VERIFY directly.
+                        // The user noted that raw unpadded PIN should be tried.
+                        val rawPin = String(pin1).trim().toByteArray()
 
-                        if (unwrappedMse.sw == 0x9000) {
-                            debugLog(logTag, "MSE:SET AT Successful.")
+                        debugLog(logTag, "Verifying PIN1... Length: ${rawPin.size} (raw)")
 
-                            // 2. Verify PIN1 via APDU (P2=0x01) over the existing CAN secure channel.
-                            // The user noted that raw unpadded PIN should be tried.
-                            val rawPin = String(pin1).trim().toByteArray()
+                        // Form APDU: 00 20 00 01 Lc [PIN]
+                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, rawPin)
+                        val wrappedVerify = wrapper.wrap(verifyCmd)
+                        val verifyResp = cardService.transmit(wrappedVerify)
+                        val unwrappedVerify = wrapper.unwrap(verifyResp)
 
-                            debugLog(logTag, "Verifying PIN1... Length: ${rawPin.size} (raw)")
+                        if (unwrappedVerify.sw == 0x9000) {
+                            debugLog(logTag, "PIN1 Verification Successful!")
 
-                            // Form APDU: 00 20 00 01 Lc [PIN]
-                            val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, rawPin)
-                            val wrappedVerify = wrapper.wrap(verifyCmd)
-                            val verifyResp = cardService.transmit(wrappedVerify)
-                            val unwrappedVerify = wrapper.unwrap(verifyResp)
+                            // 2. Read DG11 (SFI 0x0B)
+                            debugLog(logTag, "Reading DG11...")
+                            val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
+                            val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
 
-                            if (unwrappedVerify.sw == 0x9000) {
-                                debugLog(logTag, "PIN1 Verification Successful!")
-
-                                // 3. Read DG11 (SFI 0x0B)
-                                debugLog(logTag, "Reading DG11...")
-                                val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
-                                val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
-
-                                val placeOfBirthList = dg11File.placeOfBirth
-                                if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
-                                    placeOfBirth = placeOfBirthList.joinToString(" ")
-                                }
-
-                                val addressList = dg11File.permanentAddress
-                                if (addressList != null && addressList.isNotEmpty()) {
-                                    permanentAddress = addressList.joinToString(" ")
-                                }
-                                debugLog(logTag, "DG11 Read Success.")
-
-                            } else {
-                                debugLog(logTag, "PIN1 Verification Failed. SW: ${Integer.toHexString(unwrappedVerify.sw)}")
+                            val placeOfBirthList = dg11File.placeOfBirth
+                            if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
+                                placeOfBirth = placeOfBirthList.joinToString(" ")
                             }
+
+                            val addressList = dg11File.permanentAddress
+                            if (addressList != null && addressList.isNotEmpty()) {
+                                permanentAddress = addressList.joinToString(" ")
+                            }
+                            debugLog(logTag, "DG11 Read Success.")
+
                         } else {
-                            debugLog(logTag, "MSE:SET AT Failed. SW: ${Integer.toHexString(unwrappedMse.sw)}")
+                            debugLog(logTag, "PIN1 Verification Failed. SW: ${Integer.toHexString(unwrappedVerify.sw)}")
                         }
 
                     } catch (e: Exception) {
