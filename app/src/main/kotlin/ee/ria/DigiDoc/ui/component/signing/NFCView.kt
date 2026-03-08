@@ -341,10 +341,14 @@ fun NFCView(
     LaunchedEffect(Unit, isAuthenticating) {
         if (isAuthenticating) {
             saveFormParams()
+
+            // Log the PIN length right before calling loadPersonalData to debug empty PINs
+            ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.debugLog("NFCView", "Starting NFC auth. PIN length captured: ${pinCode.value.size}")
+
             nfcViewModel.loadPersonalData(
                 activity,
                 canNumber.text,
-                pinCode.value
+                pinCode.value.copyOf() // Clone to prevent concurrent modification if UI clears it
             )
         }
     }

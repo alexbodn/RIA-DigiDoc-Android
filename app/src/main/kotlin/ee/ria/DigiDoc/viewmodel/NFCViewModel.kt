@@ -971,9 +971,8 @@ class NFCViewModel
                         // We skip MSE:SET AT (which returns 6985 here) and send VERIFY directly.
                         // The card rejected raw length 4 with 6A86, meaning it expects exactly 8 bytes padded.
                         // We pad the PIN with 0xFF up to 8 bytes (Standard ISO-7816 padding for PINs).
-                        val rawPin = String(pin1).trim().toByteArray()
                         val paddedPin = ByteArray(8) { 0xFF.toByte() }
-                        System.arraycopy(rawPin, 0, paddedPin, 0, minOf(rawPin.size, 8))
+                        System.arraycopy(pin1, 0, paddedPin, 0, minOf(pin1.size, 8))
 
                         debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded with 0xFF)")
 
