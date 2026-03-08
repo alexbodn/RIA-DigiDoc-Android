@@ -903,37 +903,13 @@ class NFCViewModel
                  debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
 
                  // 3. Establish Secure Messaging (PACE)
-                 // If PIN1 is provided, we perform PACE with PIN (KeyRef 1) directly.
-                 // If PIN1 is NOT provided, we perform PACE with CAN (KeyRef 2).
-                 // Doing PACE-PIN directly avoids nested PACE sessions which can cause 6985 errors.
-                 // Note: User manual MSE used KeyRef 01, so we try KeyRef 1 for PIN.
+                 // Always use CAN (KeyRef 2) for the initial PACE session.
+                 // Using PIN directly caused "PICC side exception in tranceiving nonce step".
 
-                 debugLog(logTag, "PIN1 provided? ${pin1 != null}, Length: ${pin1?.size ?: 0}")
-                 val usePin = pin1 != null && pin1.isNotEmpty()
-
-                 val paceKey: PACEKeySpec
-                 if (usePin && pin1 != null) {
-                     val cleanInputPin = String(pin1).trim()
-                     // Using KeyRef 1 based on user's manual MSE payload "83 01 01" (KeyRef 3 failed with 6A88)
-                     // PADDING FIX: 0x00 padding to 8 bytes.
-                     // 0xFF failed with 6300 (Wrong Password). Raw failed with Timeout.
-                     val keyRefPin = 1.toByte()
-                     val rawPin = cleanInputPin.toByteArray()
-                     val pinBytes = ByteArray(8)
-                     System.arraycopy(rawPin, 0, pinBytes, 0, minOf(rawPin.size, 8))
-
-                     debugLog(logTag, "Performing PACE with PIN (Padded Length: ${pinBytes.size}, KeyRef: 1)")
-                     // Log masked PIN bytes for debugging (first byte only)
-                     if (pinBytes.isNotEmpty()) {
-                        debugLog(logTag, "PIN Bytes (Masked): [${String.format("%02X", pinBytes[0])}, ...]")
-                     }
-                     paceKey = PACEKeySpec(pinBytes, keyRefPin)
-                 } else {
-                     val cleanInputCan = canNumber.trim().replace(" ", "")
-                     val keyRefCan = 2.toByte() // 2=CAN
-                     debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInputCan.length}, KeyRef: 2)")
-                     paceKey = PACEKeySpec(cleanInputCan.toByteArray(), keyRefCan)
-                 }
+                 val cleanInputCan = canNumber.trim().replace(" ", "")
+                 val keyRefCan = 2.toByte() // 2=CAN
+                 debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInputCan.length}, KeyRef: 2)")
+                 val paceKey = PACEKeySpec(cleanInputCan.toByteArray(), keyRefCan)
 
                  // Explicit doPACE call with detected params
                  passportService.doPACE(paceKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
@@ -987,27 +963,64 @@ class NFCViewModel
                  debugLog(logTag, "PIN1 provided? ${pin1 != null}, Length: ${pin1?.size ?: 0}")
 
                  if (pin1 != null && pin1.isNotEmpty()) {
-                    debugLog(logTag, "PIN1 provided. Attempting to read DG11 (Assuming PACE-PIN success)...")
+                    debugLog(logTag, "PIN1 provided. Attempting to verify PIN over Secure Channel...")
                     try {
                         if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
 
-                        // NOTE: Manual MSE/VERIFY removed. Relying on PACE-PIN (Step 3) to authenticate.
+                        // 1. Send MSE:SET AT to select PIN1 (KeyRef 01)
+                        // Data: 80 0A 04 00 7F 00 07 02 02 04 02 04 83 01 01
+                        // OID: 0.4.0.127.0.7.2.2.4.2.4 (id-PACE-ECDH-GM-AES-CBC-CMAC-128)
+                        // KeyRef: 01
+                        val mseData = byteArrayOf(
+                            0x80.toByte(), 0x0A.toByte(), 0x04.toByte(), 0x00.toByte(), 0x7F.toByte(), 0x00.toByte(), 0x07.toByte(), 0x02.toByte(), 0x02.toByte(), 0x04.toByte(), 0x02.toByte(), 0x04.toByte(),
+                            0x83.toByte(), 0x01.toByte(), 0x01.toByte()
+                        )
+                        val mseCmd = CommandAPDU(0x00, 0x22, 0xC1, 0xA4, mseData)
+                        val wrappedMse = wrapper.wrap(mseCmd)
+                        debugLog(logTag, "Sending MSE:SET AT for PIN1...")
+                        val mseResp = cardService.transmit(wrappedMse)
+                        val unwrappedMse = wrapper.unwrap(mseResp)
 
-                        // Read DG11 (SFI 0x0B)
-                        debugLog(logTag, "Reading DG11...")
-                        val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
-                        val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
+                        if (unwrappedMse.sw == 0x9000) {
+                            debugLog(logTag, "MSE:SET AT Successful.")
 
-                        val placeOfBirthList = dg11File.placeOfBirth
-                        if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
-                            placeOfBirth = placeOfBirthList.joinToString(" ")
+                            // 2. Verify PIN1 via APDU (P2=0x01) over the existing CAN secure channel.
+                            // The user noted that raw unpadded PIN should be tried.
+                            val rawPin = String(pin1).trim().toByteArray()
+
+                            debugLog(logTag, "Verifying PIN1... Length: ${rawPin.size} (raw)")
+
+                            // Form APDU: 00 20 00 01 Lc [PIN]
+                            val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, rawPin)
+                            val wrappedVerify = wrapper.wrap(verifyCmd)
+                            val verifyResp = cardService.transmit(wrappedVerify)
+                            val unwrappedVerify = wrapper.unwrap(verifyResp)
+
+                            if (unwrappedVerify.sw == 0x9000) {
+                                debugLog(logTag, "PIN1 Verification Successful!")
+
+                                // 3. Read DG11 (SFI 0x0B)
+                                debugLog(logTag, "Reading DG11...")
+                                val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
+                                val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
+
+                                val placeOfBirthList = dg11File.placeOfBirth
+                                if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
+                                    placeOfBirth = placeOfBirthList.joinToString(" ")
+                                }
+
+                                val addressList = dg11File.permanentAddress
+                                if (addressList != null && addressList.isNotEmpty()) {
+                                    permanentAddress = addressList.joinToString(" ")
+                                }
+                                debugLog(logTag, "DG11 Read Success.")
+
+                            } else {
+                                debugLog(logTag, "PIN1 Verification Failed. SW: ${Integer.toHexString(unwrappedVerify.sw)}")
+                            }
+                        } else {
+                            debugLog(logTag, "MSE:SET AT Failed. SW: ${Integer.toHexString(unwrappedMse.sw)}")
                         }
-
-                        val addressList = dg11File.permanentAddress
-                        if (addressList != null && addressList.isNotEmpty()) {
-                            permanentAddress = addressList.joinToString(" ")
-                        }
-                        debugLog(logTag, "DG11 Read Success.")
 
                     } catch (e: Exception) {
                         errorLog(logTag, "Failed to read DG11: ${e.message}", e)
