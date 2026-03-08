@@ -505,7 +505,15 @@ fun NFCView(
                     )
 
                 val isValidForAuthenticating =
-                    nfcViewModel.isCANLengthValid(canNumber.text)
+                    if (showPinField) {
+                        nfcViewModel.positiveButtonEnabled(
+                            canNumber.text,
+                            pinCode.value,
+                            codeType,
+                        )
+                    } else {
+                        nfcViewModel.isCANLengthValid(canNumber.text)
+                    }
 
                 LaunchedEffect(isValid) {
                     isValidToSign(isValid)

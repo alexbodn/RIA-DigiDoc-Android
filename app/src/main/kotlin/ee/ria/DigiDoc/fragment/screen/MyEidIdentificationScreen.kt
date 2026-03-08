@@ -340,7 +340,7 @@ fun MyEidIdentificationScreen(
                         rememberMe = rememberMe,
                         sharedSettingsViewModel = sharedSettingsViewModel,
                         sharedContainerViewModel = sharedContainerViewModel,
-                        showPinField = false,
+                        showPinField = true,
                         isSupported = { supported ->
                             nfcSupported = supported
                         },
