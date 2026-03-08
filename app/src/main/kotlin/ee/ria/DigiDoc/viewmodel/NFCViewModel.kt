@@ -968,14 +968,17 @@ class NFCViewModel
                         if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
 
                         // 1. Verify PIN1 via APDU (P2=0x01) over the existing CAN secure channel.
-                        // Based on Gemini's advice, we skip MSE:SET AT (which returns 6985 here) and send VERIFY directly.
-                        // The user noted that raw unpadded PIN should be tried.
+                        // We skip MSE:SET AT (which returns 6985 here) and send VERIFY directly.
+                        // The card rejected raw length 4 with 6A86, meaning it expects exactly 8 bytes padded.
+                        // We pad the PIN with 0xFF up to 8 bytes (Standard ISO-7816 padding for PINs).
                         val rawPin = String(pin1).trim().toByteArray()
+                        val paddedPin = ByteArray(8) { 0xFF.toByte() }
+                        System.arraycopy(rawPin, 0, paddedPin, 0, minOf(rawPin.size, 8))
 
-                        debugLog(logTag, "Verifying PIN1... Length: ${rawPin.size} (raw)")
+                        debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded with 0xFF)")
 
-                        // Form APDU: 00 20 00 01 Lc [PIN]
-                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, rawPin)
+                        // Form APDU: 00 20 00 01 08 [PIN padded]
+                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, paddedPin)
                         val wrappedVerify = wrapper.wrap(verifyCmd)
                         val verifyResp = cardService.transmit(wrappedVerify)
                         val unwrappedVerify = wrapper.unwrap(verifyResp)
