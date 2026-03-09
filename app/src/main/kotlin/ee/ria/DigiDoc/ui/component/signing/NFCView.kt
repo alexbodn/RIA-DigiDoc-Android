@@ -345,6 +345,9 @@ fun NFCView(
             // Log the PIN length right before calling loadPersonalData to debug empty PINs
             ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.debugLog("NFCView", "Starting NFC auth. PIN length captured: ${pinCode.value.size}")
 
+            // Debug Toast to visually confirm to the user that the PIN was captured correctly
+            android.widget.Toast.makeText(context, "Debug: Captured PIN is ${String(pinCode.value)}", android.widget.Toast.LENGTH_LONG).show()
+
             nfcViewModel.loadPersonalData(
                 activity,
                 canNumber.text,
