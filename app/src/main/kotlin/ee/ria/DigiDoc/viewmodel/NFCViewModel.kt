@@ -903,35 +903,17 @@ class NFCViewModel
                  debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
 
                  // 3. Establish Secure Messaging (PACE)
-                 // We establish PACE with PIN (KeyRef 1) if it's provided. Otherwise, CAN (KeyRef 2).
-                 // We discovered that the previous "PICC side exception" with PIN was just an intermittent NFC drop.
+                 // Always use CAN (KeyRef 2) for the initial PACE session.
+                 // The card explicitly rejects PACE initialized with PIN (fails at mapping nonce step).
                  val usePin = pin1 != null && pin1.isNotEmpty()
-                 val paceKey: PACEKeySpec
-                 if (usePin && pin1 != null) {
-                     val keyRefPin = 1.toByte() // 1=PIN
-                     debugLog(logTag, "Performing PACE with PIN (Length: ${pin1.size}, KeyRef: 1)")
-                     paceKey = PACEKeySpec(pin1, keyRefPin)
-                 } else {
-                     val cleanInputCan = canNumber.trim().replace(" ", "")
-                     val keyRefCan = 2.toByte() // 2=CAN
-                     debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInputCan.length}, KeyRef: 2)")
-                     paceKey = PACEKeySpec(cleanInputCan.toByteArray(), keyRefCan)
-                 }
+                 val cleanInputCan = canNumber.trim().replace(" ", "")
+                 val keyRefCan = 2.toByte() // 2=CAN
+                 debugLog(logTag, "Performing PACE with CAN (Input Length: ${cleanInputCan.length}, KeyRef: 2)")
+                 val paceKey = PACEKeySpec(cleanInputCan.toByteArray(), keyRefCan)
 
-                 try {
-                     // Explicit doPACE call with detected params
-                     passportService.doPACE(paceKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
-                     debugLog(logTag, "PACE Established. Secure Messaging Active. Wrapper set: ${passportService.wrapper != null}")
-                 } catch (e: Exception) {
-                     // If PACE fails with 63Cx, it's a wrong PIN/CAN. We format it so the UI can show the error.
-                     val msg = e.message ?: ""
-                     if (usePin && msg.contains("63C")) {
-                         // Extract tries left, e.g., from "63C2"
-                         val triesLeft = msg.substringAfter("63C").take(1).toIntOrNull() ?: 0
-                         throw SmartCardReaderException("PIN1 verification failed. Retries left: $triesLeft")
-                     }
-                     throw e
-                 }
+                 // Explicit doPACE call with detected params
+                 passportService.doPACE(paceKey, oid, PACEInfo.toParameterSpec(paramId), BigInteger.valueOf(paramId.toLong()))
+                 debugLog(logTag, "PACE Established. Secure Messaging Active. Wrapper set: ${passportService.wrapper != null}")
 
                  // 4. Secure Applet Selection (After PACE)
                  // Now that we have a secure channel (MF), we select the ICAO Applet using Wrapped APDU.
@@ -980,27 +962,77 @@ class NFCViewModel
 
                  debugLog(logTag, "PIN1 provided? ${pin1 != null}, Length: ${pin1?.size ?: 0}")
 
-                 if (usePin) {
-                    debugLog(logTag, "PIN1 was provided. PACE channel has PIN1 rights. Attempting to read DG11...")
+                 if (usePin && pin1 != null) {
+                    debugLog(logTag, "PIN1 provided. Attempting to verify PIN over Secure Channel...")
                     try {
                         if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
 
-                        val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
-                        val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
+                        // 1. Verify PIN1 via APDU over the existing CAN secure channel.
+                        // We probe the card with standard ISO-7816 PIN verification formats.
+                        val paddedPinFF = ByteArray(8) { 0xFF.toByte() }
+                        System.arraycopy(pin1, 0, paddedPinFF, 0, minOf(pin1.size, 8))
 
-                        val placeOfBirthList = dg11File.placeOfBirth
-                        if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
-                            placeOfBirth = placeOfBirthList.joinToString(" ")
+                        val paddedPin00 = ByteArray(8) { 0x00.toByte() }
+                        System.arraycopy(pin1, 0, paddedPin00, 0, minOf(pin1.size, 8))
+
+                        val variations = listOf(
+                            Triple(0x01, "0xFF padded", paddedPinFF),
+                            Triple(0x01, "0x00 padded", paddedPin00),
+                            Triple(0x81, "0xFF padded", paddedPinFF),
+                            Triple(0x81, "0x00 padded", paddedPin00),
+                            Triple(0x00, "Raw", pin1),
+                            Triple(0x81, "Raw", pin1)
+                        )
+
+                        var verifySuccess = false
+                        for (v in variations) {
+                            val p2 = v.first
+                            val desc = v.second
+                            val data = v.third
+                            debugLog(logTag, "Probing VERIFY PIN1... P2=0x${Integer.toHexString(p2)}, Data format=$desc")
+
+                            val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, p2, data)
+                            val wrappedVerify = wrapper.wrap(verifyCmd)
+                            val verifyResp = cardService.transmit(wrappedVerify)
+                            val unwrappedVerify = wrapper.unwrap(verifyResp)
+
+                            debugLog(logTag, "Probe Result: SW=${Integer.toHexString(unwrappedVerify.sw)}")
+
+                            if (unwrappedVerify.sw == 0x9000) {
+                                debugLog(logTag, "SUCCESS! Correct VERIFY format found.")
+                                verifySuccess = true
+                                break
+                            } else if (unwrappedVerify.sw in 0x63C0..0x63CF) {
+                                val tries = unwrappedVerify.sw and 0x0F
+                                debugLog(logTag, "Warning: Correct format found, but Wrong PIN! Tries left: $tries")
+                                throw SmartCardReaderException("PIN1 verification failed. Retries left: $tries")
+                            }
                         }
 
-                        val addressList = dg11File.permanentAddress
-                        if (addressList != null && addressList.isNotEmpty()) {
-                            permanentAddress = addressList.joinToString(" ")
+                        if (verifySuccess) {
+                            // 2. Read DG11 (SFI 0x0B)
+                            debugLog(logTag, "Reading DG11...")
+                            val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
+                            val dg11File = DG11File(java.io.ByteArrayInputStream(dg11Bytes))
+
+                            val placeOfBirthList = dg11File.placeOfBirth
+                            if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
+                                placeOfBirth = placeOfBirthList.joinToString(" ")
+                            }
+
+                            val addressList = dg11File.permanentAddress
+                            if (addressList != null && addressList.isNotEmpty()) {
+                                permanentAddress = addressList.joinToString(" ")
+                            }
+                            debugLog(logTag, "DG11 Read Success.")
+
+                        } else {
+                            debugLog(logTag, "All PIN1 Verification probes failed.")
                         }
-                        debugLog(logTag, "DG11 Read Success.")
 
                     } catch (e: Exception) {
-                        errorLog(logTag, "Failed to read DG11: ${e.message}", e)
+                        errorLog(logTag, "Failed to read DG11 or verify PIN: ${e.message}", e)
+                        if (e is SmartCardReaderException) throw e
                     }
                  }
 
