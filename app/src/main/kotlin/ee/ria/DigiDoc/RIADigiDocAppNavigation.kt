@@ -35,6 +35,8 @@ import androidx.navigation.compose.rememberNavController
 import ee.ria.DigiDoc.common.model.FileOpeningMethod
 import ee.ria.DigiDoc.fragment.AccessibilityFragment
 import ee.ria.DigiDoc.fragment.AdvancedSettingsFragment
+import ee.ria.DigiDoc.fragment.AuthenticationFragment
+import ee.ria.DigiDoc.fragment.AuthenticationIdentificationFragment
 import ee.ria.DigiDoc.fragment.CryptoFileOpeningFragment
 import ee.ria.DigiDoc.fragment.DecryptFragment
 import ee.ria.DigiDoc.fragment.DecryptMethodChooserFragment
@@ -369,6 +371,24 @@ fun RIADigiDocAppScreen(externalFileUris: List<Uri>) {
         }
         composable(route = Route.MyEidPinScreen.route) {
             MyEidPinFragment(
+                modifier = Modifier.safeDrawingPadding(),
+                navController = navController,
+                sharedMenuViewModel = sharedMenuViewModel,
+                sharedMyEidViewModel = sharedMyEidViewModel,
+            )
+        }
+        composable(route = Route.AuthenticationIdentificationScreen.route) {
+            AuthenticationIdentificationFragment(
+                modifier = Modifier.safeDrawingPadding(),
+                navController = navController,
+                sharedSettingsViewModel = sharedSettingsViewModel,
+                sharedMenuViewModel = sharedMenuViewModel,
+                sharedContainerViewModel = sharedContainerViewModel,
+                sharedMyEidViewModel = sharedMyEidViewModel,
+            )
+        }
+        composable(route = Route.AuthenticationScreen.route) {
+            AuthenticationFragment(
                 modifier = Modifier.safeDrawingPadding(),
                 navController = navController,
                 sharedMenuViewModel = sharedMenuViewModel,

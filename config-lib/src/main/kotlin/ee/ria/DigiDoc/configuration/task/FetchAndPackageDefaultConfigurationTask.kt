@@ -41,7 +41,6 @@ import ee.ria.DigiDoc.network.configuration.interceptors.UserAgentInterceptor
 import ee.ria.DigiDoc.utilsLib.date.DateUtil
 import ee.ria.DigiDoc.utilsLib.extensions.removeWhitespaces
 import ee.ria.DigiDoc.utilsLib.file.FileUtil
-import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.Companion.errorLog
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.internal.tls.OkHostnameVerifier
@@ -61,13 +60,22 @@ object FetchAndPackageDefaultConfigurationTask {
     private val logTag = javaClass.simpleName
     private var properties = Properties()
     private var buildVariant: String? = null
-    private val defaultTimeout = 5L
+    private val defaultTimeout = 120L
 
     @JvmStatic
     fun main(args: Array<String>) {
         runBlocking {
-            loadResourcesProperties()
-            loadAndStoreDefaultConfiguration(args)
+            try {
+                loadResourcesProperties()
+                loadAndStoreDefaultConfiguration(args)
+            } catch (e: Exception) {
+                System.err.println(
+                    "[$logTag] Failed to fetch and package default configuration. " +
+                        "Using local fallback if available. Error: ${e.message}",
+                )
+                e.printStackTrace(System.err)
+                // Proceed without failing the build, assuming local assets exist and will be packaged.
+            }
         }
     }
 
@@ -161,7 +169,10 @@ object FetchAndPackageDefaultConfigurationTask {
                     .toInt()
             }
         } catch (nfe: NumberFormatException) {
-            errorLog(logTag, "Unable to determine configuration update interval", nfe)
+            System.err.println(
+                "[$logTag] Unable to determine configuration update interval. Error: ${nfe.message}",
+            )
+            nfe.printStackTrace(System.err)
             DEFAULT_UPDATE_INTERVAL
         }
 
