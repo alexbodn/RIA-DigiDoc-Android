@@ -967,24 +967,50 @@ class NFCViewModel
                     try {
                         if (wrapper == null) throw Exception("Secure Messaging Wrapper lost")
 
-                        // 1. Verify PIN1 via APDU (P2=0x01) over the existing CAN secure channel.
-                        // We skip MSE:SET AT (which returns 6985 here) and send VERIFY directly.
-                        // The card rejected raw length 4 with 6A86, meaning it expects exactly 8 bytes padded.
-                        // We pad the PIN with 0xFF up to 8 bytes (Standard ISO-7816 padding for PINs).
-                        val paddedPin = ByteArray(8) { 0xFF.toByte() }
-                        System.arraycopy(pin1, 0, paddedPin, 0, minOf(pin1.size, 8))
+                        // 1. Verify PIN1 via APDU over the existing CAN secure channel.
+                        // Since we received 6A86 (Incorrect P1-P2/Data) previously, we will probe the card
+                        // with several standard ISO-7816 PIN verification formats to find the correct one.
+                        val paddedPinFF = ByteArray(8) { 0xFF.toByte() }
+                        System.arraycopy(pin1, 0, paddedPinFF, 0, minOf(pin1.size, 8))
 
-                        debugLog(logTag, "Verifying PIN1... Length: ${paddedPin.size} (padded with 0xFF)")
+                        val paddedPin00 = ByteArray(8) { 0x00.toByte() }
+                        System.arraycopy(pin1, 0, paddedPin00, 0, minOf(pin1.size, 8))
 
-                        // Form APDU: 00 20 00 01 08 [PIN padded]
-                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x01, paddedPin)
-                        val wrappedVerify = wrapper.wrap(verifyCmd)
-                        val verifyResp = cardService.transmit(wrappedVerify)
-                        val unwrappedVerify = wrapper.unwrap(verifyResp)
+                        val variations = listOf(
+                            Triple(0x01, "0xFF padded", paddedPinFF),
+                            Triple(0x01, "0x00 padded", paddedPin00),
+                            Triple(0x81, "0xFF padded", paddedPinFF),
+                            Triple(0x81, "0x00 padded", paddedPin00),
+                            Triple(0x00, "Raw", pin1),
+                            Triple(0x81, "Raw", pin1)
+                        )
 
-                        if (unwrappedVerify.sw == 0x9000) {
-                            debugLog(logTag, "PIN1 Verification Successful!")
+                        var verifySuccess = false
+                        for (v in variations) {
+                            val p2 = v.first
+                            val desc = v.second
+                            val data = v.third
+                            debugLog(logTag, "Probing VERIFY PIN1... P2=0x${Integer.toHexString(p2)}, Data format=$desc")
 
+                            val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, p2, data)
+                            val wrappedVerify = wrapper.wrap(verifyCmd)
+                            val verifyResp = cardService.transmit(wrappedVerify)
+                            val unwrappedVerify = wrapper.unwrap(verifyResp)
+
+                            debugLog(logTag, "Probe Result: SW=${Integer.toHexString(unwrappedVerify.sw)}")
+
+                            if (unwrappedVerify.sw == 0x9000) {
+                                debugLog(logTag, "SUCCESS! Correct VERIFY format found.")
+                                verifySuccess = true
+                                break
+                            } else if (unwrappedVerify.sw in 0x63C0..0x63CF) {
+                                val tries = unwrappedVerify.sw and 0x0F
+                                debugLog(logTag, "Warning: Correct format found, but Wrong PIN! Tries left: $tries")
+                                break // We stop probing to avoid locking the card
+                            }
+                        }
+
+                        if (verifySuccess) {
                             // 2. Read DG11 (SFI 0x0B)
                             debugLog(logTag, "Reading DG11...")
                             val dg11Bytes = readDataGroupSecure(isoDep, wrapper, 0x0B.toByte())
@@ -1002,7 +1028,7 @@ class NFCViewModel
                             debugLog(logTag, "DG11 Read Success.")
 
                         } else {
-                            debugLog(logTag, "PIN1 Verification Failed. SW: ${Integer.toHexString(unwrappedVerify.sw)}")
+                            debugLog(logTag, "All PIN1 Verification probes failed.")
                         }
 
                     } catch (e: Exception) {
