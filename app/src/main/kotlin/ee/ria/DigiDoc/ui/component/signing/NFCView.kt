@@ -57,10 +57,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -201,7 +203,11 @@ fun NFCView(
     val pinNumberFocusRequester = remember { FocusRequester() }
     val canNumberWithInvisibleSpaces = TextFieldValue(addInvisibleElement(canNumber.text))
 
-    val pinCode = remember { mutableStateOf(byteArrayOf()) }
+    // Using List<Int> for saving to be more robust with Bundle serialization than Byte
+    val pinCode = rememberSaveable(saver = listSaver<MutableState<ByteArray>, Int>(
+        save = { it.value.map { byte -> byte.toInt() } },
+        restore = { saved -> mutableStateOf(saved.map { int -> int.toByte() }.toByteArray()) }
+    )) { mutableStateOf(byteArrayOf()) }
 
     val pinType =
         if (identityAction == IdentityAction.SIGN) {
@@ -329,16 +335,23 @@ fun NFCView(
     }
 
     LaunchedEffect(Unit) {
-        pinCode.value = byteArrayOf()
         nfcViewModel.checkNFCStatus(nfcViewModel.getNFCStatus(activity))
     }
 
     LaunchedEffect(Unit, isAuthenticating) {
         if (isAuthenticating) {
             saveFormParams()
+
+            // Log the PIN length right before calling loadPersonalData to debug empty PINs
+            ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.debugLog("NFCView", "Starting NFC auth. PIN length captured: ${pinCode.value.size}")
+
+            // Debug Toast to visually confirm to the user that the PIN was captured correctly
+            android.widget.Toast.makeText(context, "Debug: Captured PIN is ${String(pinCode.value)}", android.widget.Toast.LENGTH_LONG).show()
+
             nfcViewModel.loadPersonalData(
                 activity,
                 canNumber.text,
+                pinCode.value.copyOf() // Clone to prevent concurrent modification if UI clears it
             )
         }
     }
@@ -499,7 +512,15 @@ fun NFCView(
                     )
 
                 val isValidForAuthenticating =
-                    nfcViewModel.isCANLengthValid(canNumber.text)
+                    if (showPinField) {
+                        nfcViewModel.positiveButtonEnabled(
+                            canNumber.text,
+                            pinCode.value,
+                            codeType,
+                        )
+                    } else {
+                        nfcViewModel.isCANLengthValid(canNumber.text)
+                    }
 
                 LaunchedEffect(isValid) {
                     isValidToSign(isValid)

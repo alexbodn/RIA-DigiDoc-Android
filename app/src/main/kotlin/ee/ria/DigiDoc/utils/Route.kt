@@ -23,6 +23,8 @@ package ee.ria.DigiDoc.utils
 
 import ee.ria.DigiDoc.utils.Constant.Routes.ACCESSIBILITY_SCREEN
 import ee.ria.DigiDoc.utils.Constant.Routes.ALL_FILE_CHOOSING_SCREEN
+import ee.ria.DigiDoc.utils.Constant.Routes.AUTHENTICATION_IDENTIFICATION_SCREEN
+import ee.ria.DigiDoc.utils.Constant.Routes.AUTHENTICATION_SCREEN
 import ee.ria.DigiDoc.utils.Constant.Routes.CERTIFICATE_DETAIL_SCREEN
 import ee.ria.DigiDoc.utils.Constant.Routes.CONTAINER_NOTIFICATIONS_SCREEN
 import ee.ria.DigiDoc.utils.Constant.Routes.CRYPTO_FILE_CHOOSING_SCREEN
@@ -135,4 +137,8 @@ sealed class Route(
     data object MyEidScreen : Route(MYEID_SCREEN)
 
     data object MyEidPinScreen : Route(MYEID_PIN_SCREEN)
+
+    data object AuthenticationIdentificationScreen : Route(AUTHENTICATION_IDENTIFICATION_SCREEN)
+
+    data object AuthenticationScreen : Route(AUTHENTICATION_SCREEN)
 }
