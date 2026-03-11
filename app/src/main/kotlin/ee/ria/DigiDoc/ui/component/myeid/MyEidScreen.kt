@@ -312,7 +312,7 @@ fun MyEidScreen(
                             stringResource(R.string.myeid_my_data),
                         ) {
                             val personalData = idCardData?.personalData
-                            val faceImage = if (personalData is RomanianPersonalData) personalData.faceImage() else null
+                            val faceImage = if (personalData is RomanianPersonalData) personalData.faceImageBytes() else null
 
                             MyEidMyDataView(
                                 modifier,

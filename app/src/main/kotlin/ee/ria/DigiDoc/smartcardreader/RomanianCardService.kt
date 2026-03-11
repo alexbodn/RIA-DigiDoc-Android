@@ -38,19 +38,10 @@ class RomanianCardService(private val isoDep: IsoDep) : CardService() {
     override fun transmit(command: CommandAPDU): ResponseAPDU {
         try {
             val cmdBytes = command.bytes
-            // Redact log to prevent leaking PINs (e.g. in VERIFY commands)
-            // Log Header (CLA INS P1 P2) to allow debugging parameters like P2
-            val header = if (cmdBytes.size >= 4) {
-                 String.format("%02X%02X%02X%02X", cmdBytes[0], cmdBytes[1], cmdBytes[2], cmdBytes[3])
-            } else {
-                 "Invalid"
-            }
-            debugLog(logTag, "TX: Header=$header [Redacted for Security]")
+            debugLog(logTag, "TX: ${Hex.toHexString(cmdBytes)}")
 
             val respBytes = isoDep.transceive(cmdBytes)
-            val sw1 = respBytes[respBytes.size - 2]
-            val sw2 = respBytes[respBytes.size - 1]
-            debugLog(logTag, "RX: [Redacted for Security] SW=${String.format("%02X%02X", sw1, sw2)}")
+            debugLog(logTag, "RX: ${Hex.toHexString(respBytes)}")
 
             // JMRTD expects CardService to notify listeners, though for this custom implementation
             // strictly for one-off use it might be optional, but good practice.

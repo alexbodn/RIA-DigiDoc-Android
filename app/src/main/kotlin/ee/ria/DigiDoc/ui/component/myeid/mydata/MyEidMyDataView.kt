@@ -51,8 +51,6 @@ fun MyEidMyDataView(
     documentNumber: String,
     validTo: String,
     faceImage: ByteArray? = null,
-    placeOfBirth: String? = null,
-    permanentAddress: String? = null
 ) {
     Column(
         modifier =
@@ -82,8 +80,6 @@ fun MyEidMyDataView(
                 dateOfBirth = dateOfBirth,
                 documentNumber = documentNumber,
                 validTo = validTo,
-                placeOfBirth = placeOfBirth,
-                permanentAddress = permanentAddress
             ).forEach { navigationItem ->
                 if (!navigationItem.value.isNullOrEmpty()) {
                     MyEidMyDataItem(
