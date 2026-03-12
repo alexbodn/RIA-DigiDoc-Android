@@ -550,7 +550,6 @@ class NFCViewModel
         suspend fun loadPersonalData(
             activity: Activity,
             canNumber: String,
-            pin1: ByteArray? = null
         ) {
             activity.requestedOrientation = activity.resources.configuration.orientation
 
@@ -840,7 +839,7 @@ class NFCViewModel
             return null
         }
 
-        private fun tryRomanianDiscovery(isoDep: IsoDep, canNumber: String, pin1: ByteArray? = null): IdCardData {
+        private fun tryRomanianDiscovery(isoDep: IsoDep, canNumber: String): IdCardData {
              debugLog(logTag, "Starting Romanian eID Discovery...")
 
              // Insert Bouncy Castle at position 1 to ensure it handles AES-256 correctly
@@ -989,41 +988,6 @@ class NFCViewModel
                      errorLog(logTag, "Failed to read DG2 (Face): ${e.message}", e)
                  }
 
-                 // DG11: Additional Personal Detail(s)
-                 var placeOfBirth: String? = null
-                 var permanentAddress: String? = null
-
-                 val usePin = pin1 != null && pin1.isNotEmpty()
-                 if (usePin) {
-                    debugLog(logTag, "PIN1 provided. Upgrading Secure Channel to read DG11...")
-                    try {
-                        val pinString = String(pin1!!, Charsets.UTF_8).trim()
-                        val paceKeyPin = org.jmrtd.PACEKeySpec(pinString.toByteArray(Charsets.UTF_8), 3.toByte()) // 3 = PIN
-
-                        passportService.doPACE(paceKeyPin, oid, org.jmrtd.lds.PACEInfo.toParameterSpec(paramId), java.math.BigInteger.valueOf(paramId.toLong()))
-                        val upgradedWrapper = passportService.wrapper
-                        debugLog(logTag, "PACE with PIN1 Established. Secure Channel Upgraded.")
-
-                        debugLog(logTag, "Reading DG11...")
-                        val dg11Bytes = readDataGroupSecure(isoDep, upgradedWrapper, 0x0B.toByte())
-                        val dg11File = org.jmrtd.lds.icao.DG11File(java.io.ByteArrayInputStream(dg11Bytes))
-
-                        val placeOfBirthList = dg11File.placeOfBirth
-                        if (placeOfBirthList != null && placeOfBirthList.isNotEmpty()) {
-                            placeOfBirth = placeOfBirthList.joinToString(" ")
-                        }
-
-                        val addressList = dg11File.permanentAddress
-                        if (addressList != null && addressList.isNotEmpty()) {
-                            permanentAddress = addressList.joinToString(" ")
-                        }
-                        debugLog(logTag, "DG11 Read Success.")
-                    } catch (e: Exception) {
-                        errorLog(logTag, "Failed to upgrade channel or read DG11: ${e.message}", e)
-                        if (e is SmartCardReaderException) throw e
-                    }
-                 }
-
                  // Map to Personal Data
                  val givenNames = mrzInfo?.secondaryIdentifier?.replace("<", " ")?.trim() ?: "Unknown"
                  val surname = mrzInfo?.primaryIdentifier?.replace("<", " ")?.trim() ?: "Unknown"
@@ -1056,9 +1020,7 @@ class NFCViewModel
                      personalCode = personalCode,
                      documentNumber = docNumber,
                      expiryDate = expiryDate,
-                     faceImageBytes = faceImageBytes,
-                     placeOfBirth = placeOfBirth,
-                     permanentAddress = permanentAddress
+                     faceImage = faceImageBytes
                  )
 
                  return IdCardData(

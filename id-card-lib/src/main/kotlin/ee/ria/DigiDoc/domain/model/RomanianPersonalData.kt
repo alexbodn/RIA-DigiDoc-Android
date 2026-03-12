@@ -11,14 +11,10 @@ class RomanianPersonalData(
     private val personalCode: String,
     private val documentNumber: String,
     private val expiryDate: LocalDate?,
-    private val faceImageBytes: ByteArray? = null,
-    private val placeOfBirth: String? = null,
-    private val permanentAddress: String? = null
+    private val faceImage: ByteArray? = null
 ) : PersonalData() {
 
-    fun faceImageBytes(): ByteArray? = faceImageBytes
-    fun placeOfBirth(): String? = placeOfBirth
-    fun permanentAddress(): String? = permanentAddress
+    fun faceImage(): ByteArray? = faceImage
 
     override fun givenNames(): String = givenNames
 
