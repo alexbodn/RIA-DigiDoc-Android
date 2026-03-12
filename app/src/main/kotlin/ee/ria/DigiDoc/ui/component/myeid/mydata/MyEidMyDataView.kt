@@ -31,6 +31,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.Image
+import android.graphics.BitmapFactory
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
 import ee.ria.DigiDoc.ui.theme.Dimensions.XSPadding
 import ee.ria.DigiDoc.utilsLib.date.DateUtil.isBefore
 
@@ -45,6 +50,7 @@ fun MyEidMyDataView(
     dateOfBirth: String,
     documentNumber: String,
     validTo: String,
+    faceImage: ByteArray? = null,
 ) {
     Column(
         modifier =
@@ -54,6 +60,17 @@ fun MyEidMyDataView(
                 .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        if (faceImage != null) {
+            val bitmap = BitmapFactory.decodeByteArray(faceImage, 0, faceImage.size)
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Face Image",
+                    modifier = Modifier.size(150.dp).padding(bottom = XSPadding)
+                )
+            }
+        }
+
         MyEidMyDataDetailItem()
             .myEidMyDataDetailItems(
                 firstname = firstname,
