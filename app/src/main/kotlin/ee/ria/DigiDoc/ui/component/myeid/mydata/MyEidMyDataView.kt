@@ -21,9 +21,12 @@
 
 package ee.ria.DigiDoc.ui.component.myeid.mydata
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
@@ -32,10 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.foundation.Image
-import android.graphics.BitmapFactory
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.size
 import ee.ria.DigiDoc.ui.theme.Dimensions.XSPadding
 import ee.ria.DigiDoc.utilsLib.date.DateUtil.isBefore
 
@@ -66,7 +66,7 @@ fun MyEidMyDataView(
                 Image(
                     bitmap = bitmap.asImageBitmap(),
                     contentDescription = "Face Image",
-                    modifier = Modifier.size(150.dp).padding(bottom = XSPadding)
+                    modifier = Modifier.size(150.dp).padding(bottom = XSPadding),
                 )
             }
         }

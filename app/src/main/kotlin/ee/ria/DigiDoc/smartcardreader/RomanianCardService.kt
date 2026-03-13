@@ -1,3 +1,4 @@
+@file:Suppress("ktlint:standard:package-name", "ktlint:standard:max-line-length")
 /*
  * Copyright 2026 Riigi Infosüsteemi Amet
  *
@@ -10,15 +11,16 @@
 package ee.ria.DigiDoc.smartcardreader
 
 import android.nfc.tech.IsoDep
-import net.sf.scuba.smartcards.APDUEvent
+import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.Companion.debugLog
 import net.sf.scuba.smartcards.CardService
 import net.sf.scuba.smartcards.CardServiceException
 import net.sf.scuba.smartcards.CommandAPDU
 import net.sf.scuba.smartcards.ResponseAPDU
 import org.bouncycastle.util.encoders.Hex
-import ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.Companion.debugLog
 
-class RomanianCardService(private val isoDep: IsoDep) : CardService() {
+class RomanianCardService(
+    private val isoDep: IsoDep,
+) : CardService() {
     private val logTag = "RomanianCardService"
 
     override fun open() {
@@ -31,9 +33,7 @@ class RomanianCardService(private val isoDep: IsoDep) : CardService() {
         }
     }
 
-    override fun isOpen(): Boolean {
-        return isoDep.isConnected
-    }
+    override fun isOpen(): Boolean = isoDep.isConnected
 
     override fun transmit(command: CommandAPDU): ResponseAPDU {
         try {
@@ -66,7 +66,6 @@ class RomanianCardService(private val isoDep: IsoDep) : CardService() {
         }
     }
 
-    override fun isConnectionLost(e: Exception): Boolean {
-        return e.message?.contains("TagLostException") == true || !isoDep.isConnected
-    }
+    override fun isConnectionLost(e: Exception): Boolean =
+        e.message?.contains("TagLostException") == true || !isoDep.isConnected
 }
