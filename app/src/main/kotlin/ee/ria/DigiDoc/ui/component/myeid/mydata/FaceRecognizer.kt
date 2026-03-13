@@ -2,6 +2,7 @@ package ee.ria.DigiDoc.ui.component.myeid.mydata
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
 import org.tensorflow.lite.support.common.FileUtil
@@ -52,6 +53,7 @@ class FaceRecognizer(
         if (emb1 == null || emb2 == null) return false
 
         val similarity = cosineSimilarity(emb1, emb2)
+        Log.d("FaceRecognizer", "Faces compared. Cosine Similarity: $similarity (Threshold: $threshold)")
         return similarity >= threshold
     }
 

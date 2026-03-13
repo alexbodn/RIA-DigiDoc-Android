@@ -3,6 +3,7 @@ package ee.ria.DigiDoc.ui.component.myeid.mydata
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.Rect
+import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.common.InputImage
@@ -67,30 +68,43 @@ class LivenessAnalyzer(
                     val rotZ = face.headEulerAngleZ // Head is tilted
 
                     // Simple state machine for liveness
+                    Log.d("LivenessAnalyzer", "Face rotY: $rotY, state: $currentInstructionState")
+
+                    // Allow turning either direction first to be forgiving
                     when (currentInstructionState) {
                         LivenessState.LOOK_STRAIGHT -> {
                             onInstruction("Look straight into the camera")
-                            if (rotY in -10f..10f) {
+                            if (rotY in -12f..12f) {
                                 currentInstructionState = LivenessState.TURN_LEFT
                             }
                         }
                         LivenessState.TURN_LEFT -> {
-                            onInstruction("Turn your head slowly to the left")
-                            if (rotY > 25f) { // User's left (mirror image)
+                            onInstruction("Turn your head to one side")
+                            if (rotY > 15f) {
                                 headTurnedLeft = true
+                            } else if (rotY < -15f) {
+                                headTurnedRight = true
+                            }
+
+                            if (headTurnedLeft || headTurnedRight) {
                                 currentInstructionState = LivenessState.TURN_RIGHT
                             }
                         }
                         LivenessState.TURN_RIGHT -> {
-                            onInstruction("Turn your head slowly to the right")
-                            if (rotY < -25f) { // User's right
+                            onInstruction("Turn your head to the other side")
+                            if (!headTurnedLeft && rotY > 15f) {
+                                headTurnedLeft = true
+                            } else if (!headTurnedRight && rotY < -15f) {
                                 headTurnedRight = true
+                            }
+
+                            if (headTurnedLeft && headTurnedRight) {
                                 currentInstructionState = LivenessState.VERIFIED
                             }
                         }
                         LivenessState.VERIFIED -> {
                             onInstruction("Look straight into the camera to capture photo")
-                            if (headTurnedLeft && headTurnedRight && !isVerified && rotY in -10f..10f) {
+                            if (headTurnedLeft && headTurnedRight && !isVerified && rotY in -12f..12f) {
                                 isVerified = true
                                 val croppedFace = cropFace(finalBitmap, face.boundingBox)
                                 onLivenessVerified(croppedFace)
