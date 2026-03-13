@@ -110,7 +110,7 @@ android {
                 "proguard-rules.pro",
             )
             configure<CrashlyticsExtension> {
-                nativeSymbolUploadEnabled = true
+                nativeSymbolUploadEnabled = false
                 mappingFileUploadEnabled = true
             }
             enableUnitTestCoverage = true
@@ -126,7 +126,7 @@ android {
                 "proguard-rules.pro",
             )
             configure<CrashlyticsExtension> {
-                nativeSymbolUploadEnabled = true
+                nativeSymbolUploadEnabled = false
                 mappingFileUploadEnabled = true
             }
         }
@@ -161,6 +161,13 @@ dependencies {
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.mlkit.face.detection)
+    implementation(libs.tensorflow.lite)
+    implementation(libs.tensorflow.lite.support)
     implementation(libs.material)
     implementation(libs.androidx.documentfile)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -223,4 +230,18 @@ dependencies {
     implementation(project(":id-card-lib"))
 
     androidTestImplementation(project(":commons-lib:test-files"))
+}
+
+tasks.register("downloadFaceNetModel", Exec::class) {
+    commandLine("python3", "scripts/download_mobilefacenet.py")
+    workingDir(project.rootDir)
+    doFirst {
+        println("Downloading FaceNet model...")
+    }
+}
+
+tasks.whenTaskAdded {
+    if (name == "preBuild") {
+        dependsOn("downloadFaceNetModel")
+    }
 }

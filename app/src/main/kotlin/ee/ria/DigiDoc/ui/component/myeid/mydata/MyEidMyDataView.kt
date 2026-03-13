@@ -21,21 +21,30 @@
 
 package ee.ria.DigiDoc.ui.component.myeid.mydata
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.foundation.Image
-import android.graphics.BitmapFactory
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.size
 import ee.ria.DigiDoc.ui.theme.Dimensions.XSPadding
 import ee.ria.DigiDoc.utilsLib.date.DateUtil.isBefore
 
@@ -52,6 +61,8 @@ fun MyEidMyDataView(
     validTo: String,
     faceImage: ByteArray? = null,
 ) {
+    var showBiometricVerification by remember { mutableStateOf(false) }
+
     Column(
         modifier =
             modifier
@@ -63,12 +74,25 @@ fun MyEidMyDataView(
         if (faceImage != null) {
             val bitmap = BitmapFactory.decodeByteArray(faceImage, 0, faceImage.size)
             if (bitmap != null) {
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = "Face Image",
-                    modifier = Modifier.size(150.dp).padding(bottom = XSPadding)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = "Face Image",
+                        modifier = Modifier.size(150.dp).padding(bottom = XSPadding),
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Button(onClick = { showBiometricVerification = true }) {
+                        Text("Verify Identity")
+                    }
+                }
             }
+        }
+
+        if (showBiometricVerification && faceImage != null) {
+            BiometricVerificationScreen(
+                dg2Image = faceImage,
+                onDismiss = { showBiometricVerification = false },
+            )
         }
 
         MyEidMyDataDetailItem()
