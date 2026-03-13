@@ -34,7 +34,19 @@ class LivenessAnalyzer(
 
         val mediaImage = imageProxy.image
         if (mediaImage != null) {
-            val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+            // Because ML Kit bounding boxes relate to the unrotated image,
+            // but we eventually display a rotated/mirrored image to the user,
+            // we must map the bounding box.
+            // Let's create the final rotated/mirrored bitmap FIRST, then detect on that.
+
+            val bitmap = imageProxy.toBitmap()
+            val matrix = android.graphics.Matrix()
+            matrix.postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
+            matrix.postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
+            val finalBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+
+            // Pass the already rotated/mirrored bitmap to ML Kit (rotation is now 0)
+            val image = InputImage.fromBitmap(finalBitmap, 0)
 
             faceDetector
                 .process(image)
@@ -80,11 +92,8 @@ class LivenessAnalyzer(
                             onInstruction("Look straight into the camera to capture photo")
                             if (headTurnedLeft && headTurnedRight && !isVerified && rotY in -10f..10f) {
                                 isVerified = true
-                                val bitmap = imageProxyToBitmap(imageProxy)
-                                if (bitmap != null) {
-                                    val croppedFace = cropFace(bitmap, face.boundingBox)
-                                    onLivenessVerified(croppedFace)
-                                }
+                                val croppedFace = cropFace(finalBitmap, face.boundingBox)
+                                onLivenessVerified(croppedFace)
                             }
                         }
                     }
@@ -96,18 +105,6 @@ class LivenessAnalyzer(
         } else {
             imageProxy.close()
         }
-    }
-
-    private fun imageProxyToBitmap(image: ImageProxy): Bitmap? {
-        val bitmap = image.toBitmap()
-
-        val matrix = android.graphics.Matrix()
-        // toBitmap() automatically applies the rotation internally in newer CameraX versions,
-        // but we still need to mirror it since it's a front camera.
-        // If image.toBitmap() already rotated it, we only mirror.
-        matrix.postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
-
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
     private fun cropFace(
