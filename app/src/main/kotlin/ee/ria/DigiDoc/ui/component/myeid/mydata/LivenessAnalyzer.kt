@@ -69,7 +69,7 @@ class LivenessAnalyzer(
                     val rotZ = face.headEulerAngleZ // Head is tilted
 
                     // Simple state machine for liveness
-                    Log.d("LivenessAnalyzer", "Face rotY: $rotY, state: $currentInstructionState")
+                    Log.i("LivenessAnalyzer", "Face rotY: $rotY, state: $currentInstructionState")
 
                     // Allow turning either direction first to be forgiving
                     when (currentInstructionState) {

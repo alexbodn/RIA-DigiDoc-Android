@@ -53,7 +53,7 @@ class FaceRecognizer(
         if (emb1 == null || emb2 == null) return false
 
         val similarity = cosineSimilarity(emb1, emb2)
-        Log.d("FaceRecognizer", "Faces compared. Cosine Similarity: $similarity (Threshold: $threshold)")
+        Log.i("FaceRecognizer", "Faces compared. Cosine Similarity: $similarity (Threshold: $threshold)")
         return similarity >= threshold
     }
 
