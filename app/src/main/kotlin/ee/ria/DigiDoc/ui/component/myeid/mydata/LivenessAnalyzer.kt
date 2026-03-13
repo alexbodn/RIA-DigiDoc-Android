@@ -12,6 +12,7 @@ import com.google.mlkit.vision.face.FaceDetector
 class LivenessAnalyzer(
     private val faceDetector: FaceDetector,
     private val onInstruction: (String) -> Unit,
+    private val onStepSuccess: (String) -> Unit,
     private val onLivenessVerified: (Bitmap) -> Unit,
 ) : ImageAnalysis.Analyzer {
     private var currentInstructionState = LivenessState.LOOK_STRAIGHT
