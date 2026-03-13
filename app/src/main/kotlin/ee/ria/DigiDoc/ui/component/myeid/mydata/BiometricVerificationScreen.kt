@@ -70,6 +70,8 @@ fun BiometricVerificationScreen(
     LaunchedEffect(toastMessage) {
         toastMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            kotlinx.coroutines.delay(2000)
+            toastMessage = null
         }
     }
     val faceDetectorOptions =

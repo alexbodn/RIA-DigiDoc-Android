@@ -565,7 +565,7 @@ class NFCViewModel
                                 val romanianData = tryRomanianDiscovery(isoDep, canNumber)
                                 debugLog(
                                     logTag,
-                                    "Romanian discovery success. Data: ${romanianData.personalData.givenNames()} ${romanianData.personalData.surname()}",
+                                    "Romanian discovery success. Data: [REDACTED]",
                                 )
                                 _userData.postValue(romanianData)
                             } else {
@@ -1001,7 +1001,7 @@ class NFCViewModel
 
                     // JMRTD 0.7.18: getMRZInfo() instead of mrzInfo property
                     mrzInfo = dg1File.getMRZInfo()
-                    debugLog(logTag, "DG1 Read Success: ${mrzInfo.primaryIdentifier} ${mrzInfo.secondaryIdentifier}")
+                    debugLog(logTag, "DG1 Read Success: [REDACTED]")
                 } catch (e: Exception) {
                     debugLog(logTag, "DG1 Read Failed: ${e.message}")
                     // We continue to DG2 even if DG1 fails, to see if the tag error is specific to DG1
