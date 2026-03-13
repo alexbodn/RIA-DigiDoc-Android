@@ -306,6 +306,10 @@ class NFCViewModel
                                 }
 
                                 if (!fallbackSuccess) {
+                                    // If fallback failed but produced an exploratory exception, we still reset UI state and throw
+                                    CoroutineScope(Main).launch {
+                                        _shouldResetPIN.postValue(true)
+                                    }
                                     throw ex
                                 } else {
                                     return@startDiscovery // Success via fallback
@@ -1192,36 +1196,143 @@ class NFCViewModel
 
                 val wrapper = passportService.wrapper ?: throw Exception("Secure Messaging Wrapper lost")
 
-                // 4. Secure Applet Selection (IAS-ECC Applet usually for signing)
-                // A common IAS-ECC AID for Romanian eID signature might be A0 00 00 03 97 42 54 46 59 02 01
-                debugLog(logTag, "Selecting Signature Applet...")
-                val aid =
-                    byteArrayOf(
-                        0xA0.toByte(),
-                        0x00.toByte(),
-                        0x00.toByte(),
-                        0x03.toByte(),
-                        0x97.toByte(),
-                        0x42.toByte(),
-                        0x54.toByte(),
-                        0x46.toByte(),
-                        0x59.toByte(),
-                        0x02.toByte(),
-                        0x01.toByte(),
+                // 4. Secure Applet Selection (AID Discovery Loop)
+                val signatureAIDs =
+                    listOf(
+                        // General IAS-ECC Signature Application
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x03.toByte(),
+                            0x97.toByte(),
+                            0x42.toByte(),
+                            0x54.toByte(),
+                            0x46.toByte(),
+                            0x59.toByte(),
+                            0x02.toByte(),
+                            0x01.toByte(),
+                        ),
+                        // Another common IAS-ECC Signature Application
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x03.toByte(),
+                            0x97.toByte(),
+                            0x42.toByte(),
+                            0x54.toByte(),
+                            0x46.toByte(),
+                            0x59.toByte(),
+                            0x02.toByte(),
+                            0x02.toByte(),
+                        ),
+                        // EstEID / AWID style AIDs (just in case they reuse something)
+                        byteArrayOf(
+                            0xD2.toByte(),
+                            0x33.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x45.toByte(),
+                            0x73.toByte(),
+                            0x74.toByte(),
+                            0x45.toByte(),
+                            0x49.toByte(),
+                            0x44.toByte(),
+                            0x20.toByte(),
+                            0x76.toByte(),
+                            0x33.toByte(),
+                            0x35.toByte(),
+                        ),
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x77.toByte(),
+                            0x01.toByte(),
+                            0x08.toByte(),
+                            0x00.toByte(),
+                            0x07.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0xFE.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x01.toByte(),
+                            0x00.toByte(),
+                        ),
+                        // Romanian National ID Applet ? (猜测)
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x18.toByte(),
+                            0x40.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x01.toByte(),
+                            0x63.toByte(),
+                            0x42.toByte(),
+                            0x00.toByte(),
+                        ),
+                        // E-Sign / E-ID PKCS#15
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x63.toByte(),
+                            0x50.toByte(),
+                            0x4B.toByte(),
+                            0x43.toByte(),
+                            0x53.toByte(),
+                            0x2D.toByte(),
+                            0x31.toByte(),
+                            0x35.toByte(),
+                        ),
+                        // Generic European Citizen Card / EN 14890
+                        byteArrayOf(0xA0.toByte(), 0x00.toByte(), 0x00.toByte(), 0x02.toByte(), 0x18.toByte()),
                     )
-                val selectCmdStandard = CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid)
-                val wrappedSelect = wrapper.wrap(selectCmdStandard)
-                val selectResp = cardService.transmit(wrappedSelect)
-                val unwrappedSelect = wrapper.unwrap(selectResp)
-                debugLog(logTag, "Signature Applet Selection SW: ${Integer.toHexString(unwrappedSelect.sw)}")
+
+                var selectedAID: ByteArray? = null
+                var selectedSW: Int? = null
+
+                debugLog(logTag, "Starting Applet Discovery Loop...")
+
+                for ((index, aid) in signatureAIDs.withIndex()) {
+                    val aidHex =
+                        org.bouncycastle.util.encoders.Hex
+                            .toHexString(aid)
+                    debugLog(logTag, "Selecting Applet [$index]: $aidHex")
+
+                    val selectCmdStandard = CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid)
+                    val wrappedSelect = wrapper.wrap(selectCmdStandard)
+                    val selectResp = cardService.transmit(wrappedSelect)
+                    val unwrappedSelect = wrapper.unwrap(selectResp)
+
+                    val swHex = Integer.toHexString(unwrappedSelect.sw)
+                    debugLog(logTag, "Applet Selection [$index] SW: $swHex")
+
+                    if (unwrappedSelect.sw == 0x9000) {
+                        debugLog(logTag, "SUCCESS! Applet selected: $aidHex")
+                        selectedAID = aid
+                        selectedSW = unwrappedSelect.sw
+                        break
+                    }
+                }
+
+                if (selectedAID == null) {
+                    throw Exception("No valid Signature Applet AID found. Exhausted list.")
+                }
 
                 // Since we don't have exact specifications yet, we log the result and proceed.
-                // In a complete implementation, we'd read the signature certificate here and perform MSE:SET followed by PSO:COMPUTE SIGNATURE
-
                 throw Exception(
-                    "Romanian signing APDU sequence incomplete. Applet selection SW: ${Integer.toHexString(
-                        unwrappedSelect.sw,
-                    )}",
+                    "Applet selection SUCCESS. SW: ${Integer.toHexString(
+                        selectedSW!!,
+                    )}. Found Applet AID. Need next steps for MSE/PSO.",
                 )
             } catch (e: Exception) {
                 throw SmartCardReaderException("Romanian Signing Failed: ${e.message}")
