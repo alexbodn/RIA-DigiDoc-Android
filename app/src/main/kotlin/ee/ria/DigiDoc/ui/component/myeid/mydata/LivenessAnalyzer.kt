@@ -2,15 +2,11 @@ package ee.ria.DigiDoc.ui.component.myeid.mydata
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.ImageFormat
 import android.graphics.Rect
-import android.graphics.YuvImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetector
-import java.io.ByteArrayOutputStream
 
 class LivenessAnalyzer(
     private val faceDetector: FaceDetector,
@@ -103,25 +99,12 @@ class LivenessAnalyzer(
     }
 
     private fun imageProxyToBitmap(image: ImageProxy): Bitmap? {
-        val yBuffer = image.planes[0].buffer // Y
-        val vuBuffer = image.planes[2].buffer // VU
-
-        val ySize = yBuffer.remaining()
-        val vuSize = vuBuffer.remaining()
-
-        val nv21 = ByteArray(ySize + vuSize)
-
-        yBuffer.get(nv21, 0, ySize)
-        vuBuffer.get(nv21, ySize, vuSize)
-
-        val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
-        val out = ByteArrayOutputStream()
-        yuvImage.compressToJpeg(Rect(0, 0, yuvImage.width, yuvImage.height), 100, out)
-        val imageBytes = out.toByteArray()
-        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+        val bitmap = image.toBitmap()
 
         val matrix = android.graphics.Matrix()
-        matrix.postRotate(image.imageInfo.rotationDegrees.toFloat())
+        // toBitmap() automatically applies the rotation internally in newer CameraX versions,
+        // but we still need to mirror it since it's a front camera.
+        // If image.toBitmap() already rotated it, we only mirror.
         matrix.postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
 
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
