@@ -4,7 +4,6 @@ import android.Manifest
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -47,6 +46,7 @@ fun BiometricVerificationScreen(
     var hasCameraPermission by remember { mutableStateOf(false) }
     var livenessInstruction by remember { mutableStateOf("Position your face in the camera") }
     var livenessVerified by remember { mutableStateOf(false) }
+    var toastMessage by remember { mutableStateOf<String?>(null) }
     var comparisonResult by remember { mutableStateOf<String?>(null) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
@@ -177,9 +177,7 @@ fun BiometricVerificationScreen(
                                                         faceDetector = faceDetector,
                                                         onInstruction = { livenessInstruction = it },
                                                         onStepSuccess = { msg ->
-                                                            ContextCompat.getMainExecutor(ctx).execute {
-                                                                Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
-                                                            }
+                                                            toastMessage = msg
                                                         },
                                                         onLivenessVerified = { bmp ->
                                                             livenessVerified = true
