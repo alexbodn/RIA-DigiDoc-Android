@@ -1206,39 +1206,58 @@ class NFCViewModel
                 val respMF = wrapper.unwrap(cardService.transmit(wrappedSelectMF))
                 debugLog(logTag, "Select MF SW: ${Integer.toHexString(respMF.sw)}")
 
-                // Step 4b: Select EF.DIR (2F00)
-                debugLog(logTag, "Selecting EF.DIR (2F00)...")
-                val selectDir = CommandAPDU(0x00, 0xA4, 0x02, 0x00, byteArrayOf(0x2F, 0x00))
-                val wrappedSelectDir = wrapper.wrap(selectDir)
-                val respDir = wrapper.unwrap(cardService.transmit(wrappedSelectDir))
-                debugLog(logTag, "Select EF.DIR SW: ${Integer.toHexString(respDir.sw)}")
+                // Let's try multiple ways to select EF.DIR since P1=02, P2=00 resulted in 6A86 (Incorrect P1-P2)
+                val testSelectCommands =
+                    listOf(
+                        Pair("Select EF.DIR (02 0C)", CommandAPDU(0x00, 0xA4, 0x02, 0x0C, byteArrayOf(0x2F, 0x00))),
+                        Pair(
+                            "Select EF.DIR by Path (08 0C)",
+                            CommandAPDU(0x00, 0xA4, 0x08, 0x0C, byteArrayOf(0x3F, 0x00, 0x2F, 0x00)),
+                        ),
+                        Pair("Select EF.DIR (00 0C)", CommandAPDU(0x00, 0xA4, 0x00, 0x0C, byteArrayOf(0x2F, 0x00))),
+                        Pair("Select PKCS15 Dir (02 0C)", CommandAPDU(0x00, 0xA4, 0x02, 0x0C, byteArrayOf(0x50, 0x32))),
+                        Pair("Select PKCS15 Dir (00 0C)", CommandAPDU(0x00, 0xA4, 0x00, 0x0C, byteArrayOf(0x50, 0x32))),
+                    )
 
-                if (respDir.sw == 0x9000) {
-                    // Step 4c: Read Binary EF.DIR (first 256 bytes)
-                    debugLog(logTag, "Reading EF.DIR...")
+                var successfulSelectDesc = ""
+
+                for ((desc, cmd) in testSelectCommands) {
+                    debugLog(logTag, "Testing: $desc")
+                    val wrappedSelect = wrapper.wrap(cmd)
+                    val resp = wrapper.unwrap(cardService.transmit(wrappedSelect))
+                    debugLog(logTag, "$desc SW: ${Integer.toHexString(resp.sw)}")
+
+                    if (resp.sw == 0x9000) {
+                        successfulSelectDesc = desc
+                        break
+                    }
+                }
+
+                if (successfulSelectDesc.isNotEmpty()) {
+                    // Try to read it
+                    debugLog(logTag, "Reading file selected by: $successfulSelectDesc")
                     val readBinary = CommandAPDU(0x00, 0xB0, 0x00, 0x00, 256)
                     val wrappedRead = wrapper.wrap(readBinary)
                     val respRead = wrapper.unwrap(cardService.transmit(wrappedRead))
-                    debugLog(logTag, "Read EF.DIR SW: ${Integer.toHexString(respRead.sw)}")
+                    debugLog(logTag, "Read Binary SW: ${Integer.toHexString(respRead.sw)}")
 
                     if (respRead.sw == 0x9000 || respRead.sw == 0x6282) { // 6282 = End of file reached
                         val dirContentHex =
                             org.bouncycastle.util.encoders.Hex
                                 .toHexString(respRead.data)
-                        debugLog(logTag, "EF.DIR Content: $dirContentHex")
-                        throw Exception("File Discovery Complete. EF.DIR found: $dirContentHex")
+                        debugLog(logTag, "File Content: $dirContentHex")
+                        throw Exception(
+                            "File Discovery Complete. Read successful using $successfulSelectDesc: $dirContentHex",
+                        )
                     } else {
-                        throw Exception("Failed to read EF.DIR. SW: ${Integer.toHexString(respRead.sw)}")
+                        throw Exception(
+                            "Selected file via $successfulSelectDesc, but read failed. SW: ${Integer.toHexString(
+                                respRead.sw,
+                            )}",
+                        )
                     }
                 } else {
-                    // Attempt implicit EF.DIR selection via PKCS#15 Path
-                    debugLog(logTag, "EF.DIR not explicitly found. Trying PKCS#15 implicit selection (5032)...")
-                    val selectPKCS15Dir = CommandAPDU(0x00, 0xA4, 0x02, 0x00, byteArrayOf(0x50, 0x32))
-                    val wrappedPKCS15 = wrapper.wrap(selectPKCS15Dir)
-                    val respPKCS15 = wrapper.unwrap(cardService.transmit(wrappedPKCS15))
-                    debugLog(logTag, "Select PKCS#15 Dir SW: ${Integer.toHexString(respPKCS15.sw)}")
-
-                    throw Exception("EF.DIR missing. PKCS#15 selection SW: ${Integer.toHexString(respPKCS15.sw)}")
+                    throw Exception("All selection parameter variations (020C, 080C, 000C) failed with 6A86/6A82.")
                 }
             } catch (e: Exception) {
                 throw SmartCardReaderException("Romanian Signing Failed: ${e.message}")
