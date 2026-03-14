@@ -4,7 +4,6 @@ import android.Manifest
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
@@ -15,11 +14,7 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -43,6 +38,7 @@ import java.util.concurrent.Executors
 @Composable
 fun BiometricVerificationScreen(
     dg2Image: ByteArray,
+    useFrontCamera: Boolean = true,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -54,7 +50,6 @@ fun BiometricVerificationScreen(
     var toastMessage by remember { mutableStateOf<String?>(null) }
     var comparisonResult by remember { mutableStateOf<String?>(null) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var isFrontCamera by remember { mutableStateOf(true) }
     var liveScore by remember { mutableStateOf<Float?>(null) }
 
     val cameraPermissionLauncher =
@@ -74,8 +69,7 @@ fun BiometricVerificationScreen(
     }
 
     LaunchedEffect(toastMessage) {
-        toastMessage?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+        if (toastMessage != null) {
             kotlinx.coroutines.delay(2000)
             toastMessage = null
         }
@@ -192,7 +186,7 @@ fun BiometricVerificationScreen(
                                                 analysis.setAnalyzer(
                                                     executor,
                                                     LivenessAnalyzer(
-                                                        isFrontCamera = isFrontCamera,
+                                                        isFrontCamera = useFrontCamera,
                                                         faceDetector = faceDetector,
                                                         faceRecognizer = faceRecognizer,
                                                         eIDBitmap =
@@ -220,7 +214,7 @@ fun BiometricVerificationScreen(
                                                 )
                                             }
 
-                                    val cameraSelector = if (isFrontCamera) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
+                                    val cameraSelector = if (useFrontCamera) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
 
                                     try {
                                         cameraProvider.unbindAll()
@@ -237,25 +231,6 @@ fun BiometricVerificationScreen(
                             },
                             modifier = Modifier.fillMaxSize(),
                         )
-
-                        // Camera switch button
-                        IconButton(
-                            onClick = { isFrontCamera = !isFrontCamera },
-                            modifier =
-                                Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(bottom = 120.dp, end = 32.dp)
-                                    .background(
-                                        Color(0x88000000),
-                                        shape = androidx.compose.foundation.shape.CircleShape,
-                                    ),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Refresh,
-                                contentDescription = "Switch Camera",
-                                tint = Color.White,
-                            )
-                        }
 
                         // Overlay instruction
                         Text(

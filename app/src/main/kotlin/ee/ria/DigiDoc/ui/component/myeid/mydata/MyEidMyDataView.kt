@@ -32,8 +32,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -62,6 +65,7 @@ fun MyEidMyDataView(
     faceImage: ByteArray? = null,
 ) {
     var showBiometricVerification by remember { mutableStateOf(false) }
+    var isFrontCamera by remember { mutableStateOf(true) }
 
     Column(
         modifier =
@@ -81,8 +85,15 @@ fun MyEidMyDataView(
                         modifier = Modifier.size(150.dp).padding(bottom = XSPadding),
                     )
                     Spacer(modifier = Modifier.width(16.dp))
-                    Button(onClick = { showBiometricVerification = true }) {
-                        Text("Verify Identity")
+                    androidx.compose.foundation.layout.Column {
+                        Button(onClick = { showBiometricVerification = true }) {
+                            Text("Verify Identity")
+                        }
+                        androidx.compose.material3.TextButton(onClick = { isFrontCamera = !isFrontCamera }) {
+                            Icon(Icons.Filled.Refresh, contentDescription = "Switch Camera")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isFrontCamera) "Front Camera" else "Rear Camera")
+                        }
                     }
                 }
             }
@@ -91,6 +102,7 @@ fun MyEidMyDataView(
         if (showBiometricVerification && faceImage != null) {
             BiometricVerificationScreen(
                 dg2Image = faceImage,
+                useFrontCamera = isFrontCamera,
                 onDismiss = { showBiometricVerification = false },
             )
         }

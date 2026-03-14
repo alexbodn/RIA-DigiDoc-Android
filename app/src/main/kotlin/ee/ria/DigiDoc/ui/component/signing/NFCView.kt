@@ -475,6 +475,13 @@ fun NFCView(
                     } else {
                         stringResource(id = R.string.signature_update_nfc_turned_off)
                     }
+
+                LaunchedEffect(nfcStatus) {
+                    if (isAuthenticating && nfcStatus != NfcStatus.NFC_ACTIVE) {
+                        onError() // This triggers MyEidIdentificationScreen to reset isAuthenticating to false and return to the form
+                    }
+                }
+
                 Text(
                     text = nfcStatusText,
                     style = MaterialTheme.typography.titleLarge,
