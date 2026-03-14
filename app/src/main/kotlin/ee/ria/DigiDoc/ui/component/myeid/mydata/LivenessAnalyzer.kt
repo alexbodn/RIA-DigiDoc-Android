@@ -19,6 +19,7 @@ class LivenessAnalyzer(
     private var headTurnedRight = false
     private var headTurnedLeft = false
     private var isVerified = false
+    private var captureStartTime = 0L
 
     enum class LivenessState {
         LOOK_STRAIGHT,
@@ -107,11 +108,27 @@ class LivenessAnalyzer(
                             }
                         }
                         LivenessState.VERIFIED -> {
-                            onInstruction("Look straight into the camera to capture photo")
-                            if (headTurnedLeft && headTurnedRight && !isVerified && rotY in -12f..12f) {
-                                isVerified = true
-                                val croppedFace = cropFace(finalBitmap, face.boundingBox)
-                                onLivenessVerified(croppedFace)
+                            if (headTurnedLeft && headTurnedRight && !isVerified) {
+                                if (rotY in -12f..12f) {
+                                    if (captureStartTime == 0L) {
+                                        captureStartTime = System.currentTimeMillis()
+                                    }
+                                    val elapsed = System.currentTimeMillis() - captureStartTime
+                                    val remaining = 2000L - elapsed
+
+                                    if (remaining <= 0) {
+                                        onInstruction("Capturing...")
+                                        isVerified = true
+                                        val croppedFace = cropFace(finalBitmap, face.boundingBox)
+                                        onLivenessVerified(croppedFace)
+                                    } else {
+                                        val secs = (remaining / 1000) + 1
+                                        onInstruction("Hold still for ${secs}s...")
+                                    }
+                                } else {
+                                    captureStartTime = 0L
+                                    onInstruction("Look straight into the camera to capture photo")
+                                }
                             }
                         }
                     }
