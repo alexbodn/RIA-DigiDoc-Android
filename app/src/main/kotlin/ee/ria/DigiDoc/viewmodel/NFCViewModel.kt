@@ -284,25 +284,135 @@ class NFCViewModel
                                     _signedContainer.postValue(container)
                                 }
                             } catch (ex: Exception) {
-                                debugLog(logTag, "Standard sign failed, trying Romanian fallback. Error: ${ex.message}")
+                                debugLog(logTag, "Standard sign failed. Error: ${ex.message}")
                                 var fallbackSuccess = false
-                                try {
-                                    val isoDep = getIsoDep(nfcReader)
-                                    if (isoDep != null && pin2Code != null) {
-                                        tryRomanianSigning(isoDep, context, container, pin2Code, canNumber, roleData)
-                                        CoroutineScope(Main).launch {
-                                            _shouldResetPIN.postValue(true)
-                                            _signStatus.postValue(true)
-                                            _signedContainer.postValue(container)
+
+                                if (ex.message?.contains("ATS not supported") == true) {
+                                    debugLog(logTag, "Attempting spoofed ATR injection bypass for Romanian eID...")
+                                    try {
+                                        val isoDep = getIsoDep(nfcReader)
+                                        if (isoDep != null) {
+                                            // Mutate Android IsoDep internal mHistBytes field
+                                            try {
+                                                val mHistBytesField = isoDep.javaClass.getDeclaredField("mHistBytes")
+                                                mHistBytesField.isAccessible = true
+                                                val estonianATR =
+                                                    byteArrayOf(
+                                                        0x3B.toByte(),
+                                                        0xDB.toByte(),
+                                                        0x96.toByte(),
+                                                        0x00.toByte(),
+                                                        0x80.toByte(),
+                                                        0xB1.toByte(),
+                                                        0xFE.toByte(),
+                                                        0x45.toByte(),
+                                                        0x1F.toByte(),
+                                                        0x83.toByte(),
+                                                        0x00.toByte(),
+                                                        0x12.toByte(),
+                                                        0x23.toByte(),
+                                                        0x3F.toByte(),
+                                                        0x53.toByte(),
+                                                        0x65.toByte(),
+                                                        0x72.toByte(),
+                                                        0x49.toByte(),
+                                                        0x44.toByte(),
+                                                        0x01.toByte(),
+                                                        0x02.toByte(),
+                                                        0x01.toByte(),
+                                                        0x01.toByte(),
+                                                        0x1C.toByte(),
+                                                    )
+                                                mHistBytesField.set(isoDep, estonianATR)
+                                                debugLog(logTag, "Injected Estonian ATR into IsoDep via Reflection.")
+                                            } catch (e: Exception) {
+                                                debugLog(logTag, "Failed to mutate mHistBytes on IsoDep: ${e.message}")
+                                            }
+
+                                            // Re-create the Token using the mutated nfcReader
+                                            // The upstream library TokenWithPace.create() will now see the Estonian ATR!
+                                            debugLog(logTag, "Re-attempting TokenWithPace.create() with spoofed ATR...")
+                                            val spoofedCard =
+                                                TokenWithPace.create(
+                                                    nfcReader as ee.ria.DigiDoc.smartcardreader.nfc.NfcSmartCardReader,
+                                                )
+                                            spoofedCard.tunnel(canNumber)
+                                            val spoofedSignerCert = spoofedCard.certificate(CertificateType.SIGNING)
+
+                                            val spoofedSigner = ExternalSigner(spoofedSignerCert)
+                                            spoofedSigner.setProfile(SIGNATURE_PROFILE_TS)
+                                            spoofedSigner.setUserAgent(
+                                                UserAgentUtil.getUserAgent(context, SendDiagnostics.NFC),
+                                            )
+
+                                            val dataToSignBytes =
+                                                containerWrapper.prepareSignature(
+                                                    spoofedSigner,
+                                                    container,
+                                                    spoofedSignerCert,
+                                                    roleData,
+                                                )
+
+                                            val signatureArray =
+                                                spoofedCard.calculateSignature(pin2Code, dataToSignBytes, true)
+
+                                            if (null != pin2Code && pin2Code.isNotEmpty()) {
+                                                Arrays.fill(pin2Code, 0.toByte())
+                                            }
+
+                                            containerWrapper.finalizeSignature(
+                                                spoofedSigner,
+                                                container,
+                                                signatureArray,
+                                            )
+
+                                            CoroutineScope(Main).launch {
+                                                _shouldResetPIN.postValue(true)
+                                                _signStatus.postValue(true)
+                                                _signedContainer.postValue(container)
+                                            }
+                                            fallbackSuccess = true
+                                            debugLog(logTag, "Spoofed ATR signature fallback SUCCESS.")
                                         }
-                                        fallbackSuccess = true
+                                    } catch (spoofEx: Exception) {
+                                        errorLog(
+                                            logTag,
+                                            "Spoofed ATR wrapper signature failed: ${spoofEx.message}",
+                                            spoofEx,
+                                        )
                                     }
-                                } catch (romanianEx: Exception) {
-                                    errorLog(
+                                }
+
+                                if (!fallbackSuccess) {
+                                    debugLog(
                                         logTag,
-                                        "Romanian signing fallback failed: ${romanianEx.message}",
-                                        romanianEx,
+                                        "Spoofed wrapper failed or N/A, trying manual APDU discovery fallback.",
                                     )
+                                    try {
+                                        val isoDep = getIsoDep(nfcReader)
+                                        if (isoDep != null && pin2Code != null) {
+                                            tryRomanianSigning(
+                                                isoDep,
+                                                context,
+                                                container,
+                                                pin2Code,
+                                                canNumber,
+                                                roleData,
+                                            )
+                                            CoroutineScope(Main).launch {
+                                                _shouldResetPIN.postValue(true)
+                                                _signStatus.postValue(true)
+                                                _signedContainer.postValue(container)
+                                            }
+                                            fallbackSuccess = true
+                                        }
+                                    } catch (romanianEx: Exception) {
+                                        errorLog(
+                                            logTag,
+                                            "Manual APDU fallback failed: ${romanianEx.message}",
+                                            romanianEx,
+                                        )
+                                    }
                                 }
 
                                 if (!fallbackSuccess) {
@@ -854,38 +964,55 @@ class NFCViewModel
         }
 
         private fun getIsoDep(nfcReader: Any): IsoDep? {
-            // Strategy 1: Public getTag() method
-            try {
-                debugLog(logTag, "Reflection: Trying getTag() method on ${nfcReader.javaClass.name}")
-                val getTagMethod = nfcReader.javaClass.getMethod("getTag")
-                val tag = getTagMethod.invoke(nfcReader) as? android.nfc.Tag
-                if (tag != null) {
-                    debugLog(logTag, "Reflection: Found Tag via getTag()")
-                    return IsoDep.get(tag)
-                }
-            } catch (e: Exception) {
-                debugLog(logTag, "Reflection: getTag() failed: ${e.message}")
+            val tag = getTag(nfcReader)
+            if (tag != null) {
+                return IsoDep.get(tag)
             }
 
-            // Strategy 2: Reflective search for fields (Tag or IsoDep)
+            // Strategy 2: Direct IsoDep field search
             var currentClass: Class<*>? = nfcReader.javaClass
             while (currentClass != null) {
                 debugLog(logTag, "Reflection: Searching fields in ${currentClass.name}")
                 for (field in currentClass.declaredFields) {
                     try {
                         field.isAccessible = true
+                        if (IsoDep::class.java.isAssignableFrom(field.type)) {
+                            debugLog(logTag, "Reflection: Found IsoDep field '${field.name}'")
+                            return field.get(nfcReader) as? IsoDep
+                        }
+                    } catch (e: Exception) {
+                        // Continue
+                    }
+                }
+                currentClass = currentClass.superclass
+            }
+            return null
+        }
 
+        private fun getTag(nfcReader: Any): android.nfc.Tag? {
+            try {
+                debugLog(logTag, "Reflection: Trying getTag() method on ${nfcReader.javaClass.name}")
+                val getTagMethod = nfcReader.javaClass.getMethod("getTag")
+                val tag = getTagMethod.invoke(nfcReader) as? android.nfc.Tag
+                if (tag != null) {
+                    debugLog(logTag, "Reflection: Found Tag via getTag()")
+                    return tag
+                }
+            } catch (e: Exception) {
+                debugLog(logTag, "Reflection: getTag() failed: ${e.message}")
+            }
+
+            var currentClass: Class<*>? = nfcReader.javaClass
+            while (currentClass != null) {
+                for (field in currentClass.declaredFields) {
+                    try {
+                        field.isAccessible = true
                         if (android.nfc.Tag::class.java.isAssignableFrom(field.type)) {
                             val tag = field.get(nfcReader) as? android.nfc.Tag
                             if (tag != null) {
                                 debugLog(logTag, "Reflection: Found Tag field '${field.name}'")
-                                return IsoDep.get(tag)
+                                return tag
                             }
-                        }
-
-                        if (IsoDep::class.java.isAssignableFrom(field.type)) {
-                            debugLog(logTag, "Reflection: Found IsoDep field '${field.name}'")
-                            return field.get(nfcReader) as? IsoDep
                         }
                     } catch (e: Exception) {
                         // Continue
