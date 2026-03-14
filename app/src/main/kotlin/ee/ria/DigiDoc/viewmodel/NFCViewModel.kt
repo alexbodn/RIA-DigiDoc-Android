@@ -1197,75 +1197,61 @@ class NFCViewModel
 
                 val wrapper = passportService.wrapper ?: throw Exception("Secure Messaging Wrapper lost")
 
-                // 4. Select the ICAO eMRTD Applet
-                // We know from `tryRomanianDiscovery` that this AID successfully selects AFTER PACE CAN
-                debugLog(logTag, "Selecting ICAO Applet (A0000002471001)...")
-                val icaoAid =
-                    byteArrayOf(
-                        0xA0.toByte(),
-                        0x00.toByte(),
-                        0x00.toByte(),
-                        0x02.toByte(),
-                        0x47.toByte(),
-                        0x10.toByte(),
-                        0x01.toByte(),
-                    )
-                val selectICAO = CommandAPDU(0x00, 0xA4, 0x04, 0x00, icaoAid)
-                val wrappedSelectICAO = wrapper.wrap(selectICAO)
-                val respICAO = wrapper.unwrap(cardService.transmit(wrappedSelectICAO))
-                debugLog(logTag, "Select ICAO Applet SW: ${Integer.toHexString(respICAO.sw)}")
+                // 4. File Discovery & Applet Enumeration *OVER* PACE CAN
+                // Since basic channel ops failed (6A82, 6985), the card is totally locked behind CAN.
+                // We must perform our filesystem tests through the secure channel.
 
-                if (respICAO.sw != 0x9000) {
-                    throw Exception("ICAO Applet selection failed. SW: ${Integer.toHexString(respICAO.sw)}")
-                }
+                // Strategy A: Select Master File (MF) -> 3F 00 and Read EF.DIR (2F00)
+                debugLog(logTag, "Strategy A: Secure Channel EF.DIR Read...")
+                val selectMF = CommandAPDU(0x00, 0xA4, 0x00, 0x00, byteArrayOf(0x3F, 0x00))
+                val wrappedSelectMF = wrapper.wrap(selectMF)
+                val respMF = wrapper.unwrap(cardService.transmit(wrappedSelectMF))
+                debugLog(logTag, "Secure Select MF SW: ${Integer.toHexString(respMF.sw)}")
 
-                // 5. Try to upgrade the channel to PIN2 *INSIDE* the ICAO Applet
-                // The signature functionality might be embedded within the ICAO application context.
-                debugLog(logTag, "Attempting to upgrade channel with PIN2 inside ICAO Applet...")
-                val pin2Input = String(pin2Code, Charsets.UTF_8).trim().replace(" ", "")
+                val selectEFDir = CommandAPDU(0x00, 0xA4, 0x02, 0x0C, byteArrayOf(0x2F, 0x00))
+                val wrappedSelectEFDir = wrapper.wrap(selectEFDir)
+                val respEFDir = wrapper.unwrap(cardService.transmit(wrappedSelectEFDir))
+                debugLog(logTag, "Secure Select EF.DIR SW: ${Integer.toHexString(respEFDir.sw)}")
 
-                try {
-                    val pin2PaceKey = PACEKeySpec(pin2Input.toByteArray(), 3.toByte()) // Using KeyRef 3 (PIN)
-                    passportService.doPACE(
-                        pin2PaceKey,
-                        oid,
-                        PACEInfo.toParameterSpec(paramId),
-                        BigInteger.valueOf(paramId.toLong()),
-                    )
-                    debugLog(logTag, "SUCCESS! PACE Channel Upgraded with PIN2 inside ICAO Applet.")
-                } catch (e: Exception) {
-                    debugLog(logTag, "PACE Upgrade with PIN2 inside ICAO failed: ${e.message}")
-
-                    // Fallback to legacy VERIFY command if PACE upgrade is not supported for PIN2 inside ICAO
-                    debugLog(logTag, "Attempting legacy VERIFY PIN2 (Plaintext fallback)...")
-                    try {
-                        val verifyCmd = CommandAPDU(0x00, 0x20, 0x00, 0x81, pin2Input.toByteArray())
-                        val wrappedVerify = wrapper.wrap(verifyCmd)
-                        val respVerify = wrapper.unwrap(cardService.transmit(wrappedVerify))
-                        debugLog(logTag, "Legacy VERIFY SW: ${Integer.toHexString(respVerify.sw)}")
-                    } catch (verifyEx: Exception) {
-                        debugLog(logTag, "Legacy VERIFY failed: ${verifyEx.message}")
+                if (respEFDir.sw == 0x9000) {
+                    val readBinary = CommandAPDU(0x00, 0xB0, 0x00, 0x00, 256)
+                    val wrappedRead = wrapper.wrap(readBinary)
+                    val respRead = wrapper.unwrap(cardService.transmit(wrappedRead))
+                    debugLog(logTag, "Secure Read EF.DIR SW: ${Integer.toHexString(respRead.sw)}")
+                    if (respRead.sw == 0x9000 || respRead.sw == 0x6282) {
+                        val dirContentHex =
+                            org.bouncycastle.util.encoders.Hex
+                                .toHexString(respRead.data)
+                        debugLog(logTag, "Secure EF.DIR Content: $dirContentHex")
                     }
                 }
 
-                // 6. Test Applet Selection for Signature over the new channel
-                // We test if the IAS-ECC signature applets become selectable NOW.
-                debugLog(logTag, "Testing Signature Applets after ICAO/PIN steps...")
-                val signatureAIDs =
+                // Strategy B: BSI TR-03110 EU eSign Applet & Custom AIDs
+                debugLog(logTag, "Strategy B: Standard EU / BSI Applet Selection...")
+                val candidateAIDs =
                     listOf(
+                        // BSI TR-03110 EU eSign Applet (eIDAS)
                         byteArrayOf(
                             0xA0.toByte(),
                             0x00.toByte(),
                             0x00.toByte(),
-                            0x03.toByte(),
-                            0x97.toByte(),
-                            0x42.toByte(),
-                            0x54.toByte(),
-                            0x46.toByte(),
-                            0x59.toByte(),
                             0x02.toByte(),
-                            0x01.toByte(),
+                            0x48.toByte(),
+                            0x02.toByte(),
+                            0x00.toByte(),
                         ),
+                        // GlobalPlatform ISD
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x01.toByte(),
+                            0x51.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                        ),
+                        // E-Sign / E-ID PKCS#15
                         byteArrayOf(
                             0xA0.toByte(),
                             0x00.toByte(),
@@ -1282,18 +1268,39 @@ class NFCViewModel
                         ),
                     )
 
-                for ((index, aid) in signatureAIDs.withIndex()) {
+                var successfulAID: ByteArray? = null
+
+                for ((index, aid) in candidateAIDs.withIndex()) {
                     val aidHex =
                         org.bouncycastle.util.encoders.Hex
                             .toHexString(aid)
                     val selectCmd = CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid)
-                    val wrapperToUse = passportService.wrapper ?: wrapper
-                    val wrappedSelect = wrapperToUse.wrap(selectCmd)
-                    val resp = wrapperToUse.unwrap(cardService.transmit(wrappedSelect))
-                    debugLog(logTag, "Signature Applet [$index] ($aidHex) SW: ${Integer.toHexString(resp.sw)}")
+                    val wrappedSelect = wrapper.wrap(selectCmd)
+                    val resp = wrapper.unwrap(cardService.transmit(wrappedSelect))
+                    debugLog(logTag, "Secure Applet Selection [$index] ($aidHex) SW: ${Integer.toHexString(resp.sw)}")
+
+                    if (resp.sw == 0x9000) {
+                        successfulAID = aid
+                    }
                 }
 
-                throw Exception("Applet hierarchy mapped. See logs for ICAO -> PIN2 -> Signature results.")
+                // Strategy C: ISD Applet Enumeration (GET STATUS)
+                // If the ISD selection succeeded (index 1), attempt to list all installed AIDs
+                if (successfulAID.contentEquals(candidateAIDs[1])) {
+                    debugLog(logTag, "ISD successfully selected. Enumerating Applets via GET STATUS...")
+                    val getStatus = CommandAPDU(0x80, 0xF2, 0x10, 0x00, byteArrayOf(0x4F, 0x00))
+                    val wrappedStatus = wrapper.wrap(getStatus)
+                    val respStatus = wrapper.unwrap(cardService.transmit(wrappedStatus))
+                    debugLog(logTag, "Secure GET STATUS SW: ${Integer.toHexString(respStatus.sw)}")
+                    if (respStatus.sw == 0x9000 || respStatus.sw == 0x6310) {
+                        val statusDataHex =
+                            org.bouncycastle.util.encoders.Hex
+                                .toHexString(respStatus.data)
+                        debugLog(logTag, "Secure ISD GET STATUS Content: $statusDataHex")
+                    }
+                }
+
+                throw Exception("Secure File and Applet Discovery completed over PACE CAN. Please check logs.")
             } catch (e: Exception) {
                 throw SmartCardReaderException("Romanian Signing Failed: ${e.message}")
             } finally {
