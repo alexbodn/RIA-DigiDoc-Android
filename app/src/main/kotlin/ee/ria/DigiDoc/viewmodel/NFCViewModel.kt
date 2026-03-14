@@ -1180,111 +1180,168 @@ class NFCViewModel
                 val paramId = paceInfo.parameterId
                 debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
 
-                // 3. Establish Secure Messaging (PACE-CAN)
-                val cleanInput = canNumber.trim().replace(" ", "")
-                val keyRef = 2.toByte() // 2=CAN
+                // 3. Establish Secure Messaging with PIN2 directly (Skipping CAN entirely)
+                val pin2Input = String(pin2Code, Charsets.UTF_8).trim().replace(" ", "")
+                val pin2KeyRef = 3.toByte() // For Romanian eID, KeyRef 3 is used for PINs (PIN1/PIN2)
 
-                debugLog(logTag, "Performing PACE with CAN...")
-                val paceKey = PACEKeySpec(cleanInput.toByteArray(), keyRef)
+                debugLog(logTag, "Performing PACE directly with PIN2 (KeyRef 3)...")
+                val paceKey = PACEKeySpec(pin2Input.toByteArray(), pin2KeyRef)
                 passportService.doPACE(
                     paceKey,
                     oid,
                     PACEInfo.toParameterSpec(paramId),
                     BigInteger.valueOf(paramId.toLong()),
                 )
-                debugLog(logTag, "PACE Established with CAN. Secure Messaging Active.")
+                debugLog(logTag, "PACE Established with PIN2. Secure Messaging Active.")
 
-                // 4. Upgrade PACE Channel with PIN2 for Signing Authorization
-                debugLog(logTag, "Attempting to upgrade channel with PIN2...")
-                val pin2Input = String(pin2Code, Charsets.UTF_8).trim().replace(" ", "")
-                val pin2KeyRef = 4.toByte()
+                val wrapper = passportService.wrapper ?: throw Exception("Secure Messaging Wrapper lost")
 
-                try {
-                    val pin2PaceKey = PACEKeySpec(pin2Input.toByteArray(), pin2KeyRef)
-                    passportService.doPACE(
-                        pin2PaceKey,
-                        oid,
-                        PACEInfo.toParameterSpec(paramId),
-                        BigInteger.valueOf(paramId.toLong()),
-                    )
-                    debugLog(logTag, "PACE Channel Upgraded successfully with PIN2 (KeyRef $pin2KeyRef)!")
-                } catch (e: Exception) {
-                    debugLog(logTag, "PACE Upgrade with PIN2 failed. Let's try KeyRef 81 (Local PIN)...")
-                    val altPin2PaceKey = PACEKeySpec(pin2Input.toByteArray(), 0x81.toByte())
-                    passportService.doPACE(
-                        altPin2PaceKey,
-                        oid,
-                        PACEInfo.toParameterSpec(paramId),
-                        BigInteger.valueOf(paramId.toLong()),
-                    )
-                    debugLog(logTag, "PACE Channel Upgraded successfully with PIN2 (KeyRef 81)!")
-                }
-
-                val wrapper = passportService.wrapper ?: throw Exception("Secure Messaging Wrapper lost after upgrade")
-
-                // 5. File Discovery: Select Master File (3F00) and Read EF.DIR (2F00)
-                debugLog(logTag, "Starting File Discovery (MF -> EF.DIR) after PIN upgrade...")
-
-                // Step 4a: Select Master File (MF) -> 3F 00
-                debugLog(logTag, "Selecting MF (3F00)...")
-                val selectMF = CommandAPDU(0x00, 0xA4, 0x00, 0x00, byteArrayOf(0x3F, 0x00))
-                val wrappedSelectMF = wrapper.wrap(selectMF)
-                val respMF = wrapper.unwrap(cardService.transmit(wrappedSelectMF))
-                debugLog(logTag, "Select MF SW: ${Integer.toHexString(respMF.sw)}")
-
-                // Let's try multiple ways to select EF.DIR since P1=02, P2=00 resulted in 6A86 (Incorrect P1-P2)
-                val testSelectCommands =
+                // 4. Secure Applet Selection (AID Discovery Loop)
+                // Now that we have established PACE with the actual signing PIN, the card OS
+                // might finally allow selection of the Signature Applets.
+                val signatureAIDs =
                     listOf(
-                        Pair("Select EF.DIR (02 0C)", CommandAPDU(0x00, 0xA4, 0x02, 0x0C, byteArrayOf(0x2F, 0x00))),
-                        Pair(
-                            "Select EF.DIR by Path (08 0C)",
-                            CommandAPDU(0x00, 0xA4, 0x08, 0x0C, byteArrayOf(0x3F, 0x00, 0x2F, 0x00)),
+                        // General IAS-ECC Signature Application
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x03.toByte(),
+                            0x97.toByte(),
+                            0x42.toByte(),
+                            0x54.toByte(),
+                            0x46.toByte(),
+                            0x59.toByte(),
+                            0x02.toByte(),
+                            0x01.toByte(),
                         ),
-                        Pair("Select EF.DIR (00 0C)", CommandAPDU(0x00, 0xA4, 0x00, 0x0C, byteArrayOf(0x2F, 0x00))),
-                        Pair("Select PKCS15 Dir (02 0C)", CommandAPDU(0x00, 0xA4, 0x02, 0x0C, byteArrayOf(0x50, 0x32))),
-                        Pair("Select PKCS15 Dir (00 0C)", CommandAPDU(0x00, 0xA4, 0x00, 0x0C, byteArrayOf(0x50, 0x32))),
+                        // Another common IAS-ECC Signature Application
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x03.toByte(),
+                            0x97.toByte(),
+                            0x42.toByte(),
+                            0x54.toByte(),
+                            0x46.toByte(),
+                            0x59.toByte(),
+                            0x02.toByte(),
+                            0x02.toByte(),
+                        ),
+                        // EstEID / AWID style AIDs
+                        byteArrayOf(
+                            0xD2.toByte(),
+                            0x33.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x45.toByte(),
+                            0x73.toByte(),
+                            0x74.toByte(),
+                            0x45.toByte(),
+                            0x49.toByte(),
+                            0x44.toByte(),
+                            0x20.toByte(),
+                            0x76.toByte(),
+                            0x33.toByte(),
+                            0x35.toByte(),
+                        ),
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x77.toByte(),
+                            0x01.toByte(),
+                            0x08.toByte(),
+                            0x00.toByte(),
+                            0x07.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0xFE.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x01.toByte(),
+                            0x00.toByte(),
+                        ),
+                        // Romanian National ID Applet ? (猜测)
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x18.toByte(),
+                            0x40.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x01.toByte(),
+                            0x63.toByte(),
+                            0x42.toByte(),
+                            0x00.toByte(),
+                        ),
+                        // E-Sign / E-ID PKCS#15
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x63.toByte(),
+                            0x50.toByte(),
+                            0x4B.toByte(),
+                            0x43.toByte(),
+                            0x53.toByte(),
+                            0x2D.toByte(),
+                            0x31.toByte(),
+                            0x35.toByte(),
+                        ),
+                        // Generic European Citizen Card / EN 14890
+                        byteArrayOf(
+                            0xA0.toByte(),
+                            0x00.toByte(),
+                            0x00.toByte(),
+                            0x02.toByte(),
+                            0x18.toByte(),
+                        ),
                     )
 
-                var successfulSelectDesc = ""
+                var selectedAID: ByteArray? = null
+                var selectedSW: Int? = null
 
-                for ((desc, cmd) in testSelectCommands) {
-                    debugLog(logTag, "Testing: $desc")
-                    val wrappedSelect = wrapper.wrap(cmd)
-                    val resp = wrapper.unwrap(cardService.transmit(wrappedSelect))
-                    debugLog(logTag, "$desc SW: ${Integer.toHexString(resp.sw)}")
+                debugLog(logTag, "Starting Applet Discovery Loop after PIN PACE...")
 
-                    if (resp.sw == 0x9000) {
-                        successfulSelectDesc = desc
+                for ((index, aid) in signatureAIDs.withIndex()) {
+                    val aidHex =
+                        org.bouncycastle.util.encoders.Hex
+                            .toHexString(aid)
+                    debugLog(logTag, "Selecting Applet [$index]: $aidHex")
+
+                    val selectCmdStandard = CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid)
+                    val wrappedSelect = wrapper.wrap(selectCmdStandard)
+                    val selectResp = cardService.transmit(wrappedSelect)
+                    val unwrappedSelect = wrapper.unwrap(selectResp)
+
+                    val swHex = Integer.toHexString(unwrappedSelect.sw)
+                    debugLog(logTag, "Applet Selection [$index] SW: $swHex")
+
+                    if (unwrappedSelect.sw == 0x9000) {
+                        debugLog(logTag, "SUCCESS! Applet selected: $aidHex")
+                        selectedAID = aid
+                        selectedSW = unwrappedSelect.sw
                         break
                     }
                 }
 
-                if (successfulSelectDesc.isNotEmpty()) {
-                    // Try to read it
-                    debugLog(logTag, "Reading file selected by: $successfulSelectDesc")
-                    val readBinary = CommandAPDU(0x00, 0xB0, 0x00, 0x00, 256)
-                    val wrappedRead = wrapper.wrap(readBinary)
-                    val respRead = wrapper.unwrap(cardService.transmit(wrappedRead))
-                    debugLog(logTag, "Read Binary SW: ${Integer.toHexString(respRead.sw)}")
-
-                    if (respRead.sw == 0x9000 || respRead.sw == 0x6282) { // 6282 = End of file reached
-                        val dirContentHex =
-                            org.bouncycastle.util.encoders.Hex
-                                .toHexString(respRead.data)
-                        debugLog(logTag, "File Content: $dirContentHex")
-                        throw Exception(
-                            "File Discovery Complete. Read successful using $successfulSelectDesc: $dirContentHex",
-                        )
-                    } else {
-                        throw Exception(
-                            "Selected file via $successfulSelectDesc, but read failed. SW: ${Integer.toHexString(
-                                respRead.sw,
-                            )}",
-                        )
-                    }
-                } else {
-                    throw Exception("All selection parameter variations (020C, 080C, 000C) failed with 6A86/6A82.")
+                if (selectedAID == null) {
+                    throw Exception("No valid Signature Applet AID found under PIN PACE. Exhausted list.")
                 }
+
+                // Since we don't have exact specifications yet, we log the result and proceed.
+                throw Exception(
+                    "Applet selection SUCCESS. SW: ${Integer.toHexString(
+                        selectedSW!!,
+                    )}. Found Applet AID. Need next steps for MSE/PSO.",
+                )
             } catch (e: Exception) {
                 throw SmartCardReaderException("Romanian Signing Failed: ${e.message}")
             } finally {
