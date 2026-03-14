@@ -1192,12 +1192,38 @@ class NFCViewModel
                     PACEInfo.toParameterSpec(paramId),
                     BigInteger.valueOf(paramId.toLong()),
                 )
-                debugLog(logTag, "PACE Established. Secure Messaging Active.")
+                debugLog(logTag, "PACE Established with CAN. Secure Messaging Active.")
 
-                val wrapper = passportService.wrapper ?: throw Exception("Secure Messaging Wrapper lost")
+                // 4. Upgrade PACE Channel with PIN2 for Signing Authorization
+                debugLog(logTag, "Attempting to upgrade channel with PIN2...")
+                val pin2Input = String(pin2Code, Charsets.UTF_8).trim().replace(" ", "")
+                val pin2KeyRef = 4.toByte()
 
-                // 4. File Discovery: Select Master File (3F00) and Read EF.DIR (2F00)
-                debugLog(logTag, "Starting File Discovery (MF -> EF.DIR)...")
+                try {
+                    val pin2PaceKey = PACEKeySpec(pin2Input.toByteArray(), pin2KeyRef)
+                    passportService.doPACE(
+                        pin2PaceKey,
+                        oid,
+                        PACEInfo.toParameterSpec(paramId),
+                        BigInteger.valueOf(paramId.toLong()),
+                    )
+                    debugLog(logTag, "PACE Channel Upgraded successfully with PIN2 (KeyRef $pin2KeyRef)!")
+                } catch (e: Exception) {
+                    debugLog(logTag, "PACE Upgrade with PIN2 failed. Let's try KeyRef 81 (Local PIN)...")
+                    val altPin2PaceKey = PACEKeySpec(pin2Input.toByteArray(), 0x81.toByte())
+                    passportService.doPACE(
+                        altPin2PaceKey,
+                        oid,
+                        PACEInfo.toParameterSpec(paramId),
+                        BigInteger.valueOf(paramId.toLong()),
+                    )
+                    debugLog(logTag, "PACE Channel Upgraded successfully with PIN2 (KeyRef 81)!")
+                }
+
+                val wrapper = passportService.wrapper ?: throw Exception("Secure Messaging Wrapper lost after upgrade")
+
+                // 5. File Discovery: Select Master File (3F00) and Read EF.DIR (2F00)
+                debugLog(logTag, "Starting File Discovery (MF -> EF.DIR) after PIN upgrade...")
 
                 // Step 4a: Select Master File (MF) -> 3F 00
                 debugLog(logTag, "Selecting MF (3F00)...")
