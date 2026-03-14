@@ -76,6 +76,7 @@ class LivenessAnalyzer(
                         LivenessState.LOOK_STRAIGHT -> {
                             onInstruction("Look straight into the camera")
                             if (rotY in -12f..12f) {
+                                onStepSuccess("Face detected!")
                                 currentInstructionState = LivenessState.TURN_LEFT
                             }
                         }
@@ -88,6 +89,7 @@ class LivenessAnalyzer(
                             }
 
                             if (headTurnedLeft || headTurnedRight) {
+                                onStepSuccess("Good! Now turn to the other side.")
                                 currentInstructionState = LivenessState.TURN_RIGHT
                             }
                         }
@@ -100,6 +102,7 @@ class LivenessAnalyzer(
                             }
 
                             if (headTurnedLeft && headTurnedRight) {
+                                onStepSuccess("Liveness passed! Look straight to capture.")
                                 currentInstructionState = LivenessState.VERIFIED
                             }
                         }
