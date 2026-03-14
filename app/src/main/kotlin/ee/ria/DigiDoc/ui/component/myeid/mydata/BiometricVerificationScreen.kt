@@ -55,6 +55,7 @@ fun BiometricVerificationScreen(
     var comparisonResult by remember { mutableStateOf<String?>(null) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var isFrontCamera by remember { mutableStateOf(true) }
+    var liveScore by remember { mutableStateOf<Float?>(null) }
 
     val cameraPermissionLauncher =
         rememberLauncherForActivityResult(
@@ -193,33 +194,27 @@ fun BiometricVerificationScreen(
                                                     LivenessAnalyzer(
                                                         isFrontCamera = isFrontCamera,
                                                         faceDetector = faceDetector,
+                                                        faceRecognizer = faceRecognizer,
+                                                        eIDBitmap =
+                                                            BitmapFactory.decodeByteArray(
+                                                                dg2Image,
+                                                                0,
+                                                                dg2Image.size,
+                                                            ),
                                                         onInstruction = { livenessInstruction = it },
                                                         onStepSuccess = { msg ->
                                                             toastMessage = msg
+                                                        },
+                                                        onLiveScore = { score ->
+                                                            liveScore = score
                                                         },
                                                         onLivenessVerified = { bmp ->
                                                             livenessVerified = true
                                                             capturedBitmap = bmp
 
-                                                            val eIDBitmap =
-                                                                BitmapFactory.decodeByteArray(
-                                                                    dg2Image,
-                                                                    0,
-                                                                    dg2Image.size,
-                                                                )
-
-                                                            val score =
-                                                                faceRecognizer.compareFaces(
-                                                                    eIDBitmap.copy(Bitmap.Config.ARGB_8888, true),
-                                                                    bmp.copy(Bitmap.Config.ARGB_8888, true),
-                                                                )
-
+                                                            // If it verified, we know the last score was >= 0.7f
                                                             comparisonResult =
-                                                                if (score >= 0.7f) {
-                                                                    "Verified (Score: %.2f)".format(score)
-                                                                } else {
-                                                                    "Not Verified (Score: %.2f)".format(score)
-                                                                }
+                                                                "Verified (Score: %.2f)".format(liveScore ?: 0.7f)
                                                         },
                                                     ),
                                                 )
