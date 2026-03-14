@@ -10,6 +10,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.FaceDetector
 
 class LivenessAnalyzer(
+    private val isFrontCamera: Boolean,
     private val faceDetector: FaceDetector,
     private val onInstruction: (String) -> Unit,
     private val onStepSuccess: (String) -> Unit,
@@ -45,7 +46,9 @@ class LivenessAnalyzer(
             val bitmap = imageProxy.toBitmap()
             val matrix = android.graphics.Matrix()
             matrix.postRotate(imageProxy.imageInfo.rotationDegrees.toFloat())
-            matrix.postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
+            if (isFrontCamera) {
+                matrix.postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
+            }
             val finalBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 
             // Pass the already rotated/mirrored bitmap to ML Kit (rotation is now 0)

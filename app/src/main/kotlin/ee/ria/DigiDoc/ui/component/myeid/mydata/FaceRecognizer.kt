@@ -43,18 +43,17 @@ class FaceRecognizer(
     fun compareFaces(
         face1: Bitmap,
         face2: Bitmap,
-        threshold: Float = 0.7f,
-    ): Boolean {
-        if (interpreter == null) return false
+    ): Float {
+        if (interpreter == null) return 0f
 
         val emb1 = getFaceEmbedding(face1)
         val emb2 = getFaceEmbedding(face2)
 
-        if (emb1 == null || emb2 == null) return false
+        if (emb1 == null || emb2 == null) return 0f
 
         val similarity = cosineSimilarity(emb1, emb2)
-        Log.i("FaceRecognizer", "Faces compared. Cosine Similarity: $similarity (Threshold: $threshold)")
-        return similarity >= threshold
+        Log.i("FaceRecognizer", "Faces compared. Cosine Similarity: $similarity")
+        return similarity
     }
 
     private fun getFaceEmbedding(bitmap: Bitmap): FloatArray? {

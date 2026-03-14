@@ -15,7 +15,11 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -50,6 +54,7 @@ fun BiometricVerificationScreen(
     var toastMessage by remember { mutableStateOf<String?>(null) }
     var comparisonResult by remember { mutableStateOf<String?>(null) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var isFrontCamera by remember { mutableStateOf(true) }
 
     val cameraPermissionLauncher =
         rememberLauncherForActivityResult(
@@ -162,11 +167,12 @@ fun BiometricVerificationScreen(
                     ) {
                         AndroidView(
                             factory = { ctx ->
-                                val previewView =
-                                    PreviewView(ctx).apply {
-                                        implementationMode = PreviewView.ImplementationMode.COMPATIBLE
-                                    }
-                                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                                PreviewView(ctx).apply {
+                                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                                }
+                            },
+                            update = { previewView ->
+                                val cameraProviderFuture = ProcessCameraProvider.getInstance(previewView.context)
 
                                 cameraProviderFuture.addListener({
                                     val cameraProvider = cameraProviderFuture.get()
@@ -185,6 +191,7 @@ fun BiometricVerificationScreen(
                                                 analysis.setAnalyzer(
                                                     executor,
                                                     LivenessAnalyzer(
+                                                        isFrontCamera = isFrontCamera,
                                                         faceDetector = faceDetector,
                                                         onInstruction = { livenessInstruction = it },
                                                         onStepSuccess = { msg ->
@@ -194,7 +201,6 @@ fun BiometricVerificationScreen(
                                                             livenessVerified = true
                                                             capturedBitmap = bmp
 
-                                                            // Perform face comparison
                                                             val eIDBitmap =
                                                                 BitmapFactory.decodeByteArray(
                                                                     dg2Image,
@@ -202,20 +208,24 @@ fun BiometricVerificationScreen(
                                                                     dg2Image.size,
                                                                 )
 
-                                                            // Pass copies to FaceRecognizer as they are manipulated/drawn on via MLKit underneath sometimes
-                                                            val isMatch =
+                                                            val score =
                                                                 faceRecognizer.compareFaces(
                                                                     eIDBitmap.copy(Bitmap.Config.ARGB_8888, true),
                                                                     bmp.copy(Bitmap.Config.ARGB_8888, true),
                                                                 )
+
                                                             comparisonResult =
-                                                                if (isMatch) "Verified" else "Not Verified"
+                                                                if (score >= 0.7f) {
+                                                                    "Verified (Score: %.2f)".format(score)
+                                                                } else {
+                                                                    "Not Verified (Score: %.2f)".format(score)
+                                                                }
                                                         },
                                                     ),
                                                 )
                                             }
 
-                                    val cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+                                    val cameraSelector = if (isFrontCamera) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
 
                                     try {
                                         cameraProvider.unbindAll()
@@ -228,12 +238,29 @@ fun BiometricVerificationScreen(
                                     } catch (exc: Exception) {
                                         Log.e("BiometricVerification", "Use case binding failed", exc)
                                     }
-                                }, ContextCompat.getMainExecutor(ctx))
-
-                                previewView
+                                }, ContextCompat.getMainExecutor(previewView.context))
                             },
                             modifier = Modifier.fillMaxSize(),
                         )
+
+                        // Camera switch button
+                        IconButton(
+                            onClick = { isFrontCamera = !isFrontCamera },
+                            modifier =
+                                Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(bottom = 120.dp, end = 32.dp)
+                                    .background(
+                                        Color(0x88000000),
+                                        shape = androidx.compose.foundation.shape.CircleShape,
+                                    ),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Refresh,
+                                contentDescription = "Switch Camera",
+                                tint = Color.White,
+                            )
+                        }
 
                         // Overlay instruction
                         Text(
