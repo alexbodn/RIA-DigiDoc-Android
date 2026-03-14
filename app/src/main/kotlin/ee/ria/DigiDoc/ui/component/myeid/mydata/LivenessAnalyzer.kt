@@ -146,10 +146,14 @@ class LivenessAnalyzer(
         bitmap: Bitmap,
         boundingBox: Rect,
     ): Bitmap {
-        var x = boundingBox.left
-        var y = boundingBox.top
-        var width = boundingBox.width()
-        var height = boundingBox.height()
+        // Add 30% padding to the bounding box to include hair/chin
+        val paddingX = (boundingBox.width() * 0.3f).toInt()
+        val paddingY = (boundingBox.height() * 0.3f).toInt()
+
+        var x = boundingBox.left - paddingX
+        var y = boundingBox.top - paddingY
+        var width = boundingBox.width() + (paddingX * 2)
+        var height = boundingBox.height() + (paddingY * 2)
 
         // Ensure bounds are within the bitmap
         x = maxOf(0, x)
