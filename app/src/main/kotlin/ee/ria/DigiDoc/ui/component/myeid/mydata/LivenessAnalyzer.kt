@@ -77,6 +77,23 @@ class LivenessAnalyzer(
                     val rotY = face.headEulerAngleY // Head is turned to the right/left
                     val rotZ = face.headEulerAngleZ // Head is tilted
 
+
+                    // Multi-frame continuous comparison
+                    try {
+                        val currentCroppedFace = cropFace(finalBitmap, face.boundingBox)
+                        val currentScore = faceRecognizer.compareFaces(eIDBitmap, currentCroppedFace)
+                        onLiveScore(currentScore)
+
+                        if (currentInstructionState != LivenessState.VERIFIED) {
+                             if (currentScore > bestScore) {
+                                bestScore = currentScore
+                                bestFace = currentCroppedFace
+                             }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("LivenessAnalyzer", "Face compare error", e)
+                    }
+
                     // Simple state machine for liveness
                     Log.i("LivenessAnalyzer", "Face rotY: $rotY, state: $currentInstructionState")
 
@@ -124,13 +141,10 @@ class LivenessAnalyzer(
                                     val elapsed = System.currentTimeMillis() - captureStartTime
                                     val remaining = 3000L - elapsed // 3 seconds to gather the best score
 
-                                    // Perform comparison dynamically
+                                    // Score is already calculated globally above
                                     val croppedFace = cropFace(finalBitmap, face.boundingBox)
-                                    val score = faceRecognizer.compareFaces(eIDBitmap, croppedFace)
-                                    onLiveScore(score)
-
-                                    if (score > bestScore) {
-                                        bestScore = score
+                                    if (faceRecognizer.compareFaces(eIDBitmap, croppedFace) > bestScore) {
+                                        bestScore = faceRecognizer.compareFaces(eIDBitmap, croppedFace)
                                         bestFace = croppedFace
                                     }
 

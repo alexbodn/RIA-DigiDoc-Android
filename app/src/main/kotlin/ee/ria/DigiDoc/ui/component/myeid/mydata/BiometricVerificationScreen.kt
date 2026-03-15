@@ -242,12 +242,33 @@ fun BiometricVerificationScreen(
                             enter = androidx.compose.animation.fadeIn(),
                             exit = androidx.compose.animation.fadeOut(),
                             modifier = Modifier
-                                .align(Alignment.Center)
+                                .align(Alignment.TopCenter)
+                                .padding(top = 32.dp)
 
                                 .background(Color(0xBB000000), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
                                 .padding(16.dp)
                         ) {
                             Text(text = toastMessage ?: "", color = Color.White, fontSize = 18.sp)
+                        }
+
+                                                // Live Score Indicator
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = liveScore != null,
+                            enter = androidx.compose.animation.fadeIn(),
+                            exit = androidx.compose.animation.fadeOut(),
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = 100.dp)
+                        ) {
+                            Text(
+                                text = "Match Score: %.2f".format(liveScore ?: 0f),
+                                color = if ((liveScore ?: 0f) >= 0.70f) Color.Green else Color.Yellow,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .background(Color(0x88000000), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
                         }
 
                         // Overlay instruction
