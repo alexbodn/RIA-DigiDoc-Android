@@ -34,10 +34,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import android.widget.Toast
+import android.os.Environment
+import java.io.File
+import java.io.FileOutputStream
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import ee.ria.DigiDoc.ui.theme.Dimensions.XSPadding
@@ -64,6 +70,7 @@ fun MyEidMyDataView(
     validTo: String,
     faceImage: ByteArray? = null,
 ) {
+    val context = LocalContext.current
     var showBiometricVerification by remember { mutableStateOf(false) }
     var isFrontCamera by remember { mutableStateOf(true) }
 
@@ -94,6 +101,23 @@ fun MyEidMyDataView(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(if (isFrontCamera) "Front Camera" else "Rear Camera")
                         }
+                            androidx.compose.material3.TextButton(onClick = {
+                                try {
+                                    val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                                    val file = File(dir, "eid_dg2_${System.currentTimeMillis()}.png")
+                                    FileOutputStream(file).use { out ->
+                                        bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+                                    }
+                                    Toast.makeText(context, "Saved DG2 to Downloads", Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Error saving DG2: ${e.message}", Toast.LENGTH_LONG).show()
+                                }
+                            }) {
+                                Icon(Icons.Filled.Face, contentDescription = "Download DG2 Image")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Download DG2")
+                            }
+
                     }
                 }
             }
