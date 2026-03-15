@@ -47,10 +47,11 @@ fun BiometricVerificationScreen(
     var hasCameraPermission by remember { mutableStateOf(false) }
     var livenessInstruction by remember { mutableStateOf("Position your face in the camera") }
     var livenessVerified by remember { mutableStateOf(false) }
-    var toastMessage by remember { mutableStateOf<String?>(null) }
+    var bestFaceBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var comparisonResult by remember { mutableStateOf<String?>(null) }
     var capturedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var liveScore by remember { mutableStateOf<Float?>(null) }
+    var showBestMatchDialog by remember { mutableStateOf(false) }
 
     val cameraPermissionLauncher =
         rememberLauncherForActivityResult(
@@ -68,12 +69,7 @@ fun BiometricVerificationScreen(
         }
     }
 
-    LaunchedEffect(toastMessage) {
-        if (toastMessage != null) {
-            kotlinx.coroutines.delay(2000)
-            toastMessage = null
-        }
-    }
+
     val faceDetectorOptions =
         FaceDetectorOptions
             .Builder()
@@ -90,8 +86,8 @@ fun BiometricVerificationScreen(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            Column(
+        androidx.compose.material3.Surface(modifier = Modifier.fillMaxSize()) {
+            androidx.compose.foundation.layout.Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -117,7 +113,7 @@ fun BiometricVerificationScreen(
                                 .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("eID Image")
                             val eIDBitmap = BitmapFactory.decodeByteArray(dg2Image, 0, dg2Image.size)
                             Image(
@@ -126,7 +122,7 @@ fun BiometricVerificationScreen(
                                 modifier = Modifier.size(120.dp),
                             )
                         }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("Selfie")
                             capturedBitmap?.let {
                                 Image(
@@ -197,10 +193,13 @@ fun BiometricVerificationScreen(
                                                             ),
                                                         onInstruction = { livenessInstruction = it },
                                                         onStepSuccess = { msg ->
-                                                            toastMessage = msg
+                                                            // Removed toast, using instructions only
                                                         },
                                                         onLiveScore = { score ->
                                                             liveScore = score
+                                                        },
+                                                        onBestFaceUpdated = { bmp ->
+                                                            bestFaceBitmap = bmp
                                                         },
                                                         onLivenessVerified = { bmp, finalScore ->
                                                             livenessVerified = true
@@ -236,20 +235,7 @@ fun BiometricVerificationScreen(
                             modifier = Modifier.fillMaxSize(),
                         )
 
-                                                // Custom Compose Toast
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = toastMessage != null,
-                            enter = androidx.compose.animation.fadeIn(),
-                            exit = androidx.compose.animation.fadeOut(),
-                            modifier = Modifier
-                                .align(Alignment.TopCenter)
-                                .padding(top = 32.dp)
 
-                                .background(Color(0xBB000000), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-                                .padding(16.dp)
-                        ) {
-                            Text(text = toastMessage ?: "", color = Color.White, fontSize = 18.sp)
-                        }
 
                                                 // Live Score Indicator
                         androidx.compose.animation.AnimatedVisibility(
@@ -279,15 +265,46 @@ fun BiometricVerificationScreen(
                             fontWeight = FontWeight.Bold,
                             modifier =
                                 Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(bottom = 32.dp)
-                                    .background(Color(0x88000000))
+                                    .align(Alignment.TopCenter)
+                                    .padding(top = 32.dp)
+                                    .background(Color(0x88000000), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
                                     .padding(16.dp),
                         )
                     }
 
-                    Button(onClick = onDismiss, modifier = Modifier.padding(16.dp)) {
-                        Text("Cancel")
+                    androidx.compose.foundation.layout.Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly
+                    ) {
+                        Button(onClick = onDismiss) {
+                            Text("Cancel")
+                        }
+                        if (bestFaceBitmap != null) {
+                            Button(onClick = { showBestMatchDialog = true }) {
+                                Text("Show Best Match")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (showBestMatchDialog && bestFaceBitmap != null) {
+        Dialog(onDismissRequest = { showBestMatchDialog = false }) {
+            androidx.compose.material3.Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)) {
+                androidx.compose.foundation.layout.Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Best Match So Far", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(bottom = 16.dp))
+                    androidx.compose.foundation.Image(
+                        bitmap = bestFaceBitmap!!.asImageBitmap(),
+                        contentDescription = "Best Match",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { showBestMatchDialog = false }) {
+                        Text("Close")
                     }
                 }
             }
