@@ -287,142 +287,51 @@ class NFCViewModel
                                 debugLog(logTag, "Standard sign failed. Error: ${ex.message}")
                                 var fallbackSuccess = false
 
-                                if (ex.message?.contains("ATS not supported") == true) {
-                                    debugLog(logTag, "Attempting spoofed ATR injection bypass for Romanian eID...")
-                                    try {
-                                        val isoDep = getIsoDep(nfcReader)
-                                        if (isoDep != null) {
-                                            // Mutate Android IsoDep internal mHistBytes field
-                                            try {
-                                                val mHistBytesField = isoDep.javaClass.getDeclaredField("mHistBytes")
-                                                mHistBytesField.isAccessible = true
-                                                val estonianATR =
-                                                    byteArrayOf(
-                                                        0x3B.toByte(),
-                                                        0xDB.toByte(),
-                                                        0x96.toByte(),
-                                                        0x00.toByte(),
-                                                        0x80.toByte(),
-                                                        0xB1.toByte(),
-                                                        0xFE.toByte(),
-                                                        0x45.toByte(),
-                                                        0x1F.toByte(),
-                                                        0x83.toByte(),
-                                                        0x00.toByte(),
-                                                        0x12.toByte(),
-                                                        0x23.toByte(),
-                                                        0x3F.toByte(),
-                                                        0x53.toByte(),
-                                                        0x65.toByte(),
-                                                        0x72.toByte(),
-                                                        0x49.toByte(),
-                                                        0x44.toByte(),
-                                                        0x01.toByte(),
-                                                        0x02.toByte(),
-                                                        0x01.toByte(),
-                                                        0x01.toByte(),
-                                                        0x1C.toByte(),
-                                                    )
-                                                mHistBytesField.set(isoDep, estonianATR)
-                                                debugLog(logTag, "Injected Estonian ATR into IsoDep via Reflection.")
-                                            } catch (e: Exception) {
-                                                debugLog(logTag, "Failed to mutate mHistBytes on IsoDep: ${e.message}")
-                                            }
-
-                                            // Re-create the Token using the mutated nfcReader
-                                            // The upstream library TokenWithPace.create() will now see the Estonian ATR!
-                                            debugLog(logTag, "Re-attempting TokenWithPace.create() with spoofed ATR...")
-                                            val spoofedCard =
-                                                TokenWithPace.create(
-                                                    nfcReader as ee.ria.DigiDoc.smartcardreader.nfc.NfcSmartCardReader,
-                                                )
-                                            spoofedCard.tunnel(canNumber)
-                                            val spoofedSignerCert = spoofedCard.certificate(CertificateType.SIGNING)
-
-                                            val spoofedSigner = ExternalSigner(spoofedSignerCert)
-                                            spoofedSigner.setProfile(SIGNATURE_PROFILE_TS)
-                                            spoofedSigner.setUserAgent(
-                                                UserAgentUtil.getUserAgent(context, SendDiagnostics.NFC),
-                                            )
-
-                                            val dataToSignBytes =
-                                                containerWrapper.prepareSignature(
-                                                    spoofedSigner,
-                                                    container,
-                                                    spoofedSignerCert,
-                                                    roleData,
-                                                )
-
-                                            val signatureArray =
-                                                spoofedCard.calculateSignature(pin2Code, dataToSignBytes, true)
-
-                                            if (null != pin2Code && pin2Code.isNotEmpty()) {
-                                                Arrays.fill(pin2Code, 0.toByte())
-                                            }
-
-                                            containerWrapper.finalizeSignature(
-                                                spoofedSigner,
-                                                container,
-                                                signatureArray,
-                                            )
-
-                                            CoroutineScope(Main).launch {
-                                                _shouldResetPIN.postValue(true)
-                                                _signStatus.postValue(true)
-                                                _signedContainer.postValue(container)
-                                            }
-                                            fallbackSuccess = true
-                                            debugLog(logTag, "Spoofed ATR signature fallback SUCCESS.")
-                                        }
-                                    } catch (spoofEx: Exception) {
-                                        errorLog(
-                                            logTag,
-                                            "Spoofed ATR wrapper signature failed: ${spoofEx.message}",
-                                            spoofEx,
-                                        )
-                                    }
-                                }
-
-                                if (!fallbackSuccess) {
+                                try {
                                     debugLog(
                                         logTag,
-                                        "Spoofed wrapper failed or N/A, trying manual APDU discovery fallback.",
+                                        "Standard upstream sign failed. Initiating manual APDU discovery fallback...",
                                     )
-                                    try {
-                                        val isoDep = getIsoDep(nfcReader)
-                                        if (isoDep != null && pin2Code != null) {
-                                            tryRomanianSigning(
-                                                isoDep,
-                                                context,
-                                                container,
-                                                pin2Code,
-                                                canNumber,
-                                                roleData,
-                                            )
-                                            CoroutineScope(Main).launch {
-                                                _shouldResetPIN.postValue(true)
-                                                _signStatus.postValue(true)
-                                                _signedContainer.postValue(container)
-                                            }
-                                            fallbackSuccess = true
-                                        }
-                                    } catch (romanianEx: Exception) {
-                                        errorLog(
-                                            logTag,
-                                            "Manual APDU fallback failed: ${romanianEx.message}",
-                                            romanianEx,
+                                    val isoDep = getIsoDep(nfcReader)
+                                    if (isoDep != null && pin2Code != null) {
+                                        tryRomanianSigning(
+                                            isoDep,
+                                            context,
+                                            container,
+                                            pin2Code,
+                                            canNumber,
+                                            roleData,
                                         )
+                                        CoroutineScope(Main).launch {
+                                            _shouldResetPIN.postValue(true)
+                                            _signStatus.postValue(true)
+                                            _signedContainer.postValue(container)
+                                        }
+                                        fallbackSuccess = true
                                     }
+                                } catch (romanianEx: Exception) {
+                                    errorLog(
+                                        logTag,
+                                        "Manual APDU fallback failed: ${romanianEx.message}",
+                                        romanianEx,
+                                    )
                                 }
 
                                 if (!fallbackSuccess) {
-                                    // If fallback failed but produced an exploratory exception, we still reset UI state and throw
                                     CoroutineScope(Main).launch {
                                         _shouldResetPIN.postValue(true)
+                                        // UI Bailout requested by user: clear loading state so the app isn't stuck on "Authenticating..."
+                                        _errorState.postValue(
+                                            Triple(
+                                                R.string.main_about_version_title,
+                                                "Fallback Exploration Exhausted. Please send logs.",
+                                                null,
+                                            ),
+                                        )
                                     }
                                     throw ex
                                 } else {
-                                    return@startDiscovery // Success via fallback
+                                    return@startDiscovery
                                 }
                             } catch (ex: SmartCardReaderException) {
                                 _signStatus.postValue(false)
