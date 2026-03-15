@@ -317,7 +317,7 @@ class NFCViewModel
                                         _errorState.postValue(
                                             Triple(
                                                 R.string.main_about_version_title,
-                                                "Signing error: ${ex.message}. Please check logs.",
+                                                "Fallback failed. Check logs.",
                                                 null,
                                             ),
                                         )
@@ -371,7 +371,9 @@ class NFCViewModel
                                     _errorState.postValue(
                                         Triple(R.string.signature_update_nfc_wrong_can, null, null),
                                     )
-                                } else {
+                                } else if (ex.message?.contains("ATS not supported") == true && !fallbackSuccess) {
+                                    // Handled by the fallback mechanism, avoid double-posting
+                                } else if (!fallbackSuccess) {
                                     showTechnicalError(ex)
                                 }
 
