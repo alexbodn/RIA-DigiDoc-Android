@@ -283,24 +283,17 @@ class NFCViewModel
                                     _signStatus.postValue(true)
                                     _signedContainer.postValue(container)
                                 }
-                            } catch (ex: Exception) {
+                            } catch (ex: SmartCardReaderException) {
+                                _signStatus.postValue(false)
+
                                 debugLog(logTag, "Standard sign failed. Error: ${ex.message}")
                                 var fallbackSuccess = false
-
                                 try {
-                                    debugLog(
-                                        logTag,
-                                        "Standard upstream sign failed. Initiating manual APDU discovery fallback...",
-                                    )
                                     val isoDep = getIsoDep(nfcReader)
                                     if (isoDep != null && pin2Code != null) {
-                                        tryRomanianSigning(
+                                        tryRomanianSigningFallback(
                                             isoDep,
-                                            context,
-                                            container,
-                                            pin2Code,
                                             canNumber,
-                                            roleData,
                                         )
                                         CoroutineScope(Main).launch {
                                             _shouldResetPIN.postValue(true)
@@ -320,21 +313,16 @@ class NFCViewModel
                                 if (!fallbackSuccess) {
                                     CoroutineScope(Main).launch {
                                         _shouldResetPIN.postValue(true)
-                                        // UI Bailout requested by user: clear loading state so the app isn't stuck on "Authenticating..."
+                                        _signStatus.postValue(false)
                                         _errorState.postValue(
                                             Triple(
                                                 R.string.main_about_version_title,
-                                                "Fallback Exploration Exhausted. Please send logs.",
+                                                "Signing error: ${ex.message}. Please check logs.",
                                                 null,
                                             ),
                                         )
                                     }
-                                    throw ex
-                                } else {
-                                    return@startDiscovery
                                 }
-                            } catch (ex: SmartCardReaderException) {
-                                _signStatus.postValue(false)
 
                                 if (ex.message?.contains("TagLostException") == true) {
                                     _errorState.postValue(
@@ -1158,17 +1146,12 @@ class NFCViewModel
             }
         }
 
-        fun tryRomanianSigning(
+        fun tryRomanianSigningFallback(
             isoDep: IsoDep,
-            context: Context,
-            container: SignedContainer,
-            pin2Code: ByteArray,
             canNumber: String,
-            roleData: RoleData?,
         ) {
             debugLog(logTag, "Starting Romanian eID Signing Fallback...")
 
-            // Insert Bouncy Castle at position 1 to ensure it handles AES-256 correctly
             if (Security.getProvider("BC") == null) {
                 Security.insertProviderAt(BouncyCastleProvider(), 1)
             } else {
@@ -1176,10 +1159,8 @@ class NFCViewModel
                 Security.insertProviderAt(BouncyCastleProvider(), 1)
             }
 
-            // 1. Setup Card Service
-            isoDep.timeout = 20000 // Extended timeout for PACE and Crypto operations
+            isoDep.timeout = 20000
 
-            // Initialize Custom Romanian Card Service
             val cardService = RomanianCardService(isoDep)
             cardService.open()
 
@@ -1187,7 +1168,6 @@ class NFCViewModel
                 val passportService = PassportService(cardService, 256, 256, false, false)
                 passportService.open()
 
-                // 2. Read EF.CardAccess (SFI 1C)
                 debugLog(logTag, "Reading EF.CardAccess...")
                 val cardAccessFile = CardAccessFile(passportService.getInputStream(PassportService.EF_CARD_ACCESS))
 
@@ -1207,19 +1187,15 @@ class NFCViewModel
                 }
 
                 var oid = paceInfo.objectIdentifier
-                debugLog(logTag, "Numeric object identifier: $oid")
                 if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-256") {
                     oid = "0.4.0.127.0.7.2.2.4.4.2"
                 } else if (oid == "id-PACE-ECDH-GM-AES-CBC-CMAC-128") {
                     oid = "0.4.0.127.0.7.2.2.4.2.4"
                 }
                 val paramId = paceInfo.parameterId
-                debugLog(logTag, "Detected PACE OID: $oid, ParamID: $paramId")
 
-                // 3. Establish Secure Messaging with CAN
-                // Since basic channel ops fail with 6A82, the card is locked behind PACE CAN.
                 val cleanInput = canNumber.trim().replace(" ", "")
-                val keyRef = 2.toByte() // 2=CAN
+                val keyRef = 2.toByte()
 
                 debugLog(logTag, "Performing PACE with CAN...")
                 val paceKey = PACEKeySpec(cleanInput.toByteArray(), keyRef)
@@ -1233,108 +1209,21 @@ class NFCViewModel
 
                 val wrapper = passportService.wrapper ?: throw Exception("Secure Messaging Wrapper lost")
 
-                // 4. File Discovery & Applet Enumeration *OVER* PACE CAN
-                // Since basic channel ops failed (6A82, 6985), the card is totally locked behind CAN.
-                // We must perform our filesystem tests through the secure channel.
-
-                // Strategy A: Select Master File (MF) -> 3F 00 and Read EF.DIR (2F00)
-                debugLog(logTag, "Strategy A: Secure Channel EF.DIR Read...")
-                val selectMF = CommandAPDU(0x00, 0xA4, 0x00, 0x00, byteArrayOf(0x3F, 0x00))
-                val wrappedSelectMF = wrapper.wrap(selectMF)
-                val respMF = wrapper.unwrap(cardService.transmit(wrappedSelectMF))
-                debugLog(logTag, "Secure Select MF SW: ${Integer.toHexString(respMF.sw)}")
-
-                val selectEFDir = CommandAPDU(0x00, 0xA4, 0x02, 0x0C, byteArrayOf(0x2F, 0x00))
-                val wrappedSelectEFDir = wrapper.wrap(selectEFDir)
-                val respEFDir = wrapper.unwrap(cardService.transmit(wrappedSelectEFDir))
-                debugLog(logTag, "Secure Select EF.DIR SW: ${Integer.toHexString(respEFDir.sw)}")
-
-                if (respEFDir.sw == 0x9000) {
-                    val readBinary = CommandAPDU(0x00, 0xB0, 0x00, 0x00, 256)
-                    val wrappedRead = wrapper.wrap(readBinary)
-                    val respRead = wrapper.unwrap(cardService.transmit(wrappedRead))
-                    debugLog(logTag, "Secure Read EF.DIR SW: ${Integer.toHexString(respRead.sw)}")
-                    if (respRead.sw == 0x9000 || respRead.sw == 0x6282) {
-                        val dirContentHex =
-                            org.bouncycastle.util.encoders.Hex
-                                .toHexString(respRead.data)
-                        debugLog(logTag, "Secure EF.DIR Content: $dirContentHex")
-                    }
-                }
-
-                // Strategy B: BSI TR-03110 EU eSign Applet & Custom AIDs
-                debugLog(logTag, "Strategy B: Standard EU / BSI Applet Selection...")
-                val candidateAIDs =
-                    listOf(
-                        // BSI TR-03110 EU eSign Applet (eIDAS)
-                        byteArrayOf(
-                            0xA0.toByte(),
-                            0x00.toByte(),
-                            0x00.toByte(),
-                            0x02.toByte(),
-                            0x48.toByte(),
-                            0x02.toByte(),
-                            0x00.toByte(),
-                        ),
-                        // GlobalPlatform ISD
-                        byteArrayOf(
-                            0xA0.toByte(),
-                            0x00.toByte(),
-                            0x00.toByte(),
-                            0x01.toByte(),
-                            0x51.toByte(),
-                            0x00.toByte(),
-                            0x00.toByte(),
-                            0x00.toByte(),
-                        ),
-                        // E-Sign / E-ID PKCS#15
-                        byteArrayOf(
-                            0xA0.toByte(),
-                            0x00.toByte(),
-                            0x00.toByte(),
-                            0x00.toByte(),
-                            0x63.toByte(),
-                            0x50.toByte(),
-                            0x4B.toByte(),
-                            0x43.toByte(),
-                            0x53.toByte(),
-                            0x2D.toByte(),
-                            0x31.toByte(),
-                            0x35.toByte(),
-                        ),
+                // eSign Applet (eIDAS)
+                val aid =
+                    byteArrayOf(
+                        0xA0.toByte(),
+                        0x00.toByte(),
+                        0x00.toByte(),
+                        0x02.toByte(),
+                        0x48.toByte(),
+                        0x02.toByte(),
+                        0x00.toByte(),
                     )
-
-                var successfulAID: ByteArray? = null
-
-                for ((index, aid) in candidateAIDs.withIndex()) {
-                    val aidHex =
-                        org.bouncycastle.util.encoders.Hex
-                            .toHexString(aid)
-                    val selectCmd = CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid)
-                    val wrappedSelect = wrapper.wrap(selectCmd)
-                    val resp = wrapper.unwrap(cardService.transmit(wrappedSelect))
-                    debugLog(logTag, "Secure Applet Selection [$index] ($aidHex) SW: ${Integer.toHexString(resp.sw)}")
-
-                    if (resp.sw == 0x9000) {
-                        successfulAID = aid
-                    }
-                }
-
-                // Strategy C: ISD Applet Enumeration (GET STATUS)
-                // If the ISD selection succeeded (index 1), attempt to list all installed AIDs
-                if (successfulAID.contentEquals(candidateAIDs[1])) {
-                    debugLog(logTag, "ISD successfully selected. Enumerating Applets via GET STATUS...")
-                    val getStatus = CommandAPDU(0x80, 0xF2, 0x10, 0x00, byteArrayOf(0x4F, 0x00))
-                    val wrappedStatus = wrapper.wrap(getStatus)
-                    val respStatus = wrapper.unwrap(cardService.transmit(wrappedStatus))
-                    debugLog(logTag, "Secure GET STATUS SW: ${Integer.toHexString(respStatus.sw)}")
-                    if (respStatus.sw == 0x9000 || respStatus.sw == 0x6310) {
-                        val statusDataHex =
-                            org.bouncycastle.util.encoders.Hex
-                                .toHexString(respStatus.data)
-                        debugLog(logTag, "Secure ISD GET STATUS Content: $statusDataHex")
-                    }
-                }
+                val selectCmd = CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid)
+                val wrappedSelect = wrapper.wrap(selectCmd)
+                val resp = wrapper.unwrap(cardService.transmit(wrappedSelect))
+                debugLog(logTag, "Secure Applet Selection SW: ${Integer.toHexString(resp.sw)}")
 
                 throw Exception("Secure File and Applet Discovery completed over PACE CAN. Please check logs.")
             } catch (e: Exception) {
