@@ -17,12 +17,14 @@ class LivenessAnalyzer(
     private val onInstruction: (String) -> Unit,
     private val onStepSuccess: (String) -> Unit,
     private val onLiveScore: (Float) -> Unit,
-    private val onLivenessVerified: (Bitmap) -> Unit,
+    private val onLivenessVerified: (Bitmap, Float) -> Unit,
 ) : ImageAnalysis.Analyzer {
     private var currentInstructionState = LivenessState.LOOK_STRAIGHT
     private var headTurnedRight = false
     private var headTurnedLeft = false
     private var isVerified = false
+    private var bestScore = 0f
+    private var bestFace: Bitmap? = null
     private var captureStartTime = 0L
 
     enum class LivenessState {
@@ -120,20 +122,29 @@ class LivenessAnalyzer(
                                         captureStartTime = System.currentTimeMillis()
                                     }
                                     val elapsed = System.currentTimeMillis() - captureStartTime
-                                    val remaining = 2000L - elapsed
+                                    val remaining = 3000L - elapsed // 3 seconds to gather the best score
+
+                                    // Perform comparison dynamically
+                                    val croppedFace = cropFace(finalBitmap, face.boundingBox)
+                                    val score = faceRecognizer.compareFaces(eIDBitmap, croppedFace)
+                                    onLiveScore(score)
+
+                                    if (score > bestScore) {
+                                        bestScore = score
+                                        bestFace = croppedFace
+                                    }
 
                                     if (remaining <= 0) {
                                         onInstruction("Capturing...")
                                         isVerified = true
-                                        val croppedFace = cropFace(finalBitmap, face.boundingBox)
-                                        onLivenessVerified(croppedFace)
+                                        onLivenessVerified(bestFace ?: croppedFace, bestScore)
                                     } else {
                                         val secs = (remaining / 1000) + 1
-                                        onInstruction("Hold still for ${secs}s...")
+                                        onInstruction("Analyzing... Hold still for ${secs}s")
                                     }
                                 } else {
                                     captureStartTime = 0L
-                                    onInstruction("Look straight into the camera to capture photo")
+                                    onInstruction("Look straight into the camera to analyze")
                                 }
                             }
                         }

@@ -460,7 +460,8 @@ class SmartIdViewModel
             return Pair(formattedText, cursorPosition)
         }
 
-        @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+
+        @android.annotation.SuppressLint("MissingPermission")
         fun sendNotification(
             title: String,
             message: String,
@@ -475,7 +476,8 @@ class SmartIdViewModel
             }
         }
 
-        @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+
+        @android.annotation.SuppressLint("MissingPermission")
         fun sendEmptyNotification() {
             if (notificationUtil.hasNotificationPermission()) {
                 notificationUtil.sendNotification(

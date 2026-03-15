@@ -49,6 +49,12 @@ import java.util.Locale
 import java.util.TimeZone
 
 class DateUtilTest {
+    @org.junit.Before
+    fun setUp() {
+        val mockContext = org.mockito.Mockito.mock(android.content.Context::class.java)
+        ee.ria.DigiDoc.utilsLib.logging.LoggingUtil.Companion.initialize(mockContext, java.util.logging.Logger.getLogger("test"), false)
+    }
+
     @Test
     fun dateUtil_format_successFromEpoch() {
         val dateFormat = DateUtil.dateTimeFormat.format(Date.from(Instant.EPOCH))

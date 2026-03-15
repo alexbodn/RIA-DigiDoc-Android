@@ -202,13 +202,17 @@ fun BiometricVerificationScreen(
                                                         onLiveScore = { score ->
                                                             liveScore = score
                                                         },
-                                                        onLivenessVerified = { bmp ->
+                                                        onLivenessVerified = { bmp, finalScore ->
                                                             livenessVerified = true
                                                             capturedBitmap = bmp
+                                                            liveScore = finalScore
 
-                                                            // If it verified, we know the last score was >= 0.7f
                                                             comparisonResult =
-                                                                "Verified (Score: %.2f)".format(liveScore ?: 0.7f)
+                                                                if (finalScore >= 0.7f) {
+                                                                    "Verified (Score: %.2f)".format(finalScore)
+                                                                } else {
+                                                                    "Failed (Score: %.2f)".format(finalScore)
+                                                                }
                                                         },
                                                     ),
                                                 )
@@ -231,6 +235,20 @@ fun BiometricVerificationScreen(
                             },
                             modifier = Modifier.fillMaxSize(),
                         )
+
+                                                // Custom Compose Toast
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = toastMessage != null,
+                            enter = androidx.compose.animation.fadeIn(),
+                            exit = androidx.compose.animation.fadeOut(),
+                            modifier = Modifier
+                                .align(Alignment.Center)
+
+                                .background(Color(0xBB000000), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                .padding(16.dp)
+                        ) {
+                            Text(text = toastMessage ?: "", color = Color.White, fontSize = 18.sp)
+                        }
 
                         // Overlay instruction
                         Text(
