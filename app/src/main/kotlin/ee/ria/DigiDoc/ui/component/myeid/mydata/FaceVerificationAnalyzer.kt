@@ -88,6 +88,14 @@ class FaceVerificationAnalyzer(
                         return@addOnSuccessListener
                     }
 
+
+                    // 1b. FACE SIZE CHECK (Must not be a tiny fridge magnet)
+                    if (face.boundingBox.width() < FaceVerificationConfig.MIN_FACE_WIDTH) {
+                        onStateChanged(LivenessState.TOO_FAR)
+                        imageProxy.close()
+                        return@addOnSuccessListener
+                    }
+
                     // 2. CONVERT TO BITMAP FOR PIXEL MATH
                     // Transform for mirroring and rotation before crop so the face boundaries align properly visually
                     val bitmap = imageProxy.toBitmap()

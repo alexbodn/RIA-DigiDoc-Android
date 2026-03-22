@@ -3,7 +3,8 @@ package ee.ria.DigiDoc.ui.component.myeid.mydata
 object FaceVerificationConfig {
     // Core ML Settings
     const val TARGET_FACE_SIZE = 112 // MobileFaceNet requires exactly 112x112
-    const val MATCH_THRESHOLD_PERCENT = 76.0f // Strict Cosine Distance match lock
+    const val MATCH_THRESHOLD_PERCENT = 76.0f
+    const val MIN_FACE_WIDTH = 150 // Minimum bounding box pixel width required to run comparison // Strict Cosine Distance match lock
 
     // Geometry & Liveness (Google ML Kit hardware thresholds)
     const val MAX_YAW_ANGLE = 12.0f   // Left/Right turn
@@ -24,6 +25,7 @@ enum class LivenessState(val prompt: String) {
     HOLD_STILL("Hold still..."),
     TOO_DARK("Move into better lighting"),
     TOO_BLURRY("Wipe your lens or hold still"),
+    TOO_FAR("Move your face closer to the camera"),
     PROCESSING("Verifying... Please wait"),
     MATCHED("Verification Complete! ✅"),
     FAILED("Verification Failed ❌")

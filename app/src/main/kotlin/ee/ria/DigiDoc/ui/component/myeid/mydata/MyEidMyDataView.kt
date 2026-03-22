@@ -72,6 +72,7 @@ fun MyEidMyDataView(
 ) {
     val context = LocalContext.current
     var showBiometricVerification by remember { mutableStateOf(false) }
+    var showRNDHarness by remember { mutableStateOf(false) }
     var isFrontCamera by remember { mutableStateOf(true) }
 
     Column(
@@ -117,10 +118,20 @@ fun MyEidMyDataView(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Download DG2")
                             }
+                        androidx.compose.material3.TextButton(onClick = { showRNDHarness = true }) {
+                            Icon(Icons.Filled.Face, contentDescription = "R&D Match Harness")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Open R&D Match Harness")
+                        }
 
                     }
                 }
             }
+        }
+
+
+        if (showRNDHarness) {
+            RNDTestScreen(onDismiss = { showRNDHarness = false })
         }
 
         if (showBiometricVerification && faceImage != null) {
