@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.mlkit.vision.common.InputImage
+import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.face.FaceDetection
 import com.google.mlkit.vision.face.FaceDetectorOptions
 import kotlinx.coroutines.Dispatchers
@@ -112,19 +113,15 @@ fun RNDTestScreen(
                     val wrappedDG2 = CylinderWrap.wrapFlatToCylinder(dg2Bitmap!!, 1.2f)
                     var dg2Cropped: Bitmap = wrappedDG2
                     try {
-                        val dg2Input = InputImage.fromBitmap(dg2Bitmap!!, 0)
-                                                    val faces = kotlin.coroutines.suspendCoroutine<List<com.google.mlkit.vision.face.Face>> { cont ->
-                                faceDetector.process(dg2Input)
-                                    .addOnSuccessListener { cont.resume(it) }
-                                    .addOnFailureListener { cont.resumeWithException(it) }
-                            }
+                        val dg2Input = InputImage.fromBitmap(wrappedDG2, 0)
+                            val faces = Tasks.await(faceDetector.process(dg2Input))
                         if (faces.isNotEmpty()) {
                             val bounds = faces.first().boundingBox
                             dg2Cropped = Bitmap.createBitmap(
-                                dg2Bitmap!!,
+                                wrappedDG2,
                                 maxOf(0, bounds.left), maxOf(0, bounds.top),
-                                minOf(bounds.width(), dg2Bitmap!!.width - maxOf(0, bounds.left)),
-                                minOf(bounds.height(), dg2Bitmap!!.height - maxOf(0, bounds.top))
+                                minOf(bounds.width(), wrappedDG2.width - maxOf(0, bounds.left)),
+                                minOf(bounds.height(), wrappedDG2.height - maxOf(0, bounds.top))
                             )
                         }
                     } catch (e: Exception) { e.printStackTrace() }
@@ -139,11 +136,7 @@ fun RNDTestScreen(
                             val selfieBmp = BitmapFactory.decodeStream(stream)
 
                             val selfieInput = InputImage.fromBitmap(selfieBmp, 0)
-                                                        val faces = kotlin.coroutines.suspendCoroutine<List<com.google.mlkit.vision.face.Face>> { cont ->
-                                faceDetector.process(selfieInput)
-                                    .addOnSuccessListener { cont.resume(it) }
-                                    .addOnFailureListener { cont.resumeWithException(it) }
-                            }
+                            val faces = Tasks.await(faceDetector.process(selfieInput))
 
                             if (faces.isNotEmpty()) {
                                 val bounds = faces.first().boundingBox
