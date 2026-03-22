@@ -12,6 +12,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -73,7 +76,12 @@ fun RNDTestScreen(
         selfieUris = uris
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Data Science Verification Harness", style = androidx.compose.material3.MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -191,6 +199,8 @@ fun RNDTestScreen(
         Spacer(modifier = Modifier.weight(1f))
         Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
             Text("Close Harness")
+        }
+            }
         }
     }
 }
