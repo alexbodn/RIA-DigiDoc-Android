@@ -43,7 +43,7 @@ fun RNDTestScreen(
     var csvUri by remember { mutableStateOf<Uri?>(null) }
     var csvData by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
-    val csvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val csvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         csvUri = uri
         uri?.let {
             val map = mutableMapOf<String, String>()
@@ -64,7 +64,7 @@ fun RNDTestScreen(
     var results by remember { mutableStateOf<List<Pair<String, Float>>>(emptyList()) }
     var isProcessing by remember { mutableStateOf(false) }
 
-    val dg2Launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val dg2Launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         dg2Uri = uri
         uri?.let {
             val inputStream = context.contentResolver.openInputStream(it)
@@ -72,7 +72,7 @@ fun RNDTestScreen(
         }
     }
 
-    val selfiesLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+    val selfiesLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         selfieUris = uris
     }
 
@@ -86,13 +86,13 @@ fun RNDTestScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Button(onClick = { csvLauncher.launch("text/csv") }) {
+                        Button(onClick = { csvLauncher.launch(arrayOf("text/csv", "text/plain")) }) {
                 Text("Upload CSV")
             }
-            Button(onClick = { dg2Launcher.launch("image/*") }) {
+            Button(onClick = { dg2Launcher.launch(arrayOf("image/*")) }) {
                 Text("Upload DG2")
             }
-            Button(onClick = { selfiesLauncher.launch("image/*") }) {
+            Button(onClick = { selfiesLauncher.launch(arrayOf("image/*")) }) {
                 Text("Upload Selfies (${selfieUris.size})")
             }
         }
