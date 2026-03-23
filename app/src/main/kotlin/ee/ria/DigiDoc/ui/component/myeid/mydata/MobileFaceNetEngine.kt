@@ -30,26 +30,27 @@ class MobileFaceNetEngine(
         val tflite = interpreter ?: return null
 
         val inputTensor = tflite.getInputTensor(0)
-        val shape = inputTensor.shape() // Expected: [batchSize, 112, 112, 3]
+        val shape = inputTensor.shape() // Expected: [batchSize, targetH, targetW, 3]
         val batchSize = shape[0]
+        val targetH = shape[1]
+        val targetW = shape[2]
 
         // Allocate buffer: batchSize * height * width * channels * 4 bytes per float
-        val byteBuffer = ByteBuffer.allocateDirect(batchSize * 112 * 112 * 3 * 4)
+        val byteBuffer = ByteBuffer.allocateDirect(batchSize * targetH * targetW * 3 * 4)
         byteBuffer.order(ByteOrder.nativeOrder())
 
         // 1. Normalize Bitmap pixels: (pixel - 127.5) / 128.0
-        val floatValues = FloatArray(112 * 112 * 3)
+        val floatValues = FloatArray(targetH * targetW * 3)
         var idx = 0
 
-        // MobileFaceNet requires exactly 112x112
-        val scaledBitmap = if (bitmap.width != 112 || bitmap.height != 112) {
-            Bitmap.createScaledBitmap(bitmap, 112, 112, true)
+        val scaledBitmap = if (bitmap.width != targetW || bitmap.height != targetH) {
+            Bitmap.createScaledBitmap(bitmap, targetW, targetH, true)
         } else {
             bitmap
         }
 
-        val pixels = IntArray(112 * 112)
-        scaledBitmap.getPixels(pixels, 0, 112, 0, 0, 112, 112)
+        val pixels = IntArray(targetW * targetH)
+        scaledBitmap.getPixels(pixels, 0, targetW, 0, 0, targetW, targetH)
 
         for (pixel in pixels) {
             val r = Color.red(pixel)
