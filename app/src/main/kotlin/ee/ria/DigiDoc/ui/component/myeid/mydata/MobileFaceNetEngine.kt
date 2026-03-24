@@ -17,7 +17,7 @@ class MobileFaceNetEngine(
 
     init {
         try {
-            val modelBuffer = FileUtil.loadMappedFile(context, "facenet.tflite")
+            val modelBuffer = FileUtil.loadMappedFile(context, "MobileFaceNet.tflite")
             val options = Interpreter.Options()
             options.setNumThreads(4)
             interpreter = Interpreter(modelBuffer, options)

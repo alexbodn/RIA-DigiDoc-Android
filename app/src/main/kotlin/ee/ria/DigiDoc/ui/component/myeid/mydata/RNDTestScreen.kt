@@ -27,6 +27,44 @@ import com.google.android.gms.tasks.Tasks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+
+
+fun transformEidNatural(eidBmp: android.graphics.Bitmap, selfieBmp: android.graphics.Bitmap, eidFace: com.google.mlkit.vision.face.Face, selfieFace: com.google.mlkit.vision.face.Face): android.graphics.Bitmap {
+    val eLeft = eidFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)
+    val eRight = eidFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)
+    val sLeft = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)
+    val sRight = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)
+
+    if (eLeft == null || eRight == null || sLeft == null || sRight == null) return eidBmp
+
+    val eCenter = android.graphics.PointF((eLeft.position.x + eRight.position.x)/2f, (eLeft.position.y + eRight.position.y)/2f)
+    val sCenter = android.graphics.PointF((sLeft.position.x + sRight.position.x)/2f, (sLeft.position.y + sRight.position.y)/2f)
+
+    val eDx = (eRight.position.x - eLeft.position.x).toDouble()
+    val eDy = (eRight.position.y - eLeft.position.y).toDouble()
+    val eDist = Math.sqrt(eDx*eDx + eDy*eDy).toFloat()
+    val eAngle = Math.toDegrees(Math.atan2(eDy, eDx)).toFloat()
+
+    val sDx = (sRight.position.x - sLeft.position.x).toDouble()
+    val sDy = (sRight.position.y - sLeft.position.y).toDouble()
+    val sDist = Math.sqrt(sDx*sDx + sDy*sDy).toFloat()
+    val sAngle = Math.toDegrees(Math.atan2(sDy, sDx)).toFloat()
+
+    val scale = sDist / eDist
+    val angleDiff = sAngle - eAngle
+
+    val matrix = android.graphics.Matrix()
+    matrix.postRotate(angleDiff, eCenter.x, eCenter.y)
+    matrix.postScale(scale, scale, eCenter.x, eCenter.y)
+    matrix.postTranslate(sCenter.x - eCenter.x, sCenter.y - eCenter.y)
+
+    // warpAffine creates an image matching the target dimensions
+    val output = android.graphics.Bitmap.createBitmap(selfieBmp.width, selfieBmp.height, android.graphics.Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(output)
+    canvas.drawBitmap(eidBmp, matrix, null)
+    return output
+}
+
 fun Uri.getFileName(context: android.content.Context): String {
     var result: String? = null
     if (scheme == "content") {
@@ -155,91 +193,64 @@ fun RNDTestScreen(
                                 .build()
                             val faceDetector = FaceDetection.getClient(detectorOptions)
 
-                            // 1. Process DG2
+                            // 1. Process DG2 (Just grab the face, crop and embedding happens per selfie)
                             val wrappedDG2 = CylinderWrap.wrapFlatToCylinder(dg2Bitmap!!, 1.2f)
-                            var dg2Cropped: Bitmap = wrappedDG2
                             val dg2Input = InputImage.fromBitmap(wrappedDG2, 0)
                             val dg2Faces = Tasks.await(faceDetector.process(dg2Input))
-
-                            if (dg2Faces.isNotEmpty()) {
-                                val face = dg2Faces.first()
-                                val bounds = face.boundingBox
-                                var alignedBmp = wrappedDG2
-
-                                val leftEye = face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)
-                                val rightEye = face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)
-
-                                if (leftEye != null && rightEye != null) {
-                                    val dx = (rightEye.position.x - leftEye.position.x).toDouble()
-                                    val dy = (rightEye.position.y - leftEye.position.y).toDouble()
-                                    val angle = Math.toDegrees(Math.atan2(dy, dx)).toFloat()
-                                    val matrix = android.graphics.Matrix()
-                                    matrix.postRotate(angle, (leftEye.position.x + rightEye.position.x)/2f, (leftEye.position.y + rightEye.position.y)/2f)
-                                    alignedBmp = Bitmap.createBitmap(alignedBmp, 0, 0, alignedBmp.width, alignedBmp.height, matrix, true)
-                                }
-
-                                val size = maxOf(bounds.width(), bounds.height())
-                                val cx = bounds.left + bounds.width()/2
-                                val cy = bounds.top + bounds.height()/2
-                                val x = maxOf(0, cx - size/2)
-                                val y = maxOf(0, cy - size/2)
-                                val fSize = minOf(size, minOf(alignedBmp.width - x, alignedBmp.height - y))
-
-                                dg2Cropped = Bitmap.createBitmap(alignedBmp, x, y, fSize, fSize)
-                            }
-
-                            val dg2Emb = engine.getEmbedding(dg2Cropped) ?: FloatArray(0)
+                            val dg2Face = if (dg2Faces.isNotEmpty()) dg2Faces.first() else null
 
                             // 2. Process Selfies Batch
                             val newResults = mutableListOf<Pair<String, Float>>()
                             for (uri in selfieUris) {
                                 try {
-                                    val stream = context.contentResolver.openInputStream(uri)
-                                    val selfieBmp = BitmapFactory.decodeStream(stream)
+                                    val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
+                                    val decodedBmp = android.graphics.ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                                        decoder.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
+                                        decoder.isMutableRequired = true
+                                        val maxDim = maxOf(info.size.width, info.size.height)
+                                        if (maxDim > 1600) {
+                                            val scale = 1600f / maxDim.toFloat()
+                                            decoder.setTargetSize((info.size.width * scale).toInt(), (info.size.height * scale).toInt())
+                                        }
+                                    }
+                                    val selfieBmp = decodedBmp.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
 
                                     val selfieInput = InputImage.fromBitmap(selfieBmp, 0)
                                     val faces = Tasks.await(faceDetector.process(selfieInput))
 
-                                    if (faces.isNotEmpty()) {
-                                        var selfieCropped: Bitmap
-                                        val face = faces.first()
-                                        val bounds = face.boundingBox
-                                        var alignedBmp = selfieBmp
+                                    if (faces.isNotEmpty() && dg2Face != null) {
+                                        val selfieFace = faces.first()
 
-                                        val leftEye = face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)
-                                        val rightEye = face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)
+                                        // 🟢 EXACT PYTHON ALIGNMENT
+                                        val alignedEid = transformEidNatural(wrappedDG2, selfieBmp, dg2Face, selfieFace)
 
-                                        if (leftEye != null && rightEye != null) {
-                                            val dx = (rightEye.position.x - leftEye.position.x).toDouble()
-                                            val dy = (rightEye.position.y - leftEye.position.y).toDouble()
-                                            val angle = Math.toDegrees(Math.atan2(dy, dx)).toFloat()
-                                            val matrix = android.graphics.Matrix()
-                                            matrix.postRotate(angle, (leftEye.position.x + rightEye.position.x)/2f, (leftEye.position.y + rightEye.position.y)/2f)
-                                            alignedBmp = Bitmap.createBitmap(alignedBmp, 0, 0, alignedBmp.width, alignedBmp.height, matrix, true)
-                                        }
+                                        val hs = selfieBmp.height
+                                        val ws = selfieBmp.width
+                                        val cx = ws / 2
+                                        val cy = hs / 2
+                                        val size = minOf(hs, ws) / 2
 
-                                        val size = maxOf(bounds.width(), bounds.height())
-                                        val cx = bounds.left + bounds.width()/2
-                                        val cy = bounds.top + bounds.height()/2
-                                        val x = maxOf(0, cx - size/2)
-                                        val y = maxOf(0, cy - size/2)
-                                        val fSize = minOf(size, minOf(alignedBmp.width - x, alignedBmp.height - y))
+                                        val y1 = maxOf(0, cy - size)
+                                        val y2 = minOf(hs, cy + size)
+                                        val x1 = maxOf(0, cx - size)
+                                        val x2 = minOf(ws, cx + size)
 
-                                        selfieCropped = Bitmap.createBitmap(alignedBmp, x, y, fSize, fSize)
+                                        val eidCrop = Bitmap.createBitmap(alignedEid, x1, y1, x2 - x1, y2 - y1)
+                                        val selfieCrop = Bitmap.createBitmap(selfieBmp, x1, y1, x2 - x1, y2 - y1)
 
-                                        val selfieEmb = engine.getEmbedding(selfieCropped)
-                                        if (selfieEmb != null) {
+                                        val dg2Emb = engine.getEmbedding(eidCrop)
+                                        val selfieEmb = engine.getEmbedding(selfieCrop)
+
+                                        if (dg2Emb != null && selfieEmb != null) {
                                             val score = engine.calculateCosineSimilarity(dg2Emb, selfieEmb)
-
                                             val actualName = uri.getFileName(context)
-
                                             val actor = csvData.entries.find { actualName.contains(it.key) }?.value ?: "Unknown"
                                             newResults.add(Pair("$actor | $actualName", score))
                                         } else {
                                             newResults.add(Pair(uri.getFileName(context), -1f))
                                         }
                                     } else {
-                                        newResults.add(Pair(uri.getFileName(context), -2f)) // No face found
+                                        newResults.add(Pair(uri.getFileName(context), -2f))
                                     }
                                 } catch (e: Exception) {
                                     newResults.add(Pair(uri.getFileName(context), -3f)) // Error
