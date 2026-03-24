@@ -106,7 +106,7 @@ class FaceVerificationAnalyzer(
                     }
                     val finalBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 
-                    val faceCrop = cropFaceFromBitmap(finalBitmap, face.boundingBox)
+                    val faceCrop = cropFaceFromBitmap(finalBitmap, face.boundingBox, face)
 
                     // 3. LIGHTING & BLUR CHECKS
                     if (calculateBrightness(faceCrop) < FaceVerificationConfig.BRIGHTNESS_TOO_DARK) {
@@ -145,21 +145,54 @@ class FaceVerificationAnalyzer(
         isVerifying = false
     }
 
-    private fun cropFaceFromBitmap(bitmap: Bitmap, bounds: Rect): Bitmap {
+    // Add alignment logic using landmarks directly if available
+    private fun cropFaceFromBitmap(bitmap: Bitmap, bounds: Rect, face: com.google.mlkit.vision.face.Face? = null): Bitmap {
+        var processingBitmap = bitmap
+
+        // 🟢 Python R&D Port: Affine Eye Alignment
+        if (face != null) {
+            val leftEye = face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)
+            val rightEye = face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)
+
+            if (leftEye != null && rightEye != null) {
+                val dx = (rightEye.position.x - leftEye.position.x).toDouble()
+                val dy = (rightEye.position.y - leftEye.position.y).toDouble()
+                val angle = Math.toDegrees(Math.atan2(dy, dx)).toFloat()
+
+                // Only rotate if angle is significant
+                if (Math.abs(angle) > 2.0f) {
+                    val center = android.graphics.PointF(
+                        (leftEye.position.x + rightEye.position.x) / 2f,
+                        (leftEye.position.y + rightEye.position.y) / 2f
+                    )
+                    val matrix = Matrix()
+                    matrix.postRotate(angle, center.x, center.y)
+                    processingBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                }
+            }
+        }
+
+        // 🟢 Python R&D Port: Centered square bounding crop
         var x = bounds.left
         var y = bounds.top
-        var width = bounds.width()
-        var height = bounds.height()
+        var w = bounds.width()
+        var h = bounds.height()
 
-        // Fallback bounds
+        // Make it a perfect square based on max dimension
+        val size = maxOf(w, h)
+        val cx = x + w / 2
+        val cy = y + h / 2
+
+        x = cx - size / 2
+        y = cy - size / 2
+
         x = maxOf(0, x)
         y = maxOf(0, y)
-        width = minOf(width, bitmap.width - x)
-        height = minOf(height, bitmap.height - y)
+        val finalSize = minOf(size, minOf(processingBitmap.width - x, processingBitmap.height - y))
 
-        if (width <= 0 || height <= 0) return bitmap
+        if (finalSize <= 0) return processingBitmap
 
-        return Bitmap.createBitmap(bitmap, x, y, width, height)
+        return Bitmap.createBitmap(processingBitmap, x, y, finalSize, finalSize)
     }
 
     private fun calculateBrightness(bitmap: Bitmap): Float {
