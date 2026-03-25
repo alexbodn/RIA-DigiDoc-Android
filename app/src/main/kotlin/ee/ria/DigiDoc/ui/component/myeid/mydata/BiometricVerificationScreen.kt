@@ -202,7 +202,8 @@ fun BiometricVerificationScreen(
                                             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                             .build()
                                             .also { analysis ->
-                                                val analyzer = FaceVerificationAnalyzer(
+                                                var analyzer: FaceVerificationAnalyzer? = null
+                                                analyzer = FaceVerificationAnalyzer(
                                                     isFrontCamera = useFrontCamera,
                                                     faceDetector = faceDetector,
                                                     onStateChanged = { state ->
@@ -234,7 +235,11 @@ fun BiometricVerificationScreen(
 
                                                             if (dg2Emb != null && selfieEmb != null) {
                                                                 val score = faceEngine.calculateCosineSimilarity(dg2Emb, selfieEmb)
-                                                                liveScore = score
+
+                                                                // Keep the best score so far on the screen
+                                                                if (liveScore == null || score > liveScore!!) {
+                                                                    liveScore = score
+                                                                }
 
                                                                 if (score >= FaceVerificationConfig.MATCH_THRESHOLD_PERCENT) {
                                                                     livenessInstruction = LivenessState.MATCHED.prompt
@@ -242,13 +247,19 @@ fun BiometricVerificationScreen(
                                                                     comparisonResult = "Verified (Score: %.2f%%)".format(score)
                                                                     capturedBitmap = selfieCrop
                                                                 } else {
-                                                                    livenessInstruction = LivenessState.FAILED.prompt
+                                                                    // Do not fail immediately, let them keep trying.
+                                                                    // Inform them it didn't pass yet.
+                                                                    livenessInstruction = "Keep trying to match the photo. Best score so far: %.2f%%".format(liveScore)
+                                                                    // Important: Unlock the analyzer so it takes another frame
+                                                                    analyzer?.resume()
                                                                 }
+                                                            } else {
+                                                                analyzer?.resume()
                                                             }
                                                         }
                                                     }
                                                 )
-                                                analysis.setAnalyzer(executor, analyzer)
+                                                analysis.setAnalyzer(executor, analyzer!!)
                                             }
 
                                     val cameraSelector = if (useFrontCamera) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
