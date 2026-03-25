@@ -9,12 +9,12 @@ object FaceVerificationConfig {
     // Geometry & Liveness (Google ML Kit hardware thresholds)
     const val MAX_YAW_ANGLE = 12.0f   // Left/Right turn
     const val MAX_TILT_ANGLE = 12.0f  // Ear to shoulder tilt
-    const val INTRINSIC_RATIO_TOLERANCE = 0.08f // Eye-distance to face-width ratio variance
+    const val INTRINSIC_RATIO_TOLERANCE = 0.04f // Eye-distance to face-width ratio variance
 
     // Lighting & Image Quality (Pixel math thresholds)
     const val BRIGHTNESS_TOO_DARK = 60.0f
-    const val BLUR_THRESHOLD = 45.0f // Laplacian variance threshold
-    const val SHADOW_RATIO_THRESHOLD = 0.40f // Eye-brightness vs Cheek-brightness
+    const val BLUR_THRESHOLD = 40.0f // Laplacian variance threshold
+    const val SHADOW_RATIO_THRESHOLD = 0.55f // Eye-brightness vs Cheek-brightness
 }
 
 enum class LivenessState(val prompt: String) {
@@ -26,6 +26,8 @@ enum class LivenessState(val prompt: String) {
     TOO_DARK("Move into better lighting"),
     TOO_BLURRY("Wipe your lens or hold still"),
     TOO_FAR("Move your face closer to the camera"),
+    TOO_MUCH_SHADOW("💡 Move into even lighting. Avoid shadows."),
+    INTRINSIC_MISMATCH("❌ Face structure mismatch"),
     PROCESSING("Verifying... Please wait"),
     MATCHED("Verification Complete! ✅"),
     FAILED("Verification Failed ❌")

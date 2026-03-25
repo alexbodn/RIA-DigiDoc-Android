@@ -119,19 +119,17 @@ fun RNDTestScreen(
     var dg2Uri by remember { mutableStateOf<Uri?>(null) }
     var dg2Bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var selfieUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
-    var results by remember { mutableStateOf<List<Pair<String, Float>>>(emptyList()) }
+    var results by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
     var isProcessing by remember { mutableStateOf(false) }
 
     val saveCsvLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         if (uri != null) {
             context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { out ->
-                out.write("Filename,Actor,Match_%")
+                out.write("Filename,Actor,Match_%,Intrinsic_Diff,Blur,Shadow")
                 out.newLine()
                 for (res in results) {
-                    val parts = res.first.split(" | ")
-                    val actor = if (parts.size > 1) parts[0] else "Unknown"
-                    val filename = if (parts.size > 1) parts[1] else parts[0]
-                    out.write(filename + "," + actor + "," + res.second.toString())
+                    val (nameActor, data) = res
+                    out.write("$nameActor,$data")
                     out.newLine()
                 }
             }
@@ -200,7 +198,7 @@ fun RNDTestScreen(
                             val dg2Face = if (dg2Faces.isNotEmpty()) dg2Faces.first() else null
 
                             // 2. Process Selfies Batch
-                            val newResults = mutableListOf<Pair<String, Float>>()
+                            val newResults = mutableListOf<Pair<String, String>>()
                             for (uri in selfieUris) {
                                 try {
                                     val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
@@ -245,15 +243,45 @@ fun RNDTestScreen(
                                             val score = engine.calculateCosineSimilarity(dg2Emb, selfieEmb)
                                             val actualName = uri.getFileName(context)
                                             val actor = csvData.entries.find { actualName.contains(it.key) }?.value ?: "Unknown"
-                                            newResults.add(Pair("$actor | $actualName", score))
+
+                                            // 🟢 Gatekeeper telemetry
+                                            val blurScore = FaceVerificationAnalyzer.calculateLaplacianVariance(selfieCrop)
+                                            val shadowScore = FaceVerificationAnalyzer.calculateShadowRatio(selfieBmp, selfieFace)
+
+                                            val sL = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)?.position
+                                            val sR = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)?.position
+                                            val sLC = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_CHEEK)?.position
+                                            val sRC = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_CHEEK)?.position
+
+                                            val eL = dg2Face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)?.position
+                                            val eR = dg2Face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)?.position
+                                            val eLC = dg2Face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_CHEEK)?.position
+                                            val eRC = dg2Face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_CHEEK)?.position
+
+                                            var intrinsicDiff = -1f
+                                            if (sL != null && sR != null && sLC != null && sRC != null && eL != null && eR != null && eLC != null && eRC != null) {
+                                                val sEyeDist = Math.sqrt(((sR.x - sL.x)*(sR.x - sL.x) + (sR.y - sL.y)*(sR.y - sL.y)).toDouble()).toFloat()
+                                                val sWidth = Math.sqrt(((sRC.x - sLC.x)*(sRC.x - sLC.x) + (sRC.y - sLC.y)*(sRC.y - sLC.y)).toDouble()).toFloat()
+
+                                                val eEyeDist = Math.sqrt(((eR.x - eL.x)*(eR.x - eL.x) + (eR.y - eL.y)*(eR.y - eL.y)).toDouble()).toFloat()
+                                                val eWidth = Math.sqrt(((eRC.x - eLC.x)*(eRC.x - eLC.x) + (eRC.y - eLC.y)*(eRC.y - eLC.y)).toDouble()).toFloat()
+
+                                                val sRatio = sEyeDist / (sWidth + 1e-6f)
+                                                val eRatio = eEyeDist / (eWidth + 1e-6f)
+                                                intrinsicDiff = Math.abs(sRatio - eRatio)
+                                            }
+
+                                            // Pack data into string for CSV parsing later
+                                            val telemetryData = "%.2f,%.3f,%.1f,%.2f".format(score, intrinsicDiff, blurScore, shadowScore)
+                                            newResults.add(Pair("$actualName,$actor", telemetryData))
                                         } else {
-                                            newResults.add(Pair(uri.getFileName(context), -1f))
+                                            newResults.add(Pair(uri.getFileName(context), "NO_EMBEDDING"))
                                         }
                                     } else {
-                                        newResults.add(Pair(uri.getFileName(context), -2f))
+                                        newResults.add(Pair(uri.getFileName(context), "NO_FACE"))
                                     }
                                 } catch (e: Exception) {
-                                    newResults.add(Pair(uri.getFileName(context), -3f)) // Error
+                                    newResults.add(Pair(uri.getFileName(context), "ERROR")) // Error
                                 }
                             }
 
@@ -261,9 +289,9 @@ fun RNDTestScreen(
                             isProcessing = false
                           } catch (e: Exception) {
                             android.util.Log.e("RNDTestScreen", "Crash running telemetry", e)
-                            val newResults = mutableListOf<Pair<String, Float>>()
-                            newResults.add(Pair("FATAL ERROR", -4f))
-                            newResults.add(Pair(e.message ?: e.javaClass.simpleName, -4f))
+                            val newResults = mutableListOf<Pair<String, String>>()
+                            newResults.add(Pair("FATAL ERROR", "CRASH"))
+                            newResults.add(Pair(e.message ?: e.javaClass.simpleName, "CRASH"))
                             results = newResults
                             isProcessing = false
                           }
@@ -284,14 +312,10 @@ fun RNDTestScreen(
 
                 LazyColumn {
                     items(results) { res ->
-                        val status = when {
-                            res.second == -1f -> "No Embedding"
-                            res.second == -2f -> "No Face Found"
-                            res.second == -3f -> "Error Reading"
-                            res.second == -4f -> "CRASH"
-                            else -> "%.2f%%".format(res.second)
-                        }
-                        Text("${res.first} : $status")
+                        val (nameActor, data) = res
+                        val name = nameActor.split(",").firstOrNull() ?: nameActor
+                        val scoreStr = data.split(",").firstOrNull() ?: data
+                        Text("$name : $scoreStr")
                     }
                 }
 
