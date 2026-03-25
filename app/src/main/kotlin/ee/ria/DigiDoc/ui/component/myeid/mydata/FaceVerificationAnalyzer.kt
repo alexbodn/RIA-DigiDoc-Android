@@ -13,7 +13,7 @@ class FaceVerificationAnalyzer(
     private val isFrontCamera: Boolean,
     private val faceDetector: FaceDetector,
     private val onStateChanged: (LivenessState) -> Unit,
-    private val onPerfectFrameFound: (Bitmap) -> Unit
+    private val onPerfectFrameFound: (Bitmap, com.google.mlkit.vision.face.Face) -> Unit
 ) : ImageAnalysis.Analyzer {
 
     private var isVerifying = false
@@ -131,7 +131,7 @@ class FaceVerificationAnalyzer(
                         FaceVerificationConfig.TARGET_FACE_SIZE,
                         true
                     )
-                    onPerfectFrameFound(readyForNet)
+                    onPerfectFrameFound(finalBitmap, face)
 
                     imageProxy.close()
                 }
