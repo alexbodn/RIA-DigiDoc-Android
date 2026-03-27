@@ -230,58 +230,65 @@ fun BiometricVerificationScreen(
 
                                                             bestFaceBitmap = selfieCrop
 
-                                                            val dg2Emb = faceEngine.getEmbedding(eidCrop)
-                                                            val selfieEmb = faceEngine.getEmbedding(selfieCrop)
+                                                            // Calculate the telemetry data for the gatekeeper FIRST
+                                                            val blurScore = FaceVerificationAnalyzer.calculateLaplacianVariance(selfieCrop)
+                                                            val shadowScore = FaceVerificationAnalyzer.calculateShadowRatio(selfieFrame, selfieFace)
 
-                                                            if (dg2Emb != null && selfieEmb != null) {
-                                                                val score = faceEngine.calculateCosineSimilarity(dg2Emb, selfieEmb)
+                                                            // Re-calculate diff (or use default if missing landmarks)
+                                                            var intrinsicDiff = 0.0f
+                                                            val sL = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)?.position
+                                                            val sR = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)?.position
+                                                            val sLC = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_CHEEK)?.position
+                                                            val sRC = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_CHEEK)?.position
+                                                            val eL = eIDFace!!.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)?.position
+                                                            val eR = eIDFace!!.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)?.position
+                                                            val eLC = eIDFace!!.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_CHEEK)?.position
+                                                            val eRC = eIDFace!!.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_CHEEK)?.position
 
-                                                                // Keep the best score so far on the screen
-                                                                if (liveScore == null || score > liveScore!!) {
-                                                                    liveScore = score
-                                                                }
+                                                            if (sL != null && sR != null && sLC != null && sRC != null && eL != null && eR != null && eLC != null && eRC != null) {
+                                                                val sEyeDist = Math.sqrt(((sR.x - sL.x)*(sR.x - sL.x) + (sR.y - sL.y)*(sR.y - sL.y)).toDouble()).toFloat()
+                                                                val sWidth = Math.sqrt(((sRC.x - sLC.x)*(sRC.x - sLC.x) + (sRC.y - sLC.y)*(sRC.y - sLC.y)).toDouble()).toFloat()
+                                                                val eEyeDist = Math.sqrt(((eR.x - eL.x)*(eR.x - eL.x) + (eR.y - eL.y)*(eR.y - eL.y)).toDouble()).toFloat()
+                                                                val eWidth = Math.sqrt(((eRC.x - eLC.x)*(eRC.x - eLC.x) + (eRC.y - eLC.y)*(eRC.y - eLC.y)).toDouble()).toFloat()
 
-                                                                // Extract the telemetry data for the gatekeeper
-                                                                val blurScore = FaceVerificationAnalyzer.calculateLaplacianVariance(selfieCrop)
-                                                                val shadowScore = FaceVerificationAnalyzer.calculateShadowRatio(selfieFrame, selfieFace)
+                                                                val selfieRatio = sEyeDist / (sWidth + 1e-6f)
+                                                                val eidRatio = eEyeDist / (eWidth + 1e-6f)
+                                                                intrinsicDiff = Math.abs(selfieRatio - eidRatio)
+                                                            }
+                                                            val gatekeeperInfo = "\n\n🔬 GATEKEEPER:\nIntrinsic: %.3f\nBlur: %.1f\nShadow: %.2f".format(intrinsicDiff, blurScore, shadowScore)
 
-                                                                // Re-calculate diff (or use default if missing landmarks)
-                                                                var intrinsicDiff = 0.0f
-                                                                val sL = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)?.position
-                                                                val sR = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)?.position
-                                                                val sLC = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_CHEEK)?.position
-                                                                val sRC = selfieFace.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_CHEEK)?.position
-                                                                val eL = eIDFace!!.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)?.position
-                                                                val eR = eIDFace!!.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)?.position
-                                                                val eLC = eIDFace!!.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_CHEEK)?.position
-                                                                val eRC = eIDFace!!.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_CHEEK)?.position
+                                                            // GATEKEEPER HARD ABORT CHECK
+                                                            if (intrinsicDiff > FaceVerificationConfig.INTRINSIC_RATIO_TOLERANCE) {
+                                                                livenessInstruction = LivenessState.INTRINSIC_MISMATCH.prompt + gatekeeperInfo
+                                                                analyzer?.resume()
+                                                            } else {
+                                                                // Passed geometry check, run FaceNet
+                                                                val dg2Emb = faceEngine.getEmbedding(eidCrop)
+                                                                val selfieEmb = faceEngine.getEmbedding(selfieCrop)
 
-                                                                if (sL != null && sR != null && sLC != null && sRC != null && eL != null && eR != null && eLC != null && eRC != null) {
-                                                                    val sEyeDist = Math.sqrt(((sR.x - sL.x)*(sR.x - sL.x) + (sR.y - sL.y)*(sR.y - sL.y)).toDouble()).toFloat()
-                                                                    val sWidth = Math.sqrt(((sRC.x - sLC.x)*(sRC.x - sLC.x) + (sRC.y - sLC.y)*(sRC.y - sLC.y)).toDouble()).toFloat()
-                                                                    val eEyeDist = Math.sqrt(((eR.x - eL.x)*(eR.x - eL.x) + (eR.y - eL.y)*(eR.y - eL.y)).toDouble()).toFloat()
-                                                                    val eWidth = Math.sqrt(((eRC.x - eLC.x)*(eRC.x - eLC.x) + (eRC.y - eLC.y)*(eRC.y - eLC.y)).toDouble()).toFloat()
+                                                                if (dg2Emb != null && selfieEmb != null) {
+                                                                    val score = faceEngine.calculateCosineSimilarity(dg2Emb, selfieEmb)
 
-                                                                    val selfieRatio = sEyeDist / (sWidth + 1e-6f)
-                                                                    val eidRatio = eEyeDist / (eWidth + 1e-6f)
-                                                                    intrinsicDiff = Math.abs(selfieRatio - eidRatio)
-                                                                }
-                                                                val gatekeeperInfo = "\n\n🔬 GATEKEEPER:\nIntrinsic: %.3f\nBlur: %.1f\nShadow: %.2f".format(intrinsicDiff, blurScore, shadowScore)
+                                                                    // Keep the best score so far on the screen
+                                                                    if (liveScore == null || score > liveScore!!) {
+                                                                        liveScore = score
+                                                                    }
 
-                                                                if (score >= FaceVerificationConfig.MATCH_THRESHOLD_PERCENT) {
-                                                                    livenessInstruction = LivenessState.MATCHED.prompt
-                                                                    livenessVerified = true
-                                                                    comparisonResult = "Verified (Score: %.2f%%)".format(score) + gatekeeperInfo
-                                                                    capturedBitmap = selfieCrop
+                                                                    if (score >= FaceVerificationConfig.MATCH_THRESHOLD_PERCENT) {
+                                                                        livenessInstruction = LivenessState.MATCHED.prompt
+                                                                        livenessVerified = true
+                                                                        comparisonResult = "Verified (Score: %.2f%%)".format(score) + gatekeeperInfo
+                                                                        capturedBitmap = selfieCrop
+                                                                    } else {
+                                                                        // Do not fail immediately, let them keep trying.
+                                                                        // Inform them it didn't pass yet.
+                                                                        livenessInstruction = "Keep trying to match the photo. Best score so far: %.2f%%".format(liveScore) + gatekeeperInfo
+                                                                        // Important: Unlock the analyzer so it takes another frame
+                                                                        analyzer?.resume()
+                                                                    }
                                                                 } else {
-                                                                    // Do not fail immediately, let them keep trying.
-                                                                    // Inform them it didn't pass yet.
-                                                                    livenessInstruction = "Keep trying to match the photo. Best score so far: %.2f%%".format(liveScore) + gatekeeperInfo
-                                                                    // Important: Unlock the analyzer so it takes another frame
                                                                     analyzer?.resume()
                                                                 }
-                                                            } else {
-                                                                analyzer?.resume()
                                                             }
                                                         }
                                                     }
