@@ -337,6 +337,9 @@
     <string name="signature_update_nfc_hold">Hold your phone near the ID-card</string>
     <string name="signature_update_nfc_detected">Authenticating with ID-card</string>
 
+    <string name="nfc_error_ats_not_supported">Card not recognized. Please ensure you are using a supported ID-card and hold it steady against the NFC sensor.</string>
+    <string name="nfc_error_tag_lost">Connection to card lost. Please hold the card steady and try again.</string>
+
     <string name="sign_button">Sign</string>
     <string name="next_button">Next</string>
     <string name="add_signature_button">Add new signature</string>
@@ -350,6 +353,11 @@
     <string name="ok_button">OK</string>
     <string name="choose_button">Choose</string>
     <string name="close_button">Close</string>
+    <string name="test_button">Test</string>
+    <string name="skip_identification_button">Skip identification</string>
+    <string name="myeid_test_tab_title">Test</string>
+    <string name="myeid_test_tab_description">Enter the CAN number from the front of your ID-card and your PIN1 to test authentication.</string>
+    <string name="myeid_test_button">Test Authentication</string>
 
     <!-- Crypto -->
     <string name="encrypt_button">Encrypt</string>

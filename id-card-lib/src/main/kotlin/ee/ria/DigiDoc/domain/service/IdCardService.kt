@@ -56,4 +56,16 @@ interface IdCardService {
         currentPuk: ByteArray,
         newPin: ByteArray,
     ): IdCardData
+
+    @Throws(CodeVerificationException::class, Exception::class)
+    suspend fun verifyPin1(
+        token: Token,
+        pin1: ByteArray,
+    ): Boolean
+
+    @Throws(CodeVerificationException::class, Exception::class)
+    suspend fun verifyPin2(
+        token: Token,
+        pin2: ByteArray,
+    ): Boolean
 }

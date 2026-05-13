@@ -86,6 +86,8 @@ fun MyEidPinAndCertificateView(
     onForgotPinClick: (() -> Unit)? = null,
     changePinText: String = "",
     onChangePinClick: (() -> Unit)? = null,
+    testPinText: String = "",
+    onTestPinClick: (() -> Unit)? = null,
 ) {
     Column(
         modifier =
@@ -235,6 +237,34 @@ fun MyEidPinAndCertificateView(
                             text = changePinText,
                             style = MaterialTheme.typography.labelLarge,
                         )
+                    }
+
+                    if (testPinText.isNotBlank() && onTestPinClick != null) {
+                        Spacer(modifier = modifier.size(XSPadding))
+
+                        Button(
+                            enabled = !isPinBlocked,
+                            onClick = onTestPinClick,
+                            modifier = modifier.align(Alignment.CenterVertically),
+                            colors =
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                    disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    disabledContentColor = MaterialTheme.colorScheme.outline,
+                                ),
+                        ) {
+                            Text(
+                                modifier =
+                                    modifier
+                                        .semantics {
+                                            this.contentDescription = testPinText.lowercase()
+                                            testTagsAsResourceId = true
+                                        }.testTag("myEidPinAndCertificateTestPinButton"),
+                                text = testPinText,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
                     }
                 }
             }
