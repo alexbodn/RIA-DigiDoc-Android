@@ -32,7 +32,6 @@ import com.unboundid.ldap.sdk.SearchScope
 import com.unboundid.ldap.sdk.controls.SimplePagedResultsControl
 import com.unboundid.util.LDAPTestUtils
 import com.unboundid.util.ssl.SSLUtil
-import com.unboundid.util.ssl.TLSCipherSuiteSelector
 import ee.ria.DigiDoc.common.Constant.BASE_DN
 import ee.ria.DigiDoc.common.Constant.CERT_BINARY_ATTR
 import ee.ria.DigiDoc.common.Constant.LDAP_PORT
@@ -207,11 +206,8 @@ class RecipientRepositoryImpl
         }
 
         @Throws(GeneralSecurityException::class)
-        private fun getDefaultKeystoreSslSocketFactory(): SSLSocketFactory {
-            TLSCipherSuiteSelector.setAllowSHA1(true)
-            TLSCipherSuiteSelector.setAllowRSAKeyExchange(true)
-            return SSLUtil().createSSLSocketFactory()
-        }
+        private fun getDefaultKeystoreSslSocketFactory(): SSLSocketFactory =
+            SSLUtil().createSSLSocketFactory()
 
         private fun isSuitableKeyAndNotMobileId(certificate: ExtendedCertificate): Boolean =
             (hasKeyEnciphermentUsage(certificate) || hasKeyAgreementUsage(certificate)) &&
