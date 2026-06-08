@@ -84,9 +84,9 @@ jobs:
 
           # Download files
           echo "Downloading eu-lotl.xml..."
-          wget "https://ec.europa.eu/tools/lotl/eu-lotl.xml" -O $TSL_FILES_DIR/eu-lotl.xml
+          curl -s -A "Mozilla/5.0" -L -o $TSL_FILES_DIR/eu-lotl.xml "https://ec.europa.eu/tools/lotl/eu-lotl.xml" && grep -q "<?xml" $TSL_FILES_DIR/eu-lotl.xml
           echo "Downloading tl-mp-test-EE.xml..."
-          wget "https://open-eid.github.io/test-TL/tl-mp-test-EE.xml" -O $TSL_FILES_DIR/tl-mp-test-EE.xml
+          curl -s -A "Mozilla/5.0" -L -o $TSL_FILES_DIR/tl-mp-test-EE.xml "https://open-eid.github.io/test-TL/tl-mp-test-EE.xml" && grep -q "<?xml" $TSL_FILES_DIR/tl-mp-test-EE.xml
 
           # Run downloader script
           echo "Running TSLXMLDownloader.py..."
