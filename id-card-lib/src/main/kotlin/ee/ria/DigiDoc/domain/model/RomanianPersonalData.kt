@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:package-name")
+
 package ee.ria.DigiDoc.domain.model
 
 import ee.ria.DigiDoc.idcard.CardType
@@ -11,9 +13,8 @@ class RomanianPersonalData(
     private val personalCode: String,
     private val documentNumber: String,
     private val expiryDate: LocalDate?,
-    private val faceImage: ByteArray? = null
+    private val faceImage: ByteArray? = null,
 ) : PersonalData() {
-
     fun faceImage(): ByteArray? = faceImage
 
     override fun givenNames(): String = givenNames

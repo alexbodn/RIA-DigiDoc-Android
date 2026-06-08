@@ -120,8 +120,9 @@ class IdCardServiceImpl
             roleData: RoleData?,
         ): SignedContainer {
             val idCardData = data(token)
-            val signCertificate = idCardData.signCertificate
-                ?: throw SmartCardReaderException("Signing certificate not found on the card.")
+            val signCertificate =
+                idCardData.signCertificate
+                    ?: throw SmartCardReaderException("Signing certificate not found on the card.")
 
             val signCertificateData = signCertificate.data
 

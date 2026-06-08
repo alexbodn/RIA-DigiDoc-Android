@@ -175,8 +175,9 @@ class IdCardViewModel
                         }
 
                     val idCardData = idCardService.data(token)
-                    val authCert = idCardData.authCertificate?.data
-                        ?: throw SmartCardReaderException("Authentication certificate not found.")
+                    val authCert =
+                        idCardData.authCertificate?.data
+                            ?: throw SmartCardReaderException("Authentication certificate not found.")
 
                     debugLog(
                         logTag,
